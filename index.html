@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crown Lizard Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #0d0d0d;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-size: 24px;
+      z-index: 10;
+    }
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 20;
+    }
+    #startScreen button {
+      padding: 10px 20px;
+      font-size: 20px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="scoreboard">
+    <div id="score">Score: 0</div>
+    <div id="highscore">Highscore: 0</div>
+    <div id="lives">Lives: 3</div>
+    <div id="shieldStatus">Shield: Off</div>
+  </div>
+  <div id="startScreen">
+    <h1>Welcome to Crown Lizard!</h1>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const PLAYER_SIZE = 30;
+    const PLAYER_SPEED = 10;
+    const JUMP_POWER = 15;
+    const GRAVITY = 1;
+    const INITIAL_OBSTACLE_SPEED = 2;
+    const INITIAL_OBSTACLE_INTERVAL = 1000;
+    const DIFFICULTY_INCREASE_INTERVAL = 10;
+    const OBSTACLE_SPEED_INCREMENT = 0.5;
+    const OBSTACLE_SIZE_INCREMENT = 2;
+    const OBSTACLE_INTERVAL_DECREMENT = 50;
+    const MIN_OBSTACLE_INTERVAL = 300;
+    const MAX_LIVES = 3;
+    const OBSTACLE_SHAPES = ["circle", "square", "triangle"];
+    const SHIELD_DURATION = 5000; // milliseconds
+    const OBSTACLE_SIDE_SPEED = 2;
+    const OBSTACLE_ROTATE_SPEED = 0.05;
+    const SHAPE_CHANGE_INTERVAL = 5000; // 5 seconds
+
+    let player = {
+      x: canvas.width / 2,
+      y: canvas.height - 50,
+      size: PLAYER_SIZE,
+      speed: PLAYER_SPEED,
+      dy: 0,
+      jumping: false,
+      shield: false
+    };
+
+    let obstacles = [];
+    let powerups = [];
+    let score = 0;
+    let highscore = 0;
+    let lives = MAX_LIVES;
+    let obstacleSpeed = INITIAL_OBSTACLE_SPEED;
+    let obstacleSize = 20;
+    let obstacleInterval = INITIAL_OBSTACLE_INTERVAL;
+    let gameOver = false;
+    let gameStarted = false;
+    let spawnTimer;
+    let shapeChangeTimer;
+    let hitFlash = 0;
+
+    function resetGame() {
+      player.x = canvas.width / 2;
+      player.y = canvas.height - 50;
+      player.dy = 0;
+      player.jumping = false;
+      player.shield = false;
+      obstacles = [];
+      powerups = [];
+      score = 0;
+      lives = MAX_LIVES;
+      obstacleSpeed = INITIAL_OBSTACLE_SPEED;
+      obstacleSize = 20;
+      obstacleInterval = INITIAL_OBSTACLE_INTERVAL;
+      highscore = localStorage.getItem("crownlizardHighscore") || 0;
+      gameOver = false;
+      gameStarted = false;
+      document.getElementById("score").textContent = `Score: ${score}`;
+      document.getElementById("highscore").textContent = `Highscore: ${highscore}`;
+      document.getElementById("lives").textContent = `Lives: ${lives}`;
+      document.getElementById("shieldStatus").textContent = "Shield: Off";
+      clearInterval(spawnTimer);
+      clearInterval(shapeChangeTimer);
+      hitFlash = 0;
+    }
+
+    function drawPlayer() {
+      let colors = ["lime", "cyan", "blue", "magenta"];
+      let colorIndex = Math.floor(score / 10) % colors.length;
+      ctx.fillStyle = colors[colorIndex];
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
+      if (player.shield) {
+        ctx.strokeStyle = "gold";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.size + 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawObstacles() {
+      obstacles.forEach((ob, index) => {
+        ctx.fillStyle = ["red", "orange", "yellow", "magenta"][index % 4];
+        ctx.save();
+        ctx.translate(ob.x, ob.y);
+        ctx.rotate(ob.angle);
+        ctx.beginPath();
+        if (ob.shape === "circle") ctx.arc(0, 0, ob.size, 0, Math.PI * 2);
+        else if (ob.shape === "square") ctx.rect(-ob.size, -ob.size, ob.size * 2, ob.size * 2);
+        else if (ob.shape === "triangle") {
+          ctx.moveTo(0, -ob.size);
+          ctx.lineTo(-ob.size, ob.size);
+          ctx.lineTo(ob.size, ob.size);
+          ctx.closePath();
+        }
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function drawHeart(x, y, size) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + size / 4);
+      ctx.arc(x - size / 4, y, size / 4, Math.PI, 0, false);
+      ctx.arc(x + size / 4, y, size / 4, Math.PI, 0, false);
+      ctx.lineTo(x, y + size);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawPowerups() {
+      powerups.forEach(pw => {
+        if (pw.type === "life") {
+          ctx.fillStyle = "pink";
+          drawHeart(pw.x, pw.y, 20);
+        } else if (pw.type === "shield") {
+          ctx.fillStyle = "lightblue";
+          ctx.beginPath();
+          ctx.arc(pw.x, pw.y, 15, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
+
+    function updateObstacles() {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        let ob = obstacles[i];
+        ob.y += obstacleSpeed;
+        ob.x += ob.dx;
+        ob.angle += ob.rotation;
+        if (ob.x < ob.size || ob.x > canvas.width - ob.size) {
+          ob.dx *= -1;
+        }
+        if (ob.y > canvas.height) {
+          obstacles.splice(i, 1);
+          score++;
+          document.getElementById("score").textContent = `Score: ${score}`;
+          if (score % DIFFICULTY_INCREASE_INTERVAL === 0) {
+            obstacleSpeed += OBSTACLE_SPEED_INCREMENT;
+            obstacleSize += OBSTACLE_SIZE_INCREMENT;
+            obstacleInterval = Math.max(MIN_OBSTACLE_INTERVAL, obstacleInterval - OBSTACLE_INTERVAL_DECREMENT);
+            clearInterval(spawnTimer);
+            spawnTimer = setInterval(spawnObstacle, obstacleInterval);
+            if (Math.random() < 0.5) spawnPowerup();
+          }
+        } else if (Math.hypot(ob.x - player.x, ob.y - player.y) < ob.size + player.size) {
+          if (player.shield) {
+            obstacles.splice(i, 1);
+            continue;
+          }
+          obstacles.splice(i, 1);
+          lives--;
+          hitFlash = 10;
+          document.getElementById("lives").textContent = `Lives: ${lives}`;
+          if (lives <= 0) {
+            gameOver = true;
+            if (score > highscore) {
+              highscore = score;
+              localStorage.setItem("crownlizardHighscore", highscore);
+            }
+            document.getElementById("highscore").textContent = `Highscore: ${highscore}`;
+            setTimeout(() => document.getElementById("startScreen").style.display = "flex", 1000);
+          }
+        }
+      }
+    }
+
+    function updatePowerups() {
+      for (let i = powerups.length - 1; i >= 0; i--) {
+        powerups[i].y += 2;
+        if (powerups[i].y > canvas.height) powerups.splice(i, 1);
+        else if (Math.hypot(powerups[i].x - player.x, powerups[i].y - player.y) < 20 + player.size) {
+          if (powerups[i].type === "life") {
+            lives = Math.min(MAX_LIVES, lives + 1);
+            document.getElementById("lives").textContent = `Lives: ${lives}`;
+          } else if (powerups[i].type === "shield") {
+            activateShield();
+          }
+          powerups.splice(i, 1);
+        }
+      }
+    }
+
+    function spawnObstacle() {
+      if (!gameStarted || gameOver) return;
+      const x = Math.random() * canvas.width;
+      const shape = OBSTACLE_SHAPES[Math.floor(Math.random() * OBSTACLE_SHAPES.length)];
+      const dx = (Math.random() - 0.5) * OBSTACLE_SIDE_SPEED * 2;
+      const rotation = (Math.random() - 0.5) * OBSTACLE_ROTATE_SPEED * 2;
+      obstacles.push({ x, y: 0, size: obstacleSize, shape, dx, rotation, angle: 0 });
+    }
+
+    function spawnPowerup() {
+      const x = Math.random() * canvas.width;
+      const type = Math.random() < 0.8 ? "life" : "shield";
+      powerups.push({ x, y: 0, type });
+    }
+
+    function changeObstacleShapes() {
+      obstacles.forEach(ob => {
+        let idx = OBSTACLE_SHAPES.indexOf(ob.shape);
+        ob.shape = OBSTACLE_SHAPES[(idx + 1) % OBSTACLE_SHAPES.length];
+      });
+    }
+
+    function activateShield() {
+      player.shield = true;
+      document.getElementById("shieldStatus").textContent = "Shield: On";
+      setTimeout(() => {
+        player.shield = false;
+        document.getElementById("shieldStatus").textContent = "Shield: Off";
+      }, SHIELD_DURATION);
+    }
+
+    function updatePlayerPhysics() {
+      if (player.jumping) {
+        player.dy += GRAVITY;
+        player.y += player.dy;
+        if (player.y >= canvas.height - 50) {
+          player.y = canvas.height - 50;
+          player.dy = 0;
+          player.jumping = false;
+        }
+      }
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!gameStarted || gameOver) return;
+      updatePlayerPhysics();
+      drawPlayer();
+      drawObstacles();
+      drawPowerups();
+      updateObstacles();
+      updatePowerups();
+      if (hitFlash > 0) {
+        ctx.fillStyle = `rgba(255,0,0,${hitFlash / 10})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        hitFlash--;
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      document.getElementById("startScreen").style.display = "none";
+      resetGame();
+      gameStarted = true;
+      spawnTimer = setInterval(spawnObstacle, obstacleInterval);
+      shapeChangeTimer = setInterval(changeObstacleShapes, SHAPE_CHANGE_INTERVAL);
+      gameLoop();
+    }
+
+    document.addEventListener("keydown", e => {
+      if (!gameStarted || gameOver) return;
+      if (e.key === "ArrowLeft") player.x -= player.speed;
+      if (e.key === "ArrowRight") player.x += player.speed;
+      if (e.key === "ArrowUp" && !player.jumping) {
+        player.jumping = true;
+        player.dy = -JUMP_POWER;
+      }
+      player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+    });
+
+    let touchStartX = null;
+    let jumpHandled = false;
+    document.addEventListener("touchstart", e => {
+      if (e.touches.length > 0) {
+        if (!player.jumping && !jumpHandled) {
+          player.jumping = true;
+          player.dy = -JUMP_POWER;
+          jumpHandled = true;
+        }
+        touchStartX = e.touches[0].clientX;
+      }
+    });
+    document.addEventListener("touchmove", e => {
+      if (!touchStartX || !gameStarted || gameOver) return;
+      let currentX = e.touches[0].clientX;
+      let deltaX = currentX - touchStartX;
+      player.x += deltaX * 0.1;
+      player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+      touchStartX = currentX;
+    });
+    document.addEventListener("touchend", () => {
+      jumpHandled = false;
+    });
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      player.y = canvas.height - 50;
+    });
+  </script>
+</body>
+</html>
