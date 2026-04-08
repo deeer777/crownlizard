@@ -81,10 +81,11 @@
     const OBSTACLE_SIDE_SPEED = 2;
     const OBSTACLE_ROTATE_SPEED = 0.05;
     const SHAPE_CHANGE_INTERVAL = 5000; // 5 seconds
+    const GROUND_OFFSET = 50;
 
     let player = {
       x: canvas.width / 2,
-      y: canvas.height - 50,
+      y: canvas.height - GROUND_OFFSET,
       size: PLAYER_SIZE,
       speed: PLAYER_SPEED,
       dy: 0,
@@ -104,11 +105,12 @@
     let gameStarted = false;
     let spawnTimer;
     let shapeChangeTimer;
+    let shieldTimer = null;
     let hitFlash = 0;
 
     function resetGame() {
       player.x = canvas.width / 2;
-      player.y = canvas.height - 50;
+      player.y = canvas.height - GROUND_OFFSET;
       player.dy = 0;
       player.jumping = false;
       player.shield = false;
@@ -128,6 +130,10 @@
       document.getElementById("shieldStatus").textContent = "Shield: Off";
       clearInterval(spawnTimer);
       clearInterval(shapeChangeTimer);
+      if (shieldTimer) {
+        clearTimeout(shieldTimer);
+        shieldTimer = null;
+      }
       hitFlash = 0;
     }
 
@@ -252,7 +258,7 @@
 
     function spawnObstacle() {
       if (!gameStarted || gameOver) return;
-      const x = Math.random() * canvas.width;
+      const x = obstacleSize + Math.random() * (canvas.width - obstacleSize * 2);
       const shape = OBSTACLE_SHAPES[Math.floor(Math.random() * OBSTACLE_SHAPES.length)];
       const dx = (Math.random() - 0.5) * OBSTACLE_SIDE_SPEED * 2;
       const rotation = (Math.random() - 0.5) * OBSTACLE_ROTATE_SPEED * 2;
@@ -260,7 +266,8 @@
     }
 
     function spawnPowerup() {
-      const x = Math.random() * canvas.width;
+      const powerupRadius = 15;
+      const x = powerupRadius + Math.random() * (canvas.width - powerupRadius * 2);
       const type = Math.random() < 0.8 ? "life" : "shield";
       powerups.push({ x, y: 0, type });
     }
@@ -275,9 +282,11 @@
     function activateShield() {
       player.shield = true;
       document.getElementById("shieldStatus").textContent = "Shield: On";
-      setTimeout(() => {
+      if (shieldTimer) clearTimeout(shieldTimer);
+      shieldTimer = setTimeout(() => {
         player.shield = false;
         document.getElementById("shieldStatus").textContent = "Shield: Off";
+        shieldTimer = null;
       }, SHIELD_DURATION);
     }
 
@@ -285,8 +294,8 @@
       if (player.jumping) {
         player.dy += GRAVITY;
         player.y += player.dy;
-        if (player.y >= canvas.height - 50) {
-          player.y = canvas.height - 50;
+        if (player.y >= canvas.height - GROUND_OFFSET) {
+          player.y = canvas.height - GROUND_OFFSET;
           player.dy = 0;
           player.jumping = false;
         }
@@ -294,6 +303,7 @@
     }
 
     function gameLoop() {
+      requestAnimationFrame(gameLoop);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!gameStarted || gameOver) return;
       updatePlayerPhysics();
@@ -307,7 +317,6 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         hitFlash--;
       }
-      requestAnimationFrame(gameLoop);
     }
 
     function startGame() {
@@ -333,6 +342,7 @@
     let touchStartX = null;
     let jumpHandled = false;
     document.addEventListener("touchstart", e => {
+      if (!gameStarted || gameOver) return;
       if (e.touches.length > 0) {
         if (!player.jumping && !jumpHandled) {
           player.jumping = true;
@@ -355,9 +365,11 @@
     });
 
     window.addEventListener("resize", () => {
+      const previousHeight = canvas.height;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      player.y = canvas.height - 50;
+      const deltaHeight = canvas.height - previousHeight;
+      player.y = Math.min(canvas.height - GROUND_OFFSET, player.y + deltaHeight);
     });
   </script>
 </body>
