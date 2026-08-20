@@ -1,8 +1,9 @@
-import { CONFIG } from './config.js?v=20260820-37';
+import { CONFIG } from './config.js?v=20260821-38';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260820-37';
+import { Game } from './game.js?v=20260821-38';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-38';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -10,7 +11,9 @@ const ui = {
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
-  menuSettings: $('menuSettings'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
+  leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
   gameVersion: $('gameVersion'),
@@ -19,6 +22,7 @@ const ui = {
   dashFill: $('dashFill'), dashButton: $('dashButton'), pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'),
+  scoreEntry: $('scoreEntry'), playerInitials: $('playerInitials'), submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
 };
 
 let selectedDifficulty = localStorage.getItem('crownlizard:difficulty') || 'arcade';
@@ -38,6 +42,11 @@ const tutorialKey = 'cl:tutorial:v1';
 const tutorialForced = new URLSearchParams(location.search).has('tutorial');
 let tutorialForcedUsed = false;
 let settingsReturn = 'menu';
+let leaderboardReturn = 'menu';
+let leaderboardDifficulty = selectedDifficulty;
+let runGeneration = 0;
+let currentRunPromise = Promise.resolve(null);
+let pendingScore = null;
 let selectedMenuChoice = 0;
 let selectedResultChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
@@ -102,6 +111,78 @@ ui.resultChoices.forEach((button, index) => {
   button.addEventListener('focus', () => selectResultChoice(index));
 });
 
+const selectLeaderboardDifficulty = difficulty => {
+  leaderboardDifficulty = CONFIG.difficulties[difficulty] ? difficulty : 'arcade';
+  ui.leaderboardTabs.forEach(button => {
+    const selected = button.dataset.boardDifficulty === leaderboardDifficulty;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-selected', String(selected));
+  });
+};
+
+const renderLeaderboard = (scores, highlightId = '') => {
+  ui.leaderboardList.replaceChildren();
+  scores.forEach((entry, index) => {
+    const row = document.createElement('li');
+    if (entry.id === highlightId) row.classList.add('leaderboard-highlight');
+    const values = [String(index + 1).padStart(2, '0'), entry.initials, Number(entry.score).toLocaleString('en-US'), String(entry.zone)];
+    values.forEach(value => {
+      const cell = document.createElement('span');
+      cell.textContent = value;
+      row.append(cell);
+    });
+    ui.leaderboardList.append(row);
+  });
+  ui.leaderboardStatus.textContent = scores.length ? 'TOP 10 · ALL-TIME' : 'NO SCORES YET · CLAIM THE CROWN';
+};
+
+const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = false) => {
+  selectLeaderboardDifficulty(difficulty);
+  if (!silent) {
+    ui.leaderboardStatus.textContent = 'CONNECTING...';
+    ui.leaderboardList.replaceChildren();
+  }
+  try {
+    const result = await leaderboard.list(difficulty);
+    if (difficulty === leaderboardDifficulty) renderLeaderboard(result.scores || []);
+    if (difficulty === selectedDifficulty && result.scores?.length) ui.menuBest.textContent = String(result.scores[0].score).padStart(6, '0');
+    return result;
+  } catch {
+    if (!silent && difficulty === leaderboardDifficulty) ui.leaderboardStatus.textContent = 'GLOBAL BOARD OFFLINE · LOCAL RECORD SAFE';
+    return null;
+  }
+};
+
+const openLeaderboard = (origin = 'menu', difficulty = selectedDifficulty, result = null) => {
+  leaderboardReturn = origin;
+  selectLeaderboardDifficulty(difficulty);
+  ui.leaderboardOverlay.classList.remove('hidden');
+  if (result?.scores) {
+    renderLeaderboard(result.scores, result.entry?.id || '');
+  } else {
+    loadLeaderboard(difficulty);
+  }
+};
+
+const closeLeaderboard = () => {
+  ui.leaderboardOverlay.classList.add('hidden');
+  if (leaderboardReturn === 'menu') selectMenuChoice(1, true);
+};
+
+const prepareScoreEntry = (score, summary) => {
+  const scoreTicket = { score, summary, difficulty: game.difficulty, generation: runGeneration, run: null };
+  pendingScore = scoreTicket;
+  ui.scoreEntry.classList.add('hidden');
+  ui.scoreSubmitStatus.textContent = '';
+  ui.submitScore.disabled = false;
+  Promise.resolve(currentRunPromise).then(run => {
+    if (!run || pendingScore !== scoreTicket || scoreTicket.generation !== runGeneration) return;
+    scoreTicket.run = run;
+    ui.playerInitials.value = normalizeInitials(localStorage.getItem('cl:initials') || 'AAA').padEnd(3, 'A');
+    ui.scoreEntry.classList.remove('hidden');
+  });
+};
+
 const renderRunSummary = summary => {
   if (!summary) { ui.runSummary.innerHTML = ''; return; }
   const powers = summary.powers.length ? summary.powers.map(power => `${power.name} ${power.level > 1 ? `LV${power.level}` : ''}`.trim()).join(' · ') : 'NONE';
@@ -144,9 +225,10 @@ const game = new Game($('game'), input, {
     const record = score > best;
     if (record) { best = score; localStorage.setItem(bestKey(game.difficulty), String(best)); }
     ui.resultTitle.textContent = record ? 'NEW HIGH SCORE' : 'THE CROWN FELL';
-    ui.recordMessage.textContent = record ? `Previous record beaten: ${best.toLocaleString('en-US')} points!` : `Best score: ${best.toLocaleString('en-US')}`;
+    ui.recordMessage.textContent = record ? `New local record: ${best.toLocaleString('en-US')} points!` : `Local best: ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
+    prepareScoreEntry(score, summary);
     selectResultChoice(0);
     ui.gameover.classList.remove('hidden');
     ui.perkOverlay.classList.add('hidden');
@@ -222,6 +304,7 @@ const returnToMenu = () => {
   selectMenuChoice(0);
   ui.best.textContent = best.toLocaleString('en-US');
   ui.menuBest.textContent = String(best).padStart(6, '0');
+  loadLeaderboard(selectedDifficulty, true);
   music.play();
 };
 
@@ -262,6 +345,12 @@ const start = () => {
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
   game.start(selectedDifficulty);
+  const generation = ++runGeneration;
+  pendingScore = null;
+  ui.scoreEntry.classList.add('hidden');
+  currentRunPromise = leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`)
+    .then(run => generation === runGeneration ? run : null)
+    .catch(() => null);
   game.reducedEffects = reducedEffects;
   music.play();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
@@ -276,8 +365,52 @@ ui.resume.addEventListener('click', resumeRun);
 ui.pauseButton.addEventListener('click', () => pauseRun(false));
 ui.tutorialDone.addEventListener('click', finishTutorial);
 ui.menuSettings.addEventListener('click', () => openSettings('menu'));
+ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
+ui.closeLeaderboard.addEventListener('click', closeLeaderboard);
+ui.leaderboardTabs.forEach(button => button.addEventListener('click', () => loadLeaderboard(button.dataset.boardDifficulty)));
+ui.playerInitials.addEventListener('input', () => {
+  const normalized = normalizeInitials(ui.playerInitials.value);
+  if (ui.playerInitials.value !== normalized) ui.playerInitials.value = normalized;
+});
+ui.scoreEntry.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!pendingScore?.run) return;
+  const initials = normalizeInitials(ui.playerInitials.value);
+  if (initials.length !== 3) {
+    ui.scoreSubmitStatus.textContent = 'ENTER EXACTLY 3 INITIALS';
+    ui.playerInitials.focus();
+    return;
+  }
+  ui.submitScore.disabled = true;
+  ui.scoreSubmitStatus.textContent = 'TRANSMITTING...';
+  try {
+    const summary = pendingScore.summary;
+    const result = await leaderboard.submit({
+      runId: pendingScore.run.id,
+      initials,
+      score: pendingScore.score,
+      difficulty: pendingScore.difficulty,
+      durationMs: summary.durationMs,
+      zone: summary.zone,
+      wardens: summary.wardens,
+      enemies: summary.enemies,
+      crates: summary.crates,
+      bestCombo: summary.bestCombo,
+      gameVersion: `${CONFIG.version.release}-${CONFIG.version.build}`,
+    });
+    localStorage.setItem('cl:initials', initials);
+    ui.scoreSubmitStatus.textContent = `SCORE ACCEPTED · RANK ${result.rank || '—'}`;
+    ui.scoreEntry.classList.add('hidden');
+    sfx.play('confirm');
+    openLeaderboard('gameover', pendingScore.difficulty, result);
+    pendingScore = null;
+  } catch (error) {
+    ui.scoreSubmitStatus.textContent = error.message || 'TRANSMISSION FAILED · TRY AGAIN';
+    ui.submitScore.disabled = false;
+  }
+});
 ui.sound.addEventListener('click', () => { music.toggle(); renderSettings(); });
 ui.resetTutorial.addEventListener('click', () => {
   localStorage.removeItem(tutorialKey);
@@ -309,6 +442,7 @@ ui.difficultyButtons.forEach(button => button.addEventListener('click', () => {
   best = Number(localStorage.getItem(bestKey(selectedDifficulty)) || 0);
   ui.best.textContent = best.toLocaleString('en-US');
   ui.menuBest.textContent = String(best).padStart(6, '0');
+  loadLeaderboard(selectedDifficulty, true);
 }));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { input.clear(); pauseRun(true); }
@@ -317,12 +451,13 @@ addEventListener('blur', () => pauseRun(true));
 addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
-  if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
+  if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
+  else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
   else pauseRun(false);
 });
 addEventListener('keydown', event => {
-  if (ui.gameover.classList.contains('hidden')) return;
+  if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     selectResultChoice(selectedResultChoice + 1, true);
@@ -337,7 +472,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();
@@ -354,6 +489,8 @@ addEventListener('keydown', event => {
     ui.menuChoices[selectedMenuChoice].click();
   }
 });
+
+loadLeaderboard(selectedDifficulty, true);
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
 const debugMode = new URLSearchParams(location.search).has('debug') || location.hostname === '127.0.0.1' || location.hostname === 'localhost';

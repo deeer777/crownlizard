@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .dev.vars
+.dev.vars.*
 
 # Dependencies and generated output
 node_modules/
@@ -13,4 +14,3 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
-

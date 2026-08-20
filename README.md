@@ -50,4 +50,14 @@ Warden möter spelaren med en egen entré och tre läsbara stridsfaser. Varje fa
 
 Kronkrafterna använder elva egna transparenta pixelart-emblem. Vapenlådorna visar den faktiska vapenspriten för Blaster, Spread, Pulse, Laser eller Tesla i stället för en ritad teckensymbol.
 
-Supabase-topplistan och Cloudflare Worker-endpointen läggs till efter att spelkänslan har provspelats.
+## Global highscore
+
+Version 0.10 har en mobile-first global topplista med separata tabeller för Chill, Arcade och Crowned. Spelaren skickar tre arkadinitialer efter rundan. Klienten får ett engångs-ID när rundan startar och Cloudflare Pages Function validerar tid, zon, run-statistik, versionsnummer och en generös poänggräns innan något sparas.
+
+Databasen skapas genom att köra `supabase/schema.sql` i Supabase SQL Editor. Lägg därefter följande i Cloudflare Pages under **Settings → Variables and Secrets** för både Production och Preview:
+
+- `SUPABASE_URL` som vanlig variabel.
+- `SUPABASE_SECRET_KEY` som krypterad hemlighet. Använd Supabases nya server-side `sb_secret_...`-nyckel, aldrig en nyckel i frontendkoden.
+- `SCORE_HASH_SALT` som en lång, slumpmässig krypterad hemlighet.
+
+Pages Functions exponeras endast under `/api/*` via `_routes.json`; statiska spelresurser fortsätter att serveras utan Function-anrop. Om API:t eller databasen är otillgänglig fungerar spelet och de lokala rekorden fortfarande.

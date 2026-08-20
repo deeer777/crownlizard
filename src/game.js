@@ -282,6 +282,7 @@ export class Game {
       .filter(perk => this.perkCounts[perk.key] > 0)
       .map(perk => ({ name: perk.name, level: this.perkCounts[perk.key] }));
     return {
+      durationMs: Math.max(0, Math.round(this.time * 1000)),
       zone: this.stageIndex + 1,
       wardens: this.runStats.wardens,
       enemies: this.runStats.enemies,

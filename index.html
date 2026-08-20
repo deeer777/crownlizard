@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260820-37">
+  <link rel="stylesheet" href="./styles.css?v=20260821-38">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -54,6 +54,7 @@
       <p class="tagline">DASH · SURVIVE · CLAIM THE HIGH SCORE</p>
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
+        <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ENTER CONFIRM</div>
@@ -81,6 +82,12 @@
       <div class="run-meta" id="runMeta">ZONE 1 · ARCADE</div>
       <div class="run-summary" id="runSummary"></div>
       <p id="recordMessage">The next run starts stronger.</p>
+      <form id="scoreEntry" class="score-entry hidden">
+        <label for="playerInitials">ENTER INITIALS</label>
+        <input id="playerInitials" name="initials" type="text" maxlength="3" minlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" value="AAA" aria-describedby="scoreSubmitStatus">
+        <button id="submitScore" class="system-action" type="submit"><i>♛</i> SUBMIT SCORE</button>
+        <span id="scoreSubmitStatus" role="status"></span>
+      </form>
       <div class="result-choices" aria-label="Run over menu">
         <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
         <button id="home" class="primary result-choice" data-result-choice="home"><i>♛</i> BACK TO MENU</button>
@@ -126,6 +133,22 @@
     </div>
   </section>
 
+  <section id="leaderboardOverlay" class="overlay system-overlay leaderboard-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="leaderboardTitle">
+    <div class="system-panel leaderboard-panel">
+      <div class="eyebrow">ROYAL RECORDS</div>
+      <h2 id="leaderboardTitle">HIGH SCORES</h2>
+      <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard difficulty">
+        <button type="button" data-board-difficulty="chill" role="tab">CHILL</button>
+        <button type="button" data-board-difficulty="arcade" role="tab">ARCADE</button>
+        <button type="button" data-board-difficulty="crowned" role="tab">CROWNED</button>
+      </div>
+      <div class="leaderboard-head" aria-hidden="true"><span>RANK</span><span>PLAYER</span><span>SCORE</span><span>ZONE</span></div>
+      <ol id="leaderboardList" class="leaderboard-list" aria-live="polite"></ol>
+      <p id="leaderboardStatus" class="leaderboard-status" role="status">CONNECTING...</p>
+      <button id="closeLeaderboard" class="system-action" type="button"><i>♛</i> BACK</button>
+    </div>
+  </section>
+
   <section id="perkOverlay" class="overlay perk-overlay hidden" aria-modal="true" role="dialog">
     <div class="perk-panel">
       <div class="eyebrow">WARDEN DEFEATED</div>
@@ -141,6 +164,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260820-37"></script>
+  <script type="module" src="./src/main.js?v=20260821-38"></script>
 </body>
 </html>
