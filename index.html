@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071017">
+  <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
+  <title>Crown Lizard: Dash</title>
+  <link rel="stylesheet" href="./styles.css?v=20260820-36">
+</head>
+<body>
+  <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
+
+  <div id="hud" class="hud hidden" aria-live="polite">
+    <div class="brand"><span class="crown">♛</span> CROWN LIZARD</div>
+    <div class="weapon-hud" id="weaponHud">
+      <i id="weaponIcon">▰</i>
+      <span><small>ACTIVE WEAPON</small><b id="weaponName">BLASTER</b><em id="weaponLevel">MK I · STANDARD</em></span>
+      <div class="weapon-pips" id="weaponPips"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="score-block"><span>SCORE</span><strong id="score">0</strong></div>
+    <div class="combo" id="combo">x1</div>
+    <div class="stage-hud"><span id="stageName">VERDANT ORBIT</span><i><b id="stageFill"></b></i></div>
+    <div class="status">
+      <div class="hearts" id="hearts" aria-label="Lives">♥ ♥ ♥</div>
+      <div class="dash-meter"><span>DASH</span><i><b id="dashFill"></b></i></div>
+    </div>
+  </div>
+
+  <main id="menu" class="overlay">
+    <section class="panel hero-panel">
+      <div class="arcade-status"><span>★ HIGH SCORE</span><b id="menuBest">000000</b><span>1 PLAYER</span></div>
+      <div class="eyebrow">ENDLESS PIXEL SURVIVAL</div>
+      <div class="logo-lockup">
+        <span class="logo-crest" aria-hidden="true"><i></i></span>
+        <h1 aria-label="Crown Lizard"><span class="logo-crown-word" data-text="CROWN" aria-hidden="true">CROWN</span><span class="logo-lizard-word" data-text="LIZARD" aria-hidden="true">LIZARD</span></h1>
+        <i class="logo-scar scar-one" aria-hidden="true"></i>
+        <i class="logo-scar scar-two" aria-hidden="true"></i>
+        <i class="logo-tail" aria-hidden="true"></i>
+        <i class="logo-spark" aria-hidden="true"></i>
+      </div>
+      <div class="menu-scene" aria-hidden="true">
+        <i class="scene-orbit orbit-one"></i>
+        <i class="scene-orbit orbit-two"></i>
+        <img class="scene-enemy scene-enemy-left" src="./assets/sprites/ripper-v1.png" alt="">
+        <img class="scene-enemy scene-enemy-right" src="./assets/sprites/hex-moth-v1.png" alt="">
+        <span class="scene-shot shot-left"></span>
+        <span class="scene-shot shot-right"></span>
+        <img class="scene-player" src="./assets/sprites/crown-lizard-player-v1.png" alt="">
+      </div>
+      <p class="tagline">DASH · SURVIVE · CLAIM THE HIGH SCORE</p>
+      <div class="menu-choices" aria-label="Main menu">
+        <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
+        <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
+      </div>
+      <div class="menu-nav-hint">↑ ↓ SELECT · ENTER CONFIRM</div>
+      <div class="menu-label"><span>SELECT DIFFICULTY</span></div>
+      <div class="difficulty" role="group" aria-label="Difficulty">
+        <button data-difficulty="chill"><b>CHILL</b><small>4 lives · relaxed</small></button>
+        <button data-difficulty="arcade" class="selected"><b>ARCADE</b><small>3 lives · classic</small></button>
+        <button data-difficulty="crowned"><b>CROWNED</b><small>2 lives · x1.6 score</small></button>
+      </div>
+      <div class="controls">
+        <div><kbd>WASD</kbd><span>Move</span></div>
+        <div><kbd>SPACE</kbd><span>Dash</span></div>
+        <div><kbd>AUTO</kbd><span>Fire</span></div>
+      </div>
+      <div class="best">CROWNLIZARD.COM <strong id="best">0</strong></div>
+      <button id="sound" class="icon-button" aria-label="Toggle music">♪</button>
+    </section>
+  </main>
+
+  <section id="gameover" class="overlay hidden">
+    <div class="panel result-panel">
+      <div class="eyebrow">RUN OVER</div>
+      <h2 id="resultTitle">THE CROWN FELL</h2>
+      <div class="final-score"><span>SCORE</span><strong id="finalScore">0</strong></div>
+      <div class="run-meta" id="runMeta">ZONE 1 · ARCADE</div>
+      <div class="run-summary" id="runSummary"></div>
+      <p id="recordMessage">The next run starts stronger.</p>
+      <div class="result-choices" aria-label="Run over menu">
+        <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
+        <button id="home" class="primary result-choice" data-result-choice="home"><i>♛</i> BACK TO MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tutorialOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog">
+    <div class="system-panel tutorial-panel">
+      <div class="eyebrow">FIRST RUN</div>
+      <h2>HOW TO SURVIVE</h2>
+      <div class="tutorial-steps">
+        <div><i>✥</i><b>MOVE</b><span>DRAG ANYWHERE<br>OR USE WASD</span></div>
+        <div><i>»</i><b>DASH</b><span>TAP DASH<br>OR PRESS SPACE</span></div>
+        <div><img src="./assets/sprites/weapon-crate-closed-v1.png" alt=""><b>POWER UP</b><span>COLLECT CRATES<br>AND CROWN POWERS</span></div>
+      </div>
+      <button id="tutorialDone" class="system-action"><i>♛</i> BEGIN RUN</button>
+    </div>
+  </section>
+
+  <section id="pauseOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog">
+    <div class="system-panel pause-panel">
+      <div class="eyebrow" id="pauseReason">RUN PAUSED</div>
+      <h2>PAUSED</h2>
+      <button id="resume" class="system-action"><i>♛</i> CONTINUE</button>
+      <button id="pauseSettings" class="system-link">SETTINGS</button>
+      <button id="quitRun" class="system-link danger-link">END RUN</button>
+    </div>
+  </section>
+
+  <section id="settingsOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog">
+    <div class="system-panel settings-panel">
+      <div class="eyebrow">SYSTEM</div>
+      <h2>SETTINGS</h2>
+      <div class="setting-list">
+        <button data-setting="music"><span>MUSIC</span><b>ON</b></button>
+        <button data-setting="sfx"><span>SOUND FX</span><b>ON</b></button>
+        <button data-setting="haptics"><span>VIBRATION</span><b>ON</b></button>
+        <button data-setting="reduced"><span>REDUCED EFFECTS</span><b>OFF</b></button>
+      </div>
+      <button id="resetTutorial" class="system-link">SHOW TUTORIAL AGAIN</button>
+      <button id="closeSettings" class="system-action"><i>♛</i> BACK</button>
+    </div>
+  </section>
+
+  <section id="perkOverlay" class="overlay perk-overlay hidden" aria-modal="true" role="dialog">
+    <div class="perk-panel">
+      <div class="eyebrow">WARDEN DEFEATED</div>
+      <h2>CHOOSE A CROWN POWER</h2>
+      <p>Your choice lasts for the rest of the run.</p>
+      <div class="perk-swipe-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</div>
+      <div id="perkCards" class="perk-cards"></div>
+    </div>
+  </section>
+
+  <button id="dashButton" class="dash-button hidden" aria-label="Dash">DASH</button>
+  <button id="pauseButton" class="pause-button hidden" aria-label="Pause">Ⅱ</button>
+  <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="./src/main.js?v=20260820-36"></script>
+</body>
+</html>

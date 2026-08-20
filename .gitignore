@@ -1,0 +1,16 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Dependencies and generated output
+node_modules/
+dist/
+.wrangler/
+
+# Logs and operating-system files
+*.log
+.DS_Store
+Thumbs.db
+
