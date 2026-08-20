@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260821-38">
+  <link rel="stylesheet" href="./styles.css?v=20260821-39">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -83,12 +83,15 @@
       <div class="run-summary" id="runSummary"></div>
       <p id="recordMessage">The next run starts stronger.</p>
       <form id="scoreEntry" class="score-entry hidden">
-        <label for="playerInitials">ENTER INITIALS</label>
-        <input id="playerInitials" name="initials" type="text" maxlength="3" minlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" value="AAA" aria-describedby="scoreSubmitStatus">
-        <button id="submitScore" class="system-action" type="submit"><i>♛</i> SUBMIT SCORE</button>
+        <label for="playerInitials">ENTER YOUR INITIALS<small>GLOBAL LEADERBOARD</small></label>
+        <div class="initials-control">
+          <div id="initialsSlots" class="initials-slots" aria-hidden="true"><span>–</span><span>–</span><span>–</span></div>
+          <input id="playerInitials" name="initials" type="text" maxlength="3" minlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="---" aria-label="Three character player initials" aria-describedby="scoreSubmitStatus">
+        </div>
         <span id="scoreSubmitStatus" role="status"></span>
       </form>
       <div class="result-choices" aria-label="Run over menu">
+        <button id="submitScore" class="primary result-choice hidden" data-result-choice="submit" type="submit" form="scoreEntry"><i>♛</i> SUBMIT SCORE</button>
         <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
         <button id="home" class="primary result-choice" data-result-choice="home"><i>♛</i> BACK TO MENU</button>
       </div>
@@ -144,6 +147,7 @@
       </div>
       <div class="leaderboard-head" aria-hidden="true"><span>RANK</span><span>PLAYER</span><span>SCORE</span><span>ZONE</span></div>
       <ol id="leaderboardList" class="leaderboard-list" aria-live="polite"></ol>
+      <div id="leaderboardPlayerResult" class="leaderboard-player-result hidden" aria-live="polite"></div>
       <p id="leaderboardStatus" class="leaderboard-status" role="status">CONNECTING...</p>
       <button id="closeLeaderboard" class="system-action" type="button"><i>♛</i> BACK</button>
     </div>
@@ -164,6 +168,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260821-38"></script>
+  <script type="module" src="./src/main.js?v=20260821-39"></script>
 </body>
 </html>
