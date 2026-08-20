@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js?v=20260820-35';
+import { CONFIG } from './config.js?v=20260820-37';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260820-35';
+import { Game } from './game.js?v=20260820-37';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -13,6 +13,7 @@ const ui = {
   menuSettings: $('menuSettings'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
+  gameVersion: $('gameVersion'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
@@ -26,6 +27,7 @@ const bestKey = difficulty => `crownlizard:best:v3:${difficulty}`;
 let best = Number(localStorage.getItem(bestKey(selectedDifficulty)) || 0);
 ui.best.textContent = best.toLocaleString('en-US');
 ui.menuBest.textContent = String(best).padStart(6, '0');
+ui.gameVersion.textContent = `VER ${CONFIG.version.release} · BUILD ${CONFIG.version.build}`;
 ui.difficultyButtons.forEach(button => button.classList.toggle('selected', button.dataset.difficulty === selectedDifficulty));
 
 const music = new Music();

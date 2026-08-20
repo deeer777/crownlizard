@@ -243,7 +243,9 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .hero-panel kbd { padding: 3px; color: #8eb2aa; background: transparent; border: 0; border-radius: 0; box-shadow: none; font: 900 8px ui-monospace, monospace; }
 .best { margin-top: 26px; color: var(--muted); font-size: 11px; letter-spacing: .18em; }
 .best strong { margin-left: 8px; color: var(--gold); font-size: 15px; }
-.hero-panel .best { margin-top: 12px; color: #55746e; font: 800 7px ui-monospace, monospace; letter-spacing: .17em; }
+.hero-panel .best { display: flex; justify-content: center; gap: 12px; margin-top: 12px; color: #55746e; font: 800 7px ui-monospace, monospace; letter-spacing: .17em; }
+.hero-panel .game-version { color: #405a55; }
+.hero-panel .game-version::before { content: '·'; margin-right: 12px; color: #29443f; }
 .hero-panel .best strong { display: none; }
 .menu-choices { display: grid; justify-items: center; gap: 0; margin: -2px auto 0; }
 .hero-panel .menu-choice { min-width: 270px; min-height: 44px; padding-block: 7px; color: #6d8580; }
@@ -454,6 +456,8 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
   .hero-panel .difficulty button.selected::after { display: none; }
   .hero-panel .controls { margin-top: 12px; }
   .hero-panel .best { margin-top: 10px; }
+  .hero-panel .best { gap: 7px; font-size: 7px; letter-spacing: .08em; }
+  .hero-panel .game-version::before { margin-right: 7px; }
   .hud { padding-inline: 12px; }
   .brand { font-size: 9px; }
   .weapon-hud { margin-top: 27px; padding: 5px 7px 5px 5px; gap: 6px; }

@@ -1,7 +1,7 @@
 # Crown Lizard — session handoff
 
-Latest completed local version: **36**  
-Test URL: `http://127.0.0.1:4174/?debug=1&reload=36`
+Latest completed local version: **37** (`VER 0.9.0`)
+Test URL: `http://127.0.0.1:4174/?debug=1&reload=37`
 
 ## Product direction
 
@@ -30,6 +30,7 @@ Test URL: `http://127.0.0.1:4174/?debug=1&reload=36`
 - Run Summary with zone, Wardens, crates, best combo, final weapon, Crown Powers and defeated enemies.
 - Filtered arcade event feed: only new threats, elite waves, collected weapon upgrades and rare critical errors interrupt play; debug feedback stays in a quiet corner.
 - Pixel-arcade logo with crown, stepped shading, battle damage, lizard-tail signature and reduced-motion support.
+- Player-visible semantic version and build number on the title screen.
 
 ## Menu and UI decisions
 
