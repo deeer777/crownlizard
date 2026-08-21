@@ -1,9 +1,9 @@
-import { CONFIG } from './config.js?v=20260821-40';
+import { CONFIG } from './config.js?v=20260821-41';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260821-40';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-40';
+import { Game } from './game.js?v=20260821-41';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-41';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -18,7 +18,7 @@ const ui = {
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
   gameVersion: $('gameVersion'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
-  weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponPips: $('weaponPips'),
+  weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'),
@@ -262,7 +262,10 @@ const game = new Game($('game'), input, {
     ui.weaponName.textContent = state.weapon;
     ui.weaponIcon.textContent = '';
     ui.weaponIcon.style.backgroundImage = `url("./assets/weapons/${state.weapon.toLowerCase()}-mount-v1.png")`;
-    ui.weaponLevel.textContent = `MK ${state.weaponLevel} · ${state.weaponUpgrade}`;
+    ui.weaponLevel.textContent = state.weaponLevel;
+    ui.weaponUpgrade.textContent = state.weaponUpgrade;
+    ui.weaponHud.querySelector('.weapon-rank').setAttribute('aria-label', `Weapon level ${state.weaponLevel} of 5`);
+    ui.weaponHud.setAttribute('aria-label', `${state.weapon}, level ${state.weaponLevel} of 5, ${state.weaponUpgrade}`);
     [...ui.weaponPips.children].forEach((pip, index) => pip.classList.toggle('active', index < state.weaponLevel));
     ui.weaponHud.style.setProperty('--weapon-color', state.weaponColor);
     ui.dashButton.classList.toggle('ready', state.dash >= .999);

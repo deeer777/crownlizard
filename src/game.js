@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260820-37';
+import { CONFIG } from './config.js?v=20260821-41';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -91,6 +91,9 @@ export class Game {
       poisonPuddle: 'hazards/poison-puddle-v1.png',
       poisonWarning: 'hazards/poison-warning-v1.png',
       poisonHit: 'hazards/poison-hit-v1.png',
+      meteorWarning: 'hazards/meteor-warning-v1.png',
+      meteorCore: 'hazards/meteor-core-v1.png',
+      meteorImpact: 'hazards/meteor-impact-v1.png',
     };
     return Object.fromEntries(Object.entries(files).map(([key, filename]) => {
       const image = new Image();
@@ -566,7 +569,7 @@ export class Game {
       if (zone === 1) {
         const leadX = clamp(this.player.x + this.player.vx * .42, this.arenaLeft + 50, this.arenaRight - 50);
         const leadY = clamp(this.player.y + this.player.vy * .42, 120, this.height - 55);
-        this.hazards.push({ type: 'meteor', x: leadX + random(-55, 55), y: leadY + random(-45, 45), radius: 42, age: 0, warning: 1.15, active: .34, life: 1.55, triggered: false });
+        this.hazards.push({ type: 'meteor', x: leadX + random(-55, 55), y: leadY + random(-45, 45), radius: 42, age: 0, warning: 1.15, active: .34, life: 2.15, triggered: false });
         this.zoneEventTimer = random(5.2, 7.2);
       } else if (zone === 2) {
         const vertical = Math.random() < .5;
@@ -603,7 +606,7 @@ export class Game {
         if (!hazard.triggered && hazard.age >= hazard.warning) {
           hazard.triggered = true;
           this.shake = Math.max(this.shake, 7);
-          this.burst(hazard.x, hazard.y, '#ff9b64', 24, 240);
+          this.burst(hazard.x, hazard.y, '#ff9b64', 16, 220);
         }
         if (hazard.age >= hazard.warning && hazard.age <= hazard.warning + hazard.active && Math.hypot(this.player.x - hazard.x, this.player.y - hazard.y) < hazard.radius + this.player.radius) this.hitPlayer(hazard.x, hazard.y);
       } else if ((hazard.type === 'laserLine' || hazard.type === 'wardenBeam') && hazard.age >= hazard.warning && hazard.age <= hazard.warning + hazard.active) {
@@ -942,7 +945,7 @@ export class Game {
           age: 0,
           warning: phase === 3 ? .92 : 1.08,
           active: .34,
-          life: phase === 3 ? 1.42 : 1.55,
+          life: phase === 3 ? 1.92 : 2.08,
           triggered: false,
           bossHazard: true,
         });
@@ -1872,13 +1875,35 @@ export class Game {
         }
       } else if (hazard.type === 'meteor') {
         const incoming = hazard.age < hazard.warning;
-        const pulse = .72 + Math.sin(this.time * 18) * .2;
-        ctx.save(); ctx.translate(hazard.x, hazard.y);
-        ctx.strokeStyle = incoming ? '#ffcf75' : '#fff1c5'; ctx.lineWidth = incoming ? 2 : 5; ctx.globalAlpha = incoming ? .55 : .92;
-        ctx.beginPath(); ctx.arc(0, 0, hazard.radius * (incoming ? pulse : 1), 0, TAU); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
-        if (!incoming) { ctx.fillStyle = 'rgba(255,93,55,.35)'; ctx.beginPath(); ctx.arc(0, 0, hazard.radius, 0, TAU); ctx.fill(); }
-        ctx.restore();
+        const drawMeteorSprite = (sprite, size, alpha, rotation = 0) => {
+          if (!sprite?.complete || !sprite.naturalWidth) return false;
+          ctx.save(); ctx.translate(hazard.x, hazard.y); ctx.rotate(rotation);
+          ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+          ctx.restore();
+          return true;
+        };
+        if (incoming) {
+          const progress = clamp(hazard.age / hazard.warning, 0, 1);
+          const pulse = 1 + Math.sin(this.time * 18) * .055;
+          const warningDrawn = drawMeteorSprite(this.sprites.meteorWarning, hazard.radius * 2.85 * pulse, .62 + progress * .3, this.time * .22);
+          const coreProgress = clamp((progress - .28) / .72, 0, 1);
+          if (coreProgress > 0) drawMeteorSprite(this.sprites.meteorCore, hazard.radius * (.42 + coreProgress * 1.05), coreProgress * .96, -this.time * .35);
+          if (!warningDrawn) {
+            ctx.save(); ctx.translate(hazard.x, hazard.y); ctx.strokeStyle = '#ffcf75'; ctx.lineWidth = 3; ctx.globalAlpha = .72;
+            ctx.strokeRect(-hazard.radius, -hazard.radius, hazard.radius * 2, hazard.radius * 2); ctx.restore();
+          }
+        } else {
+          const impactAge = hazard.age - hazard.warning;
+          const settle = clamp(impactAge / .14, 0, 1);
+          const fade = clamp((hazard.life - hazard.age) / .62, 0, 1);
+          const impactDrawn = drawMeteorSprite(this.sprites.meteorImpact, hazard.radius * (2.45 + settle * .5), fade, Math.sin(hazard.x) * .035);
+          if (impactAge < .16) drawMeteorSprite(this.sprites.meteorCore, hazard.radius * (1.75 - impactAge * 3), 1 - impactAge / .16, -this.time * .35);
+          if (!impactDrawn) {
+            ctx.save(); ctx.globalAlpha = .45 * fade; ctx.fillStyle = '#ff5d37';
+            ctx.fillRect(hazard.x - hazard.radius, hazard.y - hazard.radius, hazard.radius * 2, hazard.radius * 2); ctx.restore();
+          }
+        }
       } else if (hazard.type === 'laserLine' || hazard.type === 'wardenBeam') {
         const active = hazard.age >= hazard.warning;
         const warden = hazard.type === 'wardenBeam';

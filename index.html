@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260821-40">
+  <link rel="stylesheet" href="./styles.css?v=20260821-41">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -18,8 +18,8 @@
     <div class="brand"><span class="crown">♛</span> CROWN LIZARD</div>
     <div class="weapon-hud" id="weaponHud">
       <i id="weaponIcon">▰</i>
-      <span><small>ACTIVE WEAPON</small><b id="weaponName">BLASTER</b><em id="weaponLevel">MK I · STANDARD</em></span>
-      <div class="weapon-pips" id="weaponPips"><i></i><i></i><i></i><i></i><i></i></div>
+      <span><small>ACTIVE WEAPON</small><b id="weaponName">BLASTER</b><em id="weaponUpgrade">STANDARD</em></span>
+      <div class="weapon-rank" aria-label="Weapon level 1 of 5"><span>MK</span><b id="weaponLevel">1</b><i>/5</i><div class="weapon-pips" id="weaponPips"><i></i><i></i><i></i><i></i><i></i></div></div>
     </div>
     <div class="score-block"><span>SCORE</span><strong id="score">0</strong></div>
     <div class="combo" id="combo">x1</div>
@@ -169,6 +169,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260821-40"></script>
+  <script type="module" src="./src/main.js?v=20260821-41"></script>
 </body>
 </html>
