@@ -8,7 +8,7 @@ assert.equal(normalizeInitials('åäö'), '', 'unsupported characters are remove
 const now = Date.now();
 const run = {
   difficulty: 'arcade',
-  game_version: '0.10.1-39',
+  game_version: '0.10.2-40',
   created_at: new Date(now - 125_000).toISOString(),
   used_at: null,
 };
@@ -22,7 +22,7 @@ const valid = {
   enemies: 94,
   crates: 7,
   bestCombo: 12,
-  gameVersion: '0.10.1-39',
+  gameVersion: '0.10.2-40',
 };
 
 assert.ok(validateScorePayload(valid, run, now).value, 'a plausible finished run is accepted');

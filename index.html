@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260821-39">
+  <link rel="stylesheet" href="./styles.css?v=20260821-40">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -129,6 +129,7 @@
         <button data-setting="music"><span>MUSIC</span><b>ON</b></button>
         <button data-setting="sfx"><span>SOUND FX</span><b>ON</b></button>
         <button data-setting="haptics"><span>VIBRATION</span><b>ON</b></button>
+        <button data-setting="dashSide"><span>DASH SIDE</span><b>RIGHT</b></button>
         <button data-setting="reduced"><span>REDUCED EFFECTS</span><b>OFF</b></button>
       </div>
       <button id="resetTutorial" class="system-link">SHOW TUTORIAL AGAIN</button>
@@ -163,11 +164,11 @@
     </div>
   </section>
 
-  <button id="dashButton" class="dash-button hidden" aria-label="Dash">DASH</button>
-  <button id="pauseButton" class="pause-button hidden" aria-label="Pause">Ⅱ</button>
+  <button id="dashButton" class="dash-button hidden" aria-label="Dash"><span>DASH</span><i id="dashCharge" aria-hidden="true"><b></b><b></b><b></b><b></b></i></button>
+  <button id="pauseButton" class="pause-button hidden" aria-label="Pause"><span aria-hidden="true">Ⅱ</span></button>
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260821-39"></script>
+  <script type="module" src="./src/main.js?v=20260821-40"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
-import { CONFIG } from './config.js?v=20260821-39';
+import { CONFIG } from './config.js?v=20260821-40';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260821-39';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-39';
+import { Game } from './game.js?v=20260821-40';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-40';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -19,7 +19,7 @@ const ui = {
   gameVersion: $('gameVersion'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponPips: $('weaponPips'),
-  dashFill: $('dashFill'), dashButton: $('dashButton'), pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
+  dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'),
   scoreEntry: $('scoreEntry'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
@@ -38,6 +38,7 @@ const music = new Music();
 const sfx = new SoundFx();
 let hapticsEnabled = localStorage.getItem('cl:haptics') !== 'off';
 let reducedEffects = localStorage.getItem('cl:reduced-effects') === 'on';
+let dashSide = localStorage.getItem('cl:dash-side') === 'left' ? 'left' : 'right';
 const tutorialKey = 'cl:tutorial:v1';
 const tutorialForced = new URLSearchParams(location.search).has('tutorial');
 let tutorialForcedUsed = false;
@@ -83,11 +84,17 @@ const applyEffectsSetting = () => {
 const renderSettings = () => {
   const values = { music: music.enabled, sfx: sfx.enabled, haptics: hapticsEnabled, reduced: reducedEffects };
   ui.settingButtons.forEach(button => {
+    if (button.dataset.setting === 'dashSide') {
+      button.setAttribute('aria-pressed', String(dashSide === 'left'));
+      button.querySelector('b').textContent = dashSide.toUpperCase();
+      return;
+    }
     const enabled = values[button.dataset.setting];
     button.setAttribute('aria-pressed', String(enabled));
     button.querySelector('b').textContent = enabled ? 'ON' : 'OFF';
   });
   ui.sound.classList.toggle('off', !music.enabled);
+  document.documentElement.classList.toggle('dash-left', dashSide === 'left');
 };
 
 const selectMenuChoice = (index, focus = false) => {
@@ -247,6 +254,8 @@ const game = new Game($('game'), input, {
     ui.combo.textContent = `x${Math.max(1, Math.floor(state.combo))}`;
     ui.hearts.innerHTML = Array.from({ length: state.maxHealth }, (_, index) => index < state.health ? '♥' : '<span class="lost">♥</span>').join(' ');
     ui.dashFill.style.transform = `scaleX(${state.dash})`;
+    const chargedSegments = Math.min(4, Math.floor(state.dash * 4 + .001));
+    ui.dashChargePips.forEach((pip, index) => pip.classList.toggle('active', index < chargedSegments));
     ui.stageName.textContent = state.boss ? `${state.bossName || 'WARDEN'} · PHASE ${state.bossPhase}` : `ZONE ${state.stage} · ${state.stageName}`;
     ui.stageFill.style.transform = `scaleX(${state.boss ? state.bossHealth : state.stageProgress})`;
     ui.stageFill.classList.toggle('boss', state.boss);
@@ -483,6 +492,9 @@ ui.settingButtons.forEach(button => button.addEventListener('click', () => {
     hapticsEnabled = !hapticsEnabled;
     localStorage.setItem('cl:haptics', hapticsEnabled ? 'on' : 'off');
     if (hapticsEnabled) navigator.vibrate?.(20);
+  } else if (key === 'dashSide') {
+    dashSide = dashSide === 'right' ? 'left' : 'right';
+    localStorage.setItem('cl:dash-side', dashSide);
   } else if (key === 'reduced') {
     reducedEffects = !reducedEffects;
     localStorage.setItem('cl:reduced-effects', reducedEffects ? 'on' : 'off');
@@ -551,6 +563,7 @@ loadLeaderboard(selectedDifficulty, true);
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
 const debugMode = new URLSearchParams(location.search).has('debug') || location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+document.documentElement.classList.toggle('touch-preview', debugMode && new URLSearchParams(location.search).has('touch'));
 if (debugMode) {
   globalThis.__crownLizardDebug = game;
   const debugWeapons = { Digit1: 'blaster', Digit2: 'spread', Digit3: 'pulse', Digit4: 'laser', Digit5: 'tesla' };
@@ -590,6 +603,17 @@ if (debugMode) {
       game.player.invulnerable = 0;
       game.player.dashTime = 0;
       game.hitPlayer(game.player.x, game.player.y - 1);
+    }
+    if (event.code === 'KeyJ' && game.active) {
+      ui.joystick.style.left = '82px';
+      ui.joystick.style.top = `${Math.max(190, innerHeight - 190)}px`;
+      ui.joystick.style.setProperty('--stick-x', '20px');
+      ui.joystick.style.setProperty('--stick-y', '-14px');
+      ui.joystick.classList.remove('hidden');
+      setTimeout(() => {
+        if (!input.pointer.active) ui.joystick.classList.add('hidden');
+      }, 1800);
+      showToast('DEBUG · TOUCH STICK', 'debug');
     }
     if (event.code === 'KeyK' && game.active) {
       const type = debugEnemies[debugEnemyIndex++ % debugEnemies.length];

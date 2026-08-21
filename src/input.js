@@ -37,8 +37,13 @@ export class Input {
       this.pointer.originY = event.clientY - rect.top;
       point(event);
       if (this.pointer.type !== 'mouse') {
-        joystick.style.left = `${event.clientX}px`;
-        joystick.style.top = `${event.clientY}px`;
+        const visualRadius = 56;
+        const edgePadding = 8;
+        const hudFloor = 126;
+        const visualX = Math.max(visualRadius + edgePadding, Math.min(innerWidth - visualRadius - edgePadding, event.clientX));
+        const visualY = Math.max(hudFloor, Math.min(innerHeight - visualRadius - edgePadding, event.clientY));
+        joystick.style.left = `${visualX}px`;
+        joystick.style.top = `${visualY}px`;
         joystick.classList.remove('hidden');
       }
       canvas.setPointerCapture?.(event.pointerId);
@@ -56,7 +61,12 @@ export class Input {
       event.preventDefault();
       event.stopPropagation();
       this.dashQueued = true;
+      dashButton.classList.add('pressed');
     });
+    const releaseDash = () => dashButton.classList.remove('pressed');
+    dashButton.addEventListener('pointerup', releaseDash);
+    dashButton.addEventListener('pointercancel', releaseDash);
+    dashButton.addEventListener('pointerleave', releaseDash);
   }
 
   movement(player) {
