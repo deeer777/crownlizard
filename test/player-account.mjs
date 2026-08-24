@@ -52,6 +52,20 @@ normalizedSessionAccount.saveSession({ session: {
 } });
 assert.equal(normalizedSessionAccount.getPlayer().email, 'pilot@example.com', 'the client normalizes nested Supabase-style sessions before validating them');
 
+const missingExpiryStorage = {
+  value: JSON.stringify({
+    accessToken: 'stored.header.payload.signature-access',
+    refreshToken: 'stored-refresh-token-with-enough-entropy',
+    expiresIn: 3600,
+    player: { id: 'stored-player', anonymous: false, email: 'pilot@example.com' },
+  }),
+  getItem() { return this.value; },
+  setItem(key, value) { this.value = value; },
+};
+const repairedSession = new PlayerAccount(missingExpiryStorage).session;
+assert.ok(repairedSession.expiresAt > Math.floor(Date.now() / 1000), 'a stored permanent session missing expiresAt is repaired instead of treated as expired');
+assert.ok(JSON.parse(missingExpiryStorage.value).expiresAt, 'the repaired expiry is persisted for the next page load');
+
 const expiredSessionStorage = {
   value: JSON.stringify({
     accessToken: 'expired.header.payload.signature',
@@ -81,6 +95,30 @@ globalThis.fetch = async url => {
 const recoveredSession = await new PlayerAccount(expiredSessionStorage).ensureSession();
 assert.equal(recoveredSession.player.id, 'fresh-player', 'an invalid stale mobile session is replaced automatically');
 assert.equal(recoverySessionRequests, 1, 'session recovery creates exactly one replacement account');
+globalThis.fetch = fetchBeforeRecoveryTest;
+
+const expiredPermanentStorage = {
+  value: JSON.stringify({
+    accessToken: 'expired.permanent.payload.signature',
+    refreshToken: 'invalid-permanent-refresh-token-with-entropy',
+    expiresAt: 1,
+    player: { id: 'permanent-player', anonymous: false, email: 'pilot@example.com' },
+  }),
+  getItem() { return this.value; },
+  setItem(key, value) { this.value = value; },
+  removeItem() { this.value = null; },
+};
+let permanentGuestRequests = 0;
+globalThis.fetch = async url => {
+  if (String(url).endsWith('/api/player/refresh')) return Response.json({ error: 'Invalid refresh token.' }, { status: 401 });
+  if (String(url).endsWith('/api/player/session')) {
+    permanentGuestRequests += 1;
+    return Response.json({ error: 'A permanent account must not be replaced.' }, { status: 500 });
+  }
+  throw new Error(`Unexpected permanent recovery request: ${url}`);
+};
+await assert.rejects(new PlayerAccount(expiredPermanentStorage).ensureSession(), /Sign in again/, 'an expired permanent account asks for sign-in instead of silently becoming a guest');
+assert.equal(permanentGuestRequests, 0, 'permanent account recovery never creates an anonymous replacement account');
 globalThis.fetch = fetchBeforeRecoveryTest;
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
@@ -291,6 +329,7 @@ assert.equal(callbackPasswordResponse.status, 200, 'the server-rendered form sav
 const callbackSavedPage = await callbackPasswordResponse.text();
 assert.match(callbackSavedPage, /PASSWORD SAVED/, 'the player receives an unambiguous completion page');
 assert.match(callbackSavedPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the verified permanent session replaces the stale guest session before returning to the game');
+assert.match(callbackSavedPage, /session\.expiresAt=Number\(session\.expiresAt\)\|\|Math\.floor\(Date\.now\(\)\/1000\)\+session\.expiresIn/, 'the completion boundary guarantees a usable session expiry before returning to the game');
 assert.match(callbackPasswordResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'the one-time session bootstrap script is protected by a per-response CSP nonce');
 assert.match(callbackPasswordResponse.headers.get('set-cookie'), /Max-Age=0/, 'the password setup cookie is cleared immediately after use');
 const callbackPasswordCall = calls.findLast(call => call.url.endsWith('/auth/v1/user') && call.options.method === 'PUT');

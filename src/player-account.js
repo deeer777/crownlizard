@@ -133,8 +133,12 @@ export class PlayerAccount {
 
   readSession() {
     try {
-      const value = JSON.parse(this.storage?.getItem(this.storageKey) || 'null');
-      return validSession(value) ? value : null;
+      const normalized = normalizeSession(JSON.parse(this.storage?.getItem(this.storageKey) || 'null'));
+      if (!validSession(normalized)) return null;
+      const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
+      const session = { ...normalized, expiresAt };
+      try { this.storage?.setItem(this.storageKey, JSON.stringify(session)); } catch {}
+      return session;
     } catch { return null; }
   }
 
@@ -170,7 +174,13 @@ export class PlayerAccount {
 
   async recoverExpiredSession(error) {
     if (error?.status !== 400 && error?.status !== 401) throw error;
+    const permanentAccount = Boolean(this.session?.player && !this.session.player.anonymous);
     this.clearSession();
+    if (permanentAccount) {
+      const expired = new Error('Player session expired. Sign in again.');
+      expired.status = 401;
+      throw expired;
+    }
     return this.createSession();
   }
 

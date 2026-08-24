@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -185,17 +185,20 @@ const authenticatePlayer = async (request, config) => {
   } catch { return null; }
 };
 
-const sessionPayload = payload => ({
-  accessToken: String(payload.access_token || ''),
-  refreshToken: String(payload.refresh_token || ''),
-  expiresIn: normalizeInt(payload.expires_in, 1, 604800) || 3600,
-  expiresAt: normalizeInt(payload.expires_at, 1, Number.MAX_SAFE_INTEGER),
-  player: {
-    id: String(payload.user?.id || ''),
-    anonymous: Boolean(payload.user?.is_anonymous ?? true),
-    email: String(payload.user?.email || ''),
-  },
-});
+const sessionPayload = payload => {
+  const expiresIn = normalizeInt(payload.expires_in, 1, 604800) || 3600;
+  return {
+    accessToken: String(payload.access_token || ''),
+    refreshToken: String(payload.refresh_token || ''),
+    expiresIn,
+    expiresAt: normalizeInt(payload.expires_at, 1, Number.MAX_SAFE_INTEGER) || Math.floor(Date.now() / 1000) + expiresIn,
+    player: {
+      id: String(payload.user?.id || ''),
+      anonymous: Boolean(payload.user?.is_anonymous ?? true),
+      email: String(payload.user?.email || ''),
+    },
+  };
+};
 
 const createAnonymousSession = async (request, config) => {
   if (!config.publishableKey) throw new Error('PLAYER_ACCOUNTS_NOT_CONFIGURED');
@@ -362,7 +365,7 @@ const sessionReadyPage = (session, cookie) => {
     .replace(/>/g, '\\u003e')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
-  const script = `(()=>{try{const session=${safeSession};localStorage.setItem('cl:player-session:v1',JSON.stringify(session));localStorage.setItem('cl:account-password:v1','done');setTimeout(()=>location.replace('/?account=signed-in'),700)}catch{setTimeout(()=>location.replace('/?account=sign-in'),700)}})();`;
+  const script = `(()=>{try{const session=${safeSession};session.expiresIn=Number(session.expiresIn)||3600;session.expiresAt=Number(session.expiresAt)||Math.floor(Date.now()/1000)+session.expiresIn;localStorage.setItem('cl:player-session:v1',JSON.stringify(session));localStorage.setItem('cl:account-password:v1','done');setTimeout(()=>location.replace('/?account=signed-in'),700)}catch{setTimeout(()=>location.replace('/?account=sign-in'),700)}})();`;
   return accountPage({ title: 'PASSWORD SAVED', eyebrow: 'VAULT SECURED', message: 'Your Crown account is ready. Signing you in and restoring your Vault now.', body: '<a class="button" href="/?account=signed-in">♛ OPEN CROWN LIZARD</a>', cookie, script });
 };
 
