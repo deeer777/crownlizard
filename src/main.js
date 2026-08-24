@@ -1,9 +1,10 @@
-import { CONFIG } from './config.js?v=20260821-41';
+import { CONFIG } from './config.js?v=20260824-42';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260821-41';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260821-41';
+import { Game } from './game.js?v=20260824-42';
+import { ShardWallet } from './economy.js?v=20260824-42';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-42';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -16,12 +17,12 @@ const ui = {
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
-  gameVersion: $('gameVersion'),
+  gameVersion: $('gameVersion'), menuShards: $('menuShards'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
-  recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'),
+  recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
 };
 
@@ -48,10 +49,15 @@ let leaderboardDifficulty = selectedDifficulty;
 let runGeneration = 0;
 let currentRunPromise = Promise.resolve(null);
 let pendingScore = null;
+let economyRunId = '';
 let selectedMenuChoice = 0;
 let selectedResultChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
 const input = new Input($('game'), ui.dashButton, ui.joystick);
+const shardWallet = new ShardWallet();
+const createEconomyRunId = () => globalThis.crypto?.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const renderShardBalance = () => { ui.menuShards.textContent = `◆ ${shardWallet.getBalance().toLocaleString('en-US')} SHARDS`; };
+renderShardBalance();
 let toastTimer = 0;
 let toastPriority = -1;
 const toastPriorities = { debug: 0, event: 1, threat: 2, weapon: 3, critical: 4 };
@@ -248,6 +254,32 @@ const renderRunSummary = summary => {
   `;
 };
 
+const renderShardReward = result => {
+  if (!result?.reward) { ui.shardReward.innerHTML = ''; return; }
+  const { reward, balance } = result;
+  if (!reward.qualified) {
+    ui.shardReward.className = 'shard-reward shard-unqualified';
+    ui.shardReward.innerHTML = `
+      <div class="shard-reward-head"><span>◆ SHARD PAYOUT</span><b>NO SHARDS</b></div>
+      <p>RUN TOO SHORT · ${reward.reason}</p>
+      <div class="shard-balance">BALANCE <b>${balance.toLocaleString('en-US')}</b></div>
+    `;
+    return;
+  }
+  const rows = [
+    ['SURVIVAL', reward.breakdown.survival],
+    ['ENEMIES', reward.breakdown.enemies],
+    ['ZONE BONUS', reward.breakdown.zones],
+    ['WARDENS', reward.breakdown.wardens],
+  ];
+  ui.shardReward.className = 'shard-reward shard-qualified';
+  ui.shardReward.innerHTML = `
+    <div class="shard-reward-head"><span>◆ SHARDS EARNED</span><b>+${reward.total}</b></div>
+    <div class="shard-breakdown">${rows.map(([label, value]) => `<span>${label}<b>+${value}</b></span>`).join('')}</div>
+    <div class="shard-balance">NEW BALANCE <b>${balance.toLocaleString('en-US')}</b></div>
+  `;
+};
+
 const game = new Game($('game'), input, {
   hud: state => {
     ui.score.textContent = state.score.toLocaleString('en-US');
@@ -286,6 +318,9 @@ const game = new Game($('game'), input, {
     ui.recordMessage.textContent = record ? `New local record: ${best.toLocaleString('en-US')} points!` : `Local best: ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
+    const shardResult = shardWallet.awardRun(economyRunId, summary);
+    renderShardReward(shardResult);
+    renderShardBalance();
     prepareScoreEntry(score, summary);
     selectResultChoice(0);
     ui.gameover.classList.remove('hidden');
@@ -353,6 +388,7 @@ const pauseRun = automatic => {
 
 const returnToMenu = () => {
   game.stop();
+  economyRunId = '';
   input.clear();
   [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay].forEach(element => element.classList.add('hidden'));
   ui.hud.classList.add('hidden');
@@ -403,6 +439,7 @@ const start = () => {
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
   game.start(selectedDifficulty);
+  economyRunId = createEconomyRunId();
   const generation = ++runGeneration;
   pendingScore = null;
   ui.scoreEntry.classList.add('hidden');

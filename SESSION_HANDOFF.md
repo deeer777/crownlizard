@@ -1,7 +1,8 @@
 # Crown Lizard — session handoff
 
-Latest completed local version: **37** (`VER 0.9.0`)
-Test URL: `http://127.0.0.1:4174/?debug=1&reload=37`
+Current production version: **41** (`VER 0.10.3`)
+Latest completed local version: **42** (`VER 0.11.0`)
+Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=42`
 
 ## Product direction
 
@@ -31,6 +32,9 @@ Test URL: `http://127.0.0.1:4174/?debug=1&reload=37`
 - Filtered arcade event feed: only new threats, elite waves, collected weapon upgrades and rare critical errors interrupt play; debug feedback stays in a quiet corner.
 - Pixel-arcade logo with crown, stepped shading, battle damage, lizard-tail signature and reduced-motion support.
 - Player-visible semantic version and build number on the title screen.
+- Pass 1 shard economy: qualified-run rules, performance-based payout, local wallet/ledger, one-time settlement and a full Run Over breakdown.
+- Immediate deaths, idle runs, `END RUN`, reloads and repeated game-over callbacks cannot farm shards.
+- Runs lasting 90 seconds or defeating a Warden already record eligibility for the future sponsored crate, without exposing an ad flow yet.
 
 ## Menu and UI decisions
 
@@ -61,10 +65,11 @@ Test URL: `http://127.0.0.1:4174/?debug=1&reload=37`
 
 ## Likely next priorities
 
-1. Build the Supabase-backed global high-score list, including player-name entry and basic score validation.
-2. Prepare Cloudflare deployment and connect `crownlizard.com` from One.com DNS.
-3. Do final real-device QA on iOS Safari and Android Chrome.
-4. Add production error monitoring or analytics only after deciding the desired privacy level.
+1. Build Pass 2: Crown Vault, one Crown Crate, rarity odds, first-crate guarantee and duplicate salvage.
+2. Build Pass 3: eight ship skins, preview/equip flow and the Sovereign cosmetic.
+3. Add the simulated rewarded-ad adapter only after crate balance is proven.
+4. Move wallet, inventory and purchases to Supabase before any real-money market launches.
+5. Do final real-device QA on iOS Safari and Android Chrome.
 
 ## Important files
 
@@ -74,3 +79,4 @@ Test URL: `http://127.0.0.1:4174/?debug=1&reload=37`
 - `src/game.js` — gameplay, progression, weapons, bosses, pickups and statistics.
 - `src/audio.js` — music and synthesized 8-bit sound effects.
 - `src/config.js` — balancing, stages, weapons and Crown Powers.
+- `src/economy.js` — shard qualification, reward calculation and local wallet ledger.

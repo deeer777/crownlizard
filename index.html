@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260821-41">
+  <link rel="stylesheet" href="./styles.css?v=20260824-42">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -32,7 +32,7 @@
 
   <main id="menu" class="overlay">
     <section class="panel hero-panel">
-      <div class="arcade-status"><span>★ HIGH SCORE</span><b id="menuBest">000000</b><span>1 PLAYER</span></div>
+      <div class="arcade-status"><span>★ HIGH SCORE</span><b id="menuBest">000000</b><span id="menuShards">◆ 0 SHARDS</span></div>
       <div class="eyebrow">ENDLESS PIXEL SURVIVAL</div>
       <div class="logo-lockup">
         <span class="logo-crest" aria-hidden="true"><i></i></span>
@@ -81,6 +81,7 @@
       <div class="final-score"><span>SCORE</span><strong id="finalScore">0</strong></div>
       <div class="run-meta" id="runMeta">ZONE 1 · ARCADE</div>
       <div class="run-summary" id="runSummary"></div>
+      <div id="shardReward" class="shard-reward" aria-live="polite"></div>
       <p id="recordMessage">The next run starts stronger.</p>
       <form id="scoreEntry" class="score-entry hidden">
         <label for="playerInitials">ENTER YOUR INITIALS<small>GLOBAL LEADERBOARD</small></label>
@@ -169,6 +170,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260821-41"></script>
+  <script type="module" src="./src/main.js?v=20260824-42"></script>
 </body>
 </html>

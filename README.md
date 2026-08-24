@@ -61,3 +61,9 @@ Databasen skapas genom att köra `supabase/schema.sql` i Supabase SQL Editor. L�
 - `SCORE_HASH_SALT` som en lång, slumpmässig krypterad hemlighet.
 
 Pages Functions exponeras endast under `/api/*` via `_routes.json`; statiska spelresurser fortsätter att serveras utan Function-anrop. Om API:t eller databasen är otillgänglig fungerar spelet och de lokala rekorden fortfarande.
+
+## Shard economy MVP
+
+Version 0.11 introducerar grunden för Crown Vault och den framtida cosmetic-marknaden. En reward-run kräver minst 30 sekunders överlevnad och fem besegrade fiender. Shards beräknas separat från highscore utifrån överlevnad, fiender, nådda zoner och besegrade Wardens.
+
+Utbetalningen sker endast vid verklig Game Over. `END RUN`, omladdning och övergivna rundor betalar ingenting, och varje lokalt run-ID kan bara lösas in en gång. Wallet och en begränsad transaktionshistorik sparas under `cl:economy:v1`. En framtida annons-crate markeras som kvalificerad efter 90 sekunder eller en besegrad Warden, men annonser och crates ingår inte i detta första pass.

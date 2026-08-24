@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260821-41';
+import { CONFIG } from './config.js?v=20260824-42';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
