@@ -1,6 +1,6 @@
 # Crown Lizard — session handoff
 
-Current production version: **53** (`VER 0.14.8`)
+Current production version: **54** (`VER 0.14.9`)
 Latest completed local version: **54** (`VER 0.14.9`)
 Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=54-menu-performance`
 
