@@ -340,13 +340,35 @@ const encodedClaims = Buffer.from(JSON.stringify({ sub: userId, email: 'pilot@ex
 const redirectToken = `header.${encodedClaims}.signature-with-enough-entropy`;
 const redirectResult = redirectAccount.consumeAuthRedirect({
   hash: `#access_token=${redirectToken}&refresh_token=verified-refresh-token-with-entropy&expires_in=3600`,
-  href: `https://crownlizard.com/?account=verified#access_token=${redirectToken}`,
+  href: `https://crownlizard.com/?account=verified#access_token=${redirectToken}&refresh_token=verified-refresh-token-with-entropy&expires_in=3600`,
   pathname: '/',
   search: '?account=verified',
 }, { replaceState() {} });
 assert.equal(redirectResult.verified, true, 'the email verification redirect upgrades the stored browser session');
 assert.equal(redirectAccount.getPlayer().id, userId, 'identity linking preserves the anonymous player id and its inventory ownership');
 assert.equal(redirectAccount.needsPasswordSetup(), true, 'verified email immediately requires password completion');
+
+const messageStorage = {
+  values: new Map(),
+  getItem(key) { return this.values.get(key) || null; },
+  setItem(key, value) { this.values.set(key, value); },
+  removeItem(key) { this.values.delete(key); },
+};
+const messageAccount = new PlayerAccount(messageStorage);
+messageAccount.saveSession({
+  accessToken: 'anonymous.header.payload.signature-access',
+  refreshToken: 'anonymous-refresh-token-with-entropy',
+  player: { id: userId, anonymous: true, email: '' },
+});
+const messageResult = messageAccount.consumeAuthRedirect({
+  hash: '#message=Confirmation+link+accepted',
+  href: 'https://crownlizard.com/?account=verified#message=Confirmation+link+accepted',
+  pathname: '/',
+  search: '?account=verified',
+}, { replaceState() {} });
+assert.equal(messageResult.confirmed, true, 'a confirmation-only redirect is recognized without exposing tokens');
+messageAccount.syncPlayer({ id: userId, anonymous: false, email: 'pilot@example.com' });
+assert.equal(messageAccount.needsPasswordSetup(), true, 'the refreshed permanent identity opens password setup after a confirmation-only redirect');
 globalThis.fetch = originalFetch;
 
 console.log('Player account and legacy migration test passed');

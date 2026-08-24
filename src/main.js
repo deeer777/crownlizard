@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-55-player-login';
+import { CONFIG } from './config.js?v=20260824-56-account-confirmation';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-55-player-login';
+import { Game } from './game.js?v=20260824-56-account-confirmation';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-55-player-login';
+import { PlayerAccount } from './player-account.js?v=20260824-56-account-confirmation';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -799,12 +799,13 @@ const connectServerEconomy = () => {
 };
 
 if (serverEconomy) {
-  connectServerEconomy();
-  if (playerAccount.redirectResult) queueMicrotask(() => {
+  const connection = connectServerEconomy();
+  if (playerAccount.redirectResult) void connection.finally(() => {
     openSettings('menu');
     openAccount();
     if (playerAccount.redirectResult.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
-    else setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+    else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+    else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
   });
 }
 

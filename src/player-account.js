@@ -60,16 +60,30 @@ export class PlayerAccount {
   }
 
   consumeAuthRedirect(location = globalThis.location, history = globalThis.history) {
-    if (!location?.hash) return null;
-    const params = new URLSearchParams(location.hash.slice(1));
+    if (!location?.href) return null;
+    const url = new URL(location.href);
+    const params = new URLSearchParams(url.hash.slice(1));
     const error = params.get('error_description');
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
+    const confirmation = url.searchParams.get('account') === 'verified' || Boolean(params.get('message'));
+    const clearRedirect = () => {
+      try {
+        url.hash = '';
+        url.searchParams.delete('account');
+        history?.replaceState({}, '', `${url.pathname}${url.search}`);
+      } catch {}
+    };
     if (error) {
-      try { history?.replaceState({}, '', `${location.pathname}${location.search}`); } catch {}
+      clearRedirect();
       return { error };
     }
-    if (!accessToken || !refreshToken) return null;
+    if (!accessToken || !refreshToken) {
+      if (!confirmation) return null;
+      try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
+      clearRedirect();
+      return { confirmed: true };
+    }
     const claims = decodeJwtPayload(accessToken);
     if (!claims?.sub) return { error: 'Account verification could not be completed.' };
     const session = this.saveSession({
@@ -79,12 +93,7 @@ export class PlayerAccount {
       player: { id: String(claims.sub), anonymous: Boolean(claims.is_anonymous), email: String(claims.email || '') },
     });
     try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
-    try {
-      const clean = new URL(location.href);
-      clean.hash = '';
-      clean.searchParams.delete('account');
-      history?.replaceState({}, '', `${clean.pathname}${clean.search}`);
-    } catch {}
+    clearRedirect();
     return { verified: true, session };
   }
 
@@ -111,7 +120,8 @@ export class PlayerAccount {
   getPlayer() { return this.session?.player || null; }
 
   needsPasswordSetup() {
-    try { return this.storage?.getItem(PASSWORD_SETUP_KEY) === 'required'; } catch { return false; }
+    if (!this.session?.player || this.session.player.anonymous) return false;
+    try { return this.storage?.getItem(PASSWORD_SETUP_KEY) !== 'done'; } catch { return true; }
   }
 
   syncPlayer(player) {
@@ -180,11 +190,13 @@ export class PlayerAccount {
     return payload;
   }
 
-  linkEmail(email) {
-    return this.authorizedRequest('/api/player/account/link-email', {
+  async linkEmail(email) {
+    const payload = await this.authorizedRequest('/api/player/account/link-email', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
+    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
+    return payload;
   }
 
   async setPassword(password) {
