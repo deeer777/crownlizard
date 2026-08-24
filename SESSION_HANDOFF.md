@@ -1,10 +1,10 @@
 # Crown Lizard — session handoff
 
 Current production version: **44** (`VER 0.13.0`)
-Latest completed local version: **52** (`VER 0.14.7`)
+Latest completed local version: **53** (`VER 0.14.8`)
 Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=45-security`
 
-Build 45 deployed the server-wallet cutover. Build 46 fixed successful empty Supabase REST responses. Build 47 made mobile startup retryable and storage-tolerant. Build 48 replaces stale anonymous mobile sessions whose refresh token is no longer accepted. Build 49 raised the hourly anonymous bootstrap cap from 20 to 60 for shared IPs. Build 50 made game start independent from Vault and stopped hidden title-screen canvas rendering. Build 51 relinked a clean anonymous wallet before background run registration. Build 52 fixes the root mobile timeout mismatch by allowing 20 seconds for cold Auth, exposes account/wallet connection phases, prevents duplicate concurrent connection attempts, and retries when Vault is opened. Real ad verification and permanent identity linking remain before monetization or a player market. See `SECURITY.md`.
+Build 45 deployed the server-wallet cutover. Build 46 fixed successful empty Supabase REST responses. Build 47 made mobile startup retryable and storage-tolerant. Build 48 replaces stale anonymous mobile sessions whose refresh token is no longer accepted. Build 49 raised the hourly anonymous bootstrap cap from 20 to 60 for shared IPs. Build 50 made game start independent from Vault and stopped hidden title-screen canvas rendering. Build 51 relinked a clean anonymous wallet before background run registration. Build 52 extended cold-Auth timeouts and exposed connection phases. Live Samsung tracing then proved session creation returned 201 but the client never sent its separate wallet GET. Build 53 replaces that fragile boundary with one atomic `/api/player/bootstrap` response containing both session and wallet. Real ad verification and permanent identity linking remain before monetization or a player market. See `SECURITY.md`.
 
 Server-wallet Pass 1 provides Supabase Auth anonymous sessions, `player_wallets`, `player_inventory`, `economy_transactions`, RLS/revoked client grants, authenticated wallet reads, refresh flow and a deadline-gated one-time legacy import. Required setup before deployment: run the updated `supabase/schema.sql`, enable Anonymous Sign-Ins, add `SUPABASE_PUBLISHABLE_KEY`, and set a short `ECONOMY_MIGRATION_DEADLINE` only for the cutover window.
 

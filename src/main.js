@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-52-wallet-timeout';
+import { CONFIG } from './config.js?v=20260824-53-wallet-bootstrap';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-52-wallet-timeout';
+import { Game } from './game.js?v=20260824-53-wallet-bootstrap';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-52-wallet-timeout';
+import { PlayerAccount } from './player-account.js?v=20260824-53-wallet-bootstrap';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -757,10 +757,8 @@ const applyEquippedShip = () => {
 };
 
 const bootstrapServerEconomy = async () => {
-  ui.menuShards.textContent = '◆ CONNECTING ACCOUNT...';
-  await playerAccount.ensureSession();
   ui.menuShards.textContent = '◆ CONNECTING WALLET...';
-  const snapshot = await playerAccount.getWallet();
+  const snapshot = await playerAccount.bootstrapWallet();
   acceptServerWallet(snapshot);
   renderShardBalance();
   renderVault();

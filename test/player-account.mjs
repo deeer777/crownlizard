@@ -176,6 +176,16 @@ const walletPayload = await walletResponse.json();
 assert.equal(walletPayload.wallet.balance, 420, 'the browser receives the server balance');
 assert.equal(walletPayload.wallet.inventory[0].cosmeticId, 'ship_void_hunter', 'the browser receives server-owned inventory only');
 
+const bootstrapResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/bootstrap', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.8' } }),
+  env,
+  params: { path: ['player', 'bootstrap'] },
+});
+assert.equal(bootstrapResponse.status, 201, 'a cold mobile client receives session and wallet atomically');
+const bootstrapPayload = await bootstrapResponse.json();
+assert.equal(bootstrapPayload.wallet.balance, 420, 'the atomic bootstrap response already contains the server wallet');
+assert.equal(bootstrapPayload.accessToken, 'header.payload.signature-access', 'the atomic bootstrap response can bind the next run');
+
 const settlementResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/economy/settle', {
     method: 'POST',

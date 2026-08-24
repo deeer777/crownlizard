@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -195,18 +195,31 @@ const sessionPayload = payload => ({
   },
 });
 
-const beginAnonymousSession = async (request, config) => {
-  if (!config.publishableKey) return json({ error: 'Player accounts are not configured yet.' }, 503);
+const createAnonymousSession = async (request, config) => {
+  if (!config.publishableKey) throw new Error('PLAYER_ACCOUNTS_NOT_CONFIGURED');
   const ipHash = await hashIp(request, config.salt);
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const query = new URLSearchParams({ select: 'id', ip_hash: `eq.${ipHash}`, created_at: `gte.${since}`, limit: String(AUTH_BOOTSTRAP_LIMIT + 1) });
   const recent = await supabaseFetch(config, `auth_bootstrap_events?${query}`);
-  if (recent.length >= AUTH_BOOTSTRAP_LIMIT) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
+  if (recent.length >= AUTH_BOOTSTRAP_LIMIT) {
+    const error = new Error('AUTH_BOOTSTRAP_LIMIT');
+    error.status = 429;
+    throw error;
+  }
   const payload = await authFetch(config, 'signup', { method: 'POST', body: '{}' });
   const session = sessionPayload(payload);
   if (!UUID_PATTERN.test(session.player.id) || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
   await supabaseFetch(config, 'auth_bootstrap_events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ip_hash: ipHash }) });
-  return json(session, 201);
+  return session;
+};
+
+const beginAnonymousSession = async (request, config) => {
+  try { return json(await createAnonymousSession(request, config), 201); }
+  catch (error) {
+    if (error.message === 'PLAYER_ACCOUNTS_NOT_CONFIGURED') return json({ error: 'Player accounts are not configured yet.' }, 503);
+    if (error.status === 429) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
+    throw error;
+  }
 };
 
 const refreshPlayerSession = async (request, config) => {
@@ -265,6 +278,17 @@ const getPlayerWallet = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
   return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous) }, wallet: await walletSnapshot(config, user.id) });
+};
+
+const bootstrapPlayerWallet = async (request, config) => {
+  try {
+    const session = await createAnonymousSession(request, config);
+    return json({ ...session, wallet: await walletSnapshot(config, session.player.id) }, 201);
+  } catch (error) {
+    if (error.message === 'PLAYER_ACCOUNTS_NOT_CONFIGURED') return json({ error: 'Player accounts are not configured yet.' }, 503);
+    if (error.status === 429) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
+    throw error;
+  }
 };
 
 const importLegacyWallet = async (request, config, env) => {
@@ -467,6 +491,7 @@ export const onRequest = async context => {
 
   try {
     if (path === 'player/session' && request.method === 'POST') return await beginAnonymousSession(request, config);
+    if (path === 'player/bootstrap' && request.method === 'POST') return await bootstrapPlayerWallet(request, config);
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);

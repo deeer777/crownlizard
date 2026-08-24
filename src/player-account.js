@@ -110,6 +110,22 @@ export class PlayerAccount {
 
   getWallet() { return this.authorizedRequest('/api/player/wallet'); }
 
+  async bootstrapWallet() {
+    if (this.session) return this.getWallet();
+    const payload = await requestJson('/api/player/bootstrap', { method: 'POST', body: '{}' });
+    const session = {
+      accessToken: String(payload.accessToken || ''),
+      refreshToken: String(payload.refreshToken || ''),
+      expiresIn: Number(payload.expiresIn) || 3600,
+      expiresAt: Number(payload.expiresAt) || Math.floor(Date.now() / 1000) + 3600,
+      player: payload.player || { id: '', anonymous: true },
+    };
+    if (!session.accessToken || !session.refreshToken) throw new Error('Player bootstrap session is missing.');
+    this.session = session;
+    try { this.storage?.setItem(this.storageKey, JSON.stringify(session)); } catch {}
+    return payload;
+  }
+
   async settleRun(runId, summary) {
     const settlement = {
       runId,
