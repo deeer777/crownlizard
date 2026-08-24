@@ -57,10 +57,25 @@ export class PlayerAccount {
     return this.session;
   }
 
+  clearSession() {
+    this.session = null;
+    try { this.storage?.removeItem(this.storageKey); } catch {}
+  }
+
+  createSession() {
+    return requestJson('/api/player/session', { method: 'POST', body: '{}' }).then(session => this.saveSession(session));
+  }
+
+  async recoverExpiredSession(error) {
+    if (error?.status !== 400 && error?.status !== 401) throw error;
+    this.clearSession();
+    return this.createSession();
+  }
+
   async ensureSession() {
-    if (!this.session) return this.saveSession(await requestJson('/api/player/session', { method: 'POST', body: '{}' }));
+    if (!this.session) return this.createSession();
     if (this.session.expiresAt * 1000 > Date.now() + 30_000) return this.session;
-    return this.refresh();
+    try { return await this.refresh(); } catch (error) { return this.recoverExpiredSession(error); }
   }
 
   async refresh() {
@@ -77,7 +92,7 @@ export class PlayerAccount {
       return await requestJson(url, { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${session.accessToken}` } });
     } catch (error) {
       if (retry && error.status === 401) {
-        await this.refresh();
+        try { await this.refresh(); } catch (refreshError) { await this.recoverExpiredSession(refreshError); }
         return this.authorizedRequest(url, options, false);
       }
       throw error;

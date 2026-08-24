@@ -40,6 +40,37 @@ assert.doesNotThrow(() => restrictedStorageAccount.saveSession({
   player: { id: '123e4567-e89b-42d3-a456-426614174000', anonymous: true },
 }), 'restricted mobile storage does not block the in-memory player session');
 
+const expiredSessionStorage = {
+  value: JSON.stringify({
+    accessToken: 'expired.header.payload.signature',
+    refreshToken: 'invalid-refresh-token-with-entropy',
+    expiresAt: 1,
+    player: { id: 'old-player', anonymous: true },
+  }),
+  getItem() { return this.value; },
+  setItem(key, value) { this.value = value; },
+  removeItem() { this.value = null; },
+};
+const fetchBeforeRecoveryTest = globalThis.fetch;
+let recoverySessionRequests = 0;
+globalThis.fetch = async url => {
+  if (String(url).endsWith('/api/player/refresh')) return Response.json({ error: 'Invalid refresh token.' }, { status: 401 });
+  if (String(url).endsWith('/api/player/session')) {
+    recoverySessionRequests += 1;
+    return Response.json({
+      accessToken: 'fresh.header.payload.signature',
+      refreshToken: 'fresh-refresh-token-with-entropy',
+      expiresIn: 3600,
+      player: { id: 'fresh-player', anonymous: true },
+    }, { status: 201 });
+  }
+  throw new Error(`Unexpected recovery test request: ${url}`);
+};
+const recoveredSession = await new PlayerAccount(expiredSessionStorage).ensureSession();
+assert.equal(recoveredSession.player.id, 'fresh-player', 'an invalid stale mobile session is replaced automatically');
+assert.equal(recoverySessionRequests, 1, 'session recovery creates exactly one replacement account');
+globalThis.fetch = fetchBeforeRecoveryTest;
+
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', 'economy_transactions', 'auth_bootstrap_events']) {
   assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`), `${table} has RLS enabled`);
