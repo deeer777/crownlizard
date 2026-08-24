@@ -9,8 +9,9 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260825-64-auto-session/, 'the current frontend ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260825-64-auto-session/, 'the account client cannot be served from an older browser cache');
+assert.match(index, /main\.js\?v=20260825-65-server-sign-in/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260825-65-server-sign-in/, 'the account client cannot be served from an older browser cache');
+assert.match(index, /action="\/api\/player\/account\/login\/complete"/, 'manual sign-in uses the server-rendered session boundary');
 assert.match(main, /VERIFYING EMAIL\.\.\./, 'email verification presents immediate progress before the wallet finishes loading');
 assert.match(index, /id="accountRecovery"[\s\S]*FORGOT PASSWORD\?/, 'sign in exposes an accessible password recovery action');
 assert.match(serverApi, /'0\.15\.1-56'/, 'the released frontend version can register server-owned runs');

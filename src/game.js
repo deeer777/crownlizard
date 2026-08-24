@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260825-64-auto-session';
+import { CONFIG } from './config.js?v=20260825-65-server-sign-in';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

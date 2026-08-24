@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -518,6 +518,33 @@ const loginPlayer = async (request, config) => {
   }
 };
 
+const completePlayerLoginPage = async (request, config) => {
+  let email = '';
+  let password = '';
+  try {
+    const form = await request.formData();
+    email = String(form.get('email') || '').trim().toLowerCase();
+    password = String(form.get('password') || '');
+  } catch {}
+  if (!EMAIL_PATTERN.test(email) || email.length > 254 || password.length < 1 || password.length > 128) {
+    return accountPage({ title: 'SIGN IN FAILED', eyebrow: 'CROWN ACCOUNT', message: 'The email or password is incorrect.', body: '<a class="button" href="/?account=sign-in">TRY AGAIN</a>', status: 401 });
+  }
+  try {
+    const payload = await authFetch(config, 'token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    const session = sessionPayload(payload);
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
+    return sessionReadyPage(session, '');
+  } catch (error) {
+    if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
+      return accountPage({ title: 'SIGN IN FAILED', eyebrow: 'CROWN ACCOUNT', message: 'The email or password is incorrect.', body: '<a class="button" href="/?account=sign-in">TRY AGAIN</a>', status: 401 });
+    }
+    throw error;
+  }
+};
+
 const bootstrapPlayerWallet = async (request, config) => {
   try {
     const session = await createAnonymousSession(request, config);
@@ -739,6 +766,7 @@ export const onRequest = async context => {
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);
     if (path === 'player/account/login' && request.method === 'POST') return await loginPlayer(request, config);
+    if (path === 'player/account/login/complete' && request.method === 'POST') return await completePlayerLoginPage(request, config);
     if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);

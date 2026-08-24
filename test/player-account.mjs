@@ -337,6 +337,20 @@ const clientLoginPayload = await clientLoginAccount.login('pilot@example.com', '
 assert.equal(clientLoginAccount.getPlayer().id, userId, 'the browser accepts and stores the explicit nested sign-in session');
 assert.equal(clientLoginPayload.wallet.balance, 420, 'session normalization preserves the restored server Vault payload');
 
+const serverRenderedLoginResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/login/complete', {
+    method: 'POST',
+    body: new URLSearchParams({ email: 'Pilot@Example.com', password: 'correct-horse-crown' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'login', 'complete'] },
+});
+assert.equal(serverRenderedLoginResponse.status, 200, 'the robust sign-in path bypasses the failing client JSON session boundary');
+const serverRenderedLoginPage = await serverRenderedLoginResponse.text();
+assert.match(serverRenderedLoginPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the server-rendered sign-in installs the verified session directly');
+assert.doesNotMatch(serverRenderedLoginPage, /correct-horse-crown/, 'the submitted password is never echoed into the completion page');
+assert.match(serverRenderedLoginResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'server-rendered sign-in uses the same nonce-protected session bootstrap');
+
 const bootstrapResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/bootstrap', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.8' } }),
   env,
