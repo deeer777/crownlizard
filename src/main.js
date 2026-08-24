@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-57-account-callback';
+import { CONFIG } from './config.js?v=20260824-58-password-first';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-57-account-callback';
+import { Game } from './game.js?v=20260824-58-password-first';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-57-account-callback';
+import { PlayerAccount } from './player-account.js?v=20260824-58-password-first';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -769,9 +769,13 @@ const applyEquippedShip = () => {
   game.setPlayerSkin(cosmetic.sprite);
 };
 
+const authRedirectReady = playerAccount.redirectResult?.pending
+  ? playerAccount.completeAuthRedirect()
+  : Promise.resolve(playerAccount.redirectResult);
+
 const bootstrapServerEconomy = async () => {
   ui.menuShards.textContent = '◆ CONNECTING WALLET...';
-  await playerAccount.completeAuthRedirect();
+  await authRedirectReady;
   const snapshot = await playerAccount.bootstrapWallet();
   acceptServerWallet(snapshot);
   renderShardBalance();
@@ -801,13 +805,23 @@ const connectServerEconomy = () => {
 
 if (serverEconomy) {
   const connection = connectServerEconomy();
-  if (playerAccount.redirectResult) void connection.finally(() => {
-    openSettings('menu');
-    openAccount();
-    if (playerAccount.redirectResult.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
-    else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
-    else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
-  });
+  if (playerAccount.redirectResult) {
+    queueMicrotask(() => {
+      openSettings('menu');
+      openAccount();
+      if (playerAccount.redirectResult?.pending) setAccountStatus('VERIFYING EMAIL...', '');
+    });
+    const accountPresentation = playerAccount.redirectResult.pending ? authRedirectReady : connection;
+    void accountPresentation.then(() => {
+      renderAccount();
+      if (playerAccount.redirectResult?.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
+      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+      else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
+    }).catch(error => {
+      renderAccount();
+      setAccountStatus(String(error?.message || 'EMAIL VERIFICATION FAILED').toUpperCase(), 'error');
+    });
+  }
 }
 
 const engine = new Engine({ update: dt => game.update(dt), render: () => { if (game.active) game.render(); }, step: 1 / CONFIG.simulationHz });
