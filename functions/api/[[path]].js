@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -338,6 +338,27 @@ const confirmPlayerEmail = async (request, config) => {
   }
 };
 
+const accountPage = ({ title, eyebrow, message, body, status = 200, cookie = '' }) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
+*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:monospace;text-align:center}.panel{width:min(440px,100%);border:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-weight:900;letter-spacing:4px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:11px;letter-spacing:2px}h1{margin:0 0 14px;font-size:22px;letter-spacing:1px}p{margin:0 auto 24px;max-width:350px;color:#b8d8d0;line-height:1.55}.field{display:block;margin:0 0 17px;text-align:left}.field span{display:block;margin:0 0 7px;color:#8cc8b9;font-size:10px;font-weight:900;letter-spacing:2px}.field input{width:100%;min-height:52px;border:2px solid #377f72;border-radius:0;background:#02090c;color:#fff;padding:10px 12px;font:700 16px monospace;outline:0}.field input:focus{border-color:#ffd36b;box-shadow:0 0 0 2px #8f541c}.button{display:grid;place-items:center;width:100%;min-height:58px;border:0;background:#ffd36b;color:#071014;text-decoration:none;font:900 14px monospace;letter-spacing:1px;box-shadow:0 5px 0 #8f541c;cursor:pointer}.button:active{transform:translateY(3px);box-shadow:0 2px 0 #8f541c}.error{margin:-5px 0 18px;color:#ff8c83;font-size:12px;font-weight:900;line-height:1.5}.note{margin:18px 0 0;color:#77958d;font-size:10px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${message}</p>${body}<div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main></body></html>`, {
+  status,
+  headers: {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    ...(cookie ? { 'Set-Cookie': cookie } : {}),
+  },
+});
+
+const passwordSetupForm = error => `<form method="post" action="/api/player/account/password/complete"><label class="field"><span>NEW PASSWORD</span><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required autofocus></label><label class="field"><span>CONFIRM PASSWORD</span><input name="confirm_password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>${error ? `<div class="error" role="alert">${error}</div>` : ''}<button class="button" type="submit">♛ SAVE PASSWORD</button></form>`;
+
+const accountCookies = request => Object.fromEntries(String(request.headers.get('Cookie') || '').split(';').map(part => {
+  const separator = part.indexOf('=');
+  return separator < 0 ? ['', ''] : [part.slice(0, separator).trim(), part.slice(separator + 1)];
+}).filter(([key]) => key));
+
 const playerAccountCallback = async (request, config) => {
   const url = new URL(request.url);
   let tokenHash = String(url.searchParams.get('token_hash') || '');
@@ -352,39 +373,12 @@ const playerAccountCallback = async (request, config) => {
       type = '';
     }
   }
-  const destination = new URL('/', url.origin);
-  const redirect = (headers = {}) => new Response(null, {
-    status: 303,
-    headers: {
-      Location: destination.href,
-      'Cache-Control': 'no-store',
-      'Referrer-Policy': 'no-referrer',
-      'X-Content-Type-Options': 'nosniff',
-      ...headers,
-    },
-  });
-  const fail = message => {
-    destination.hash = new URLSearchParams({ error_description: message }).toString();
-    return redirect();
-  };
   if (!/^[A-Za-z0-9_-]{20,512}$/.test(tokenHash) || !new Set(['email', 'email_change', 'recovery']).has(type)) {
-    return fail('This account link is invalid or has expired.');
+    return accountPage({ title: 'LINK EXPIRED', eyebrow: 'SECURE ACCOUNT LINK', message: 'This account link is invalid or has expired. Request a new recovery link from the game.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 400 });
   }
   if (request.method === 'GET') {
     const action = new URL('/api/player/account/callback', url.origin).pathname;
-    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
-*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:monospace;text-align:center}.panel{width:min(440px,100%);border:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-weight:900;letter-spacing:4px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:11px;letter-spacing:2px}h1{margin:0 0 14px;font-size:22px;letter-spacing:1px}p{margin:0 auto 24px;max-width:330px;color:#b8d8d0;line-height:1.55}.button{width:100%;min-height:58px;border:0;background:#ffd36b;color:#071014;font:900 14px monospace;letter-spacing:1px;box-shadow:0 5px 0 #8f541c;cursor:pointer}.button:active{transform:translateY(3px);box-shadow:0 2px 0 #8f541c}.note{margin:18px 0 0;color:#77958d;font-size:10px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">SECURE ACCOUNT LINK</div><h1>LINK READY</h1><p>Continue to open the protected password screen. This one-time link is only used after you press the button.</p><form method="post" action="${action}"><input type="hidden" name="token_hash" value="${tokenHash}"><input type="hidden" name="type" value="${type}"><button class="button" type="submit">♛ CONTINUE TO CREATE PASSWORD</button></form><div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main></body></html>`;
-    return new Response(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Referrer-Policy': 'no-referrer',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-      },
-    });
+    return accountPage({ title: 'LINK READY', eyebrow: 'SECURE ACCOUNT LINK', message: 'Continue to open the protected password screen. This one-time link is only used after you press the button.', body: `<form method="post" action="${action}"><input type="hidden" name="token_hash" value="${tokenHash}"><input type="hidden" name="type" value="${type}"><button class="button" type="submit">♛ CONTINUE TO CREATE PASSWORD</button></form>` });
   }
   try {
     const payload = await authFetch(config, 'verify', {
@@ -392,32 +386,37 @@ const playerAccountCallback = async (request, config) => {
       body: JSON.stringify({ token_hash: tokenHash, type }),
     });
     const session = sessionPayload(payload);
-    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
-      return fail('Account verification could not be completed.');
-    }
-    destination.searchParams.set('account', 'password');
-    return redirect({
-      'Set-Cookie': `cl_account_handoff=${encodeURIComponent(session.refreshToken)}; Max-Age=120; Path=/api/player/account/handoff; HttpOnly; Secure; SameSite=Lax`,
-    });
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
+    const cookie = `__Secure-cl_password_setup=${encodeURIComponent(session.refreshToken)}; Max-Age=600; Path=/api/player/account/password/complete; HttpOnly; Secure; SameSite=Strict`;
+    return accountPage({ title: 'CREATE PASSWORD', eyebrow: 'SECURE VAULT SETUP', message: 'Choose at least 10 characters. Your password is sent directly to the protected account service.', body: passwordSetupForm(''), cookie });
   } catch (error) {
-    if ([400, 401, 403, 422].includes(error.status)) return fail('This account link is invalid or has expired.');
+    if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
+      return accountPage({ title: 'LINK EXPIRED', eyebrow: 'SECURE ACCOUNT LINK', message: 'This account link is invalid or has already been used. Request a new recovery link from the game.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 400 });
+    }
     throw error;
   }
 };
 
-const completePlayerAccountHandoff = async (request, config) => {
-  const cookies = Object.fromEntries(String(request.headers.get('Cookie') || '').split(';').map(part => {
-    const separator = part.indexOf('=');
-    return separator < 0 ? ['', ''] : [part.slice(0, separator).trim(), part.slice(separator + 1)];
-  }).filter(([key]) => key));
+const completeCallbackPassword = async (request, config) => {
+  const cookies = accountCookies(request);
   let refreshToken = '';
-  try { refreshToken = decodeURIComponent(String(cookies.cl_account_handoff || '')); } catch {}
-  const clearCookie = 'cl_account_handoff=; Max-Age=0; Path=/api/player/account/handoff; HttpOnly; Secure; SameSite=Lax';
+  try { refreshToken = decodeURIComponent(String(cookies['__Secure-cl_password_setup'] || '')); } catch {}
+  const clearCookie = '__Secure-cl_password_setup=; Max-Age=0; Path=/api/player/account/password/complete; HttpOnly; Secure; SameSite=Strict';
   if (!refreshToken || refreshToken.length > 4096) {
-    return new Response(JSON.stringify({ error: 'Account setup session expired. Request a new recovery link.' }), {
-      status: 401,
-      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
-    });
+    return accountPage({ title: 'SETUP EXPIRED', eyebrow: 'SECURE VAULT SETUP', message: 'The protected setup session has expired. Request a new recovery link from the game.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 401, cookie: clearCookie });
+  }
+  let password = '';
+  let confirmPassword = '';
+  try {
+    const form = await request.formData();
+    password = String(form.get('password') || '');
+    confirmPassword = String(form.get('confirm_password') || '');
+  } catch {}
+  if (password.length < 10 || password.length > 128) {
+    return accountPage({ title: 'CREATE PASSWORD', eyebrow: 'SECURE VAULT SETUP', message: 'Choose at least 10 characters. Your password is sent directly to the protected account service.', body: passwordSetupForm('USE AT LEAST 10 CHARACTERS.') });
+  }
+  if (password !== confirmPassword) {
+    return accountPage({ title: 'CREATE PASSWORD', eyebrow: 'SECURE VAULT SETUP', message: 'Choose at least 10 characters. Your password is sent directly to the protected account service.', body: passwordSetupForm('THE PASSWORDS DO NOT MATCH.') });
   }
   try {
     const payload = await authFetch(config, 'token?grant_type=refresh_token', {
@@ -425,18 +424,18 @@ const completePlayerAccountHandoff = async (request, config) => {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     const session = sessionPayload(payload);
-    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
-      throw new Error('AUTH_SESSION_INVALID');
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken) throw new Error('AUTH_SESSION_INVALID');
+    await authFetch(config, 'user', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      body: JSON.stringify({ password }),
+    });
+    return accountPage({ title: 'PASSWORD SAVED', eyebrow: 'VAULT SECURED', message: 'Your Crown account is ready. Return to the game and use SIGN IN on any device.', body: '<a class="button" href="/">♛ OPEN CROWN LIZARD</a>', cookie: clearCookie });
+  } catch (error) {
+    if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
+      return accountPage({ title: 'SETUP EXPIRED', eyebrow: 'SECURE VAULT SETUP', message: 'The protected setup session has expired. Request a new recovery link from the game.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 401, cookie: clearCookie });
     }
-    return new Response(JSON.stringify(session), {
-      status: 200,
-      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
-    });
-  } catch {
-    return new Response(JSON.stringify({ error: 'Account setup session expired. Request a new recovery link.' }), {
-      status: 401,
-      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
-    });
+    throw error;
   }
 };
 
@@ -711,7 +710,7 @@ export const onRequest = async context => {
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
     if (path === 'player/account/callback' && (request.method === 'GET' || request.method === 'POST')) return await playerAccountCallback(request, config);
-    if (path === 'player/account/handoff' && request.method === 'POST') return await completePlayerAccountHandoff(request, config);
+    if (path === 'player/account/password/complete' && request.method === 'POST') return await completeCallbackPassword(request, config);
     if (path === 'player/account/confirm' && request.method === 'POST') return await confirmPlayerEmail(request, config);
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);

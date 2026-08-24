@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-62-cookie-handoff';
+import { CONFIG } from './config.js?v=20260825-63-direct-password';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-62-cookie-handoff';
+import { Game } from './game.js?v=20260825-63-direct-password';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-62-cookie-handoff';
+import { PlayerAccount } from './player-account.js?v=20260825-63-direct-password';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -771,9 +771,7 @@ const applyEquippedShip = () => {
 
 const authRedirectReady = playerAccount.redirectResult?.pending
   ? playerAccount.completeAuthRedirect()
-  : playerAccount.redirectResult?.handoff
-    ? playerAccount.completeAuthHandoff()
-    : Promise.resolve(playerAccount.redirectResult);
+  : Promise.resolve(playerAccount.redirectResult);
 
 const bootstrapServerEconomy = async () => {
   ui.menuShards.textContent = '◆ CONNECTING WALLET...';
@@ -813,7 +811,7 @@ if (serverEconomy) {
       openAccount();
       if (playerAccount.redirectResult?.pending) setAccountStatus('VERIFYING EMAIL...', '');
     });
-    const accountPresentation = playerAccount.redirectResult.pending || playerAccount.redirectResult.handoff ? authRedirectReady : connection;
+    const accountPresentation = playerAccount.redirectResult.pending ? authRedirectReady : connection;
     void accountPresentation.then(() => {
       renderAccount();
       if (playerAccount.redirectResult?.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');

@@ -84,10 +84,6 @@ export class PlayerAccount {
       clearRedirect();
       return { error };
     }
-    if (accountAction === 'password') {
-      clearRedirect();
-      return { handoff: true, type: 'recovery' };
-    }
     if (pendingVerification) {
       clearRedirect();
       return { pending: true, tokenHash, type: verificationType };
@@ -222,15 +218,6 @@ export class PlayerAccount {
     this.saveSession(payload);
     try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
     this.redirectResult = { verified: true, session: this.session };
-    return this.redirectResult;
-  }
-
-  async completeAuthHandoff() {
-    if (!this.redirectResult?.handoff) return this.redirectResult;
-    const payload = await requestJson('/api/player/account/handoff', { method: 'POST', body: '{}' });
-    this.saveSession(payload);
-    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
-    this.redirectResult = { verified: true, passwordSetup: true, session: this.session };
     return this.redirectResult;
   }
 
