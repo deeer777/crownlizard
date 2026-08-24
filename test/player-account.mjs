@@ -72,8 +72,8 @@ globalThis.fetch = async (url, options = {}) => {
   });
   if (String(url).includes('/auth/v1/user')) return Response.json({ id: userId, is_anonymous: true });
   if (String(url).includes('auth_bootstrap_events?')) return Response.json([]);
-  if (String(url).endsWith('/rest/v1/auth_bootstrap_events')) return new Response(null, { status: 204 });
-  if (String(url).includes('player_wallets?on_conflict')) return new Response(null, { status: 204 });
+  if (String(url).endsWith('/rest/v1/auth_bootstrap_events')) return new Response(null, { status: 201 });
+  if (String(url).includes('player_wallets?on_conflict')) return new Response(null, { status: 201 });
   if (String(url).includes('/rest/v1/player_wallets?')) return Response.json([{
     balance: 420, opens: 9, since_sovereign: 7, equipped_ship: 'ship_void_hunter', legacy_imported_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   }]);

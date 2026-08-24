@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-45';
+import { CONFIG } from './config.js?v=20260824-46-session-hotfix';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';

@@ -1,10 +1,10 @@
 # Crown Lizard — session handoff
 
 Current production version: **44** (`VER 0.13.0`)
-Latest completed local version: **45** (`VER 0.14.0`)
+Latest completed local version: **46** (`VER 0.14.1`)
 Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=45-security`
 
-Security audit for Build 45 is completed locally: public query parameters can no longer enable debug shortcuts, crate/run randomness uses Web Crypto, and Cloudflare Pages security headers plus regression tests were added. The server-wallet cutover is implemented but not deployed; real ad verification and permanent identity linking remain before monetization or a player market. See `SECURITY.md`.
+Build 45 deployed the server-wallet cutover. Build 46 fixes live anonymous-session bootstrap by accepting successful empty Supabase REST responses. Real ad verification and permanent identity linking remain before monetization or a player market. See `SECURITY.md`.
 
 Server-wallet Pass 1 provides Supabase Auth anonymous sessions, `player_wallets`, `player_inventory`, `economy_transactions`, RLS/revoked client grants, authenticated wallet reads, refresh flow and a deadline-gated one-time legacy import. Required setup before deployment: run the updated `supabase/schema.sql`, enable Anonymous Sign-Ins, add `SUPABASE_PUBLISHABLE_KEY`, and set a short `ECONOMY_MIGRATION_DEADLINE` only for the cutover window.
 
