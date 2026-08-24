@@ -1,7 +1,7 @@
 const SESSION_KEY = 'cl:player-session:v1';
 const PENDING_CRATE_KEY = 'cl:pending-crate:v1';
 const PENDING_SETTLEMENT_KEY = 'cl:pending-settlement:v1';
-const REQUEST_TIMEOUT = 7000;
+const REQUEST_TIMEOUT = 20000;
 
 const validSession = value => value
   && typeof value.accessToken === 'string' && value.accessToken.length > 20
@@ -24,6 +24,13 @@ const requestJson = async (url, options = {}) => {
       throw error;
     }
     return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('Player service timed out.');
+      timeoutError.status = 408;
+      throw timeoutError;
+    }
+    throw error;
   } finally { clearTimeout(timer); }
 };
 

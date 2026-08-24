@@ -4,6 +4,9 @@ import { legacyWalletPayload, PlayerAccount } from '../src/player-account.js';
 import { calculateShardReward } from '../src/economy.js';
 import { calculateServerShardReward, onRequest, secureServerInt, validateEconomySummary, validateLegacyWallet } from '../functions/api/[[path]].js';
 
+const playerAccountSource = readFileSync(new URL('../src/player-account.js', import.meta.url), 'utf8');
+assert.match(playerAccountSource, /const REQUEST_TIMEOUT = 20000;/, 'cold mobile Auth receives enough time to return its session');
+
 const localState = {
   balance: 420,
   inventory: {
