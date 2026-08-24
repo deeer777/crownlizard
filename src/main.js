@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260825-63-direct-password';
+import { CONFIG } from './config.js?v=20260825-64-auto-session';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-63-direct-password';
+import { Game } from './game.js?v=20260825-64-auto-session';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-63-direct-password';
+import { PlayerAccount } from './player-account.js?v=20260825-64-auto-session';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -808,14 +808,17 @@ if (serverEconomy) {
   if (playerAccount.redirectResult) {
     queueMicrotask(() => {
       openSettings('menu');
-      openAccount();
+      openAccount(playerAccount.redirectResult?.signIn ? 'login' : 'secure');
       if (playerAccount.redirectResult?.pending) setAccountStatus('VERIFYING EMAIL...', '');
     });
     const accountPresentation = playerAccount.redirectResult.pending ? authRedirectReady : connection;
     void accountPresentation.then(() => {
       renderAccount();
       if (playerAccount.redirectResult?.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
-      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+      else if (playerAccount.redirectResult?.signedIn) setAccountStatus('ACCOUNT SECURED · SIGNED IN', 'success');
+      else if (playerAccount.redirectResult?.signIn) setAccountStatus('ENTER YOUR NEW PASSWORD TO SIGN IN', '');
+      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous && playerAccount.needsPasswordSetup()) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('ACCOUNT SECURED · SIGNED IN', 'success');
       else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
     }).catch(error => {
       renderAccount();
@@ -924,8 +927,8 @@ const renderAccount = () => {
   renderSettings();
 };
 
-const openAccount = () => {
-  accountMode = 'secure';
+const openAccount = (mode = 'secure') => {
+  accountMode = mode === 'login' ? 'login' : 'secure';
   setAccountStatus(playerAccount.redirectResult?.error || '');
   ui.settingsOverlay.classList.add('hidden');
   ui.accountOverlay.classList.remove('hidden');

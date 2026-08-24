@@ -43,6 +43,15 @@ assert.doesNotThrow(() => restrictedStorageAccount.saveSession({
   player: { id: '123e4567-e89b-42d3-a456-426614174000', anonymous: true },
 }), 'restricted mobile storage does not block the in-memory player session');
 
+const normalizedSessionAccount = new PlayerAccount({ getItem: () => null, setItem() {} });
+normalizedSessionAccount.saveSession({ session: {
+  access_token: 'normalized.header.payload.signature-access',
+  refresh_token: 'normalized-refresh-token-with-enough-entropy',
+  expires_in: 3600,
+  user: { id: '123e4567-e89b-42d3-a456-426614174000', is_anonymous: false, email: 'pilot@example.com' },
+} });
+assert.equal(normalizedSessionAccount.getPlayer().email, 'pilot@example.com', 'the client normalizes nested Supabase-style sessions before validating them');
+
 const expiredSessionStorage = {
   value: JSON.stringify({
     accessToken: 'expired.header.payload.signature',
@@ -111,6 +120,15 @@ let equipOwned = true;
 let mockedAuthUser = { id: userId, is_anonymous: true, email: '' };
 globalThis.fetch = async (url, options = {}) => {
   calls.push({ url: String(url), options });
+  if (String(url).endsWith('/api/player/account/login')) return Response.json({
+    session: {
+      access_token: 'client-login.header.payload.signature-access',
+      refresh_token: 'client-login-refresh-token-with-enough-entropy',
+      expires_in: 3600,
+      user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
+    },
+    wallet: { balance: 420, opens: 9, sinceSovereign: 7, equippedShip: 'ship_void_hunter', inventory: [] },
+  });
   if (String(url).endsWith('/api/player/account/confirm')) return Response.json({
     accessToken: 'confirmed.header.payload.signature-access',
     refreshToken: 'confirmed-refresh-token-with-enough-entropy',
@@ -270,7 +288,10 @@ const callbackPasswordResponse = await onRequest({
   params: { path: ['player', 'account', 'password', 'complete'] },
 });
 assert.equal(callbackPasswordResponse.status, 200, 'the server-rendered form saves the password without returning through the game client');
-assert.match(await callbackPasswordResponse.text(), /PASSWORD SAVED/, 'the player receives an unambiguous completion page');
+const callbackSavedPage = await callbackPasswordResponse.text();
+assert.match(callbackSavedPage, /PASSWORD SAVED/, 'the player receives an unambiguous completion page');
+assert.match(callbackSavedPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the verified permanent session replaces the stale guest session before returning to the game');
+assert.match(callbackPasswordResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'the one-time session bootstrap script is protected by a per-response CSP nonce');
 assert.match(callbackPasswordResponse.headers.get('set-cookie'), /Max-Age=0/, 'the password setup cookie is cleared immediately after use');
 const callbackPasswordCall = calls.findLast(call => call.url.endsWith('/auth/v1/user') && call.options.method === 'PUT');
 assert.deepEqual(JSON.parse(callbackPasswordCall.options.body), { password: 'correct-horse-crown' }, 'the direct callback sends only the new password to Supabase Auth');
@@ -308,7 +329,13 @@ const loginResponse = await onRequest({
 assert.equal(loginResponse.status, 200, 'a permanent player can restore a session on another device');
 const loginPayload = await loginResponse.json();
 assert.equal(loginPayload.player.anonymous, false, 'restored sessions are permanent identities');
+assert.equal(loginPayload.session.player.id, userId, 'sign-in returns an explicit normalized session contract');
 assert.equal(loginPayload.wallet.balance, 420, 'sign-in returns the existing server-owned Vault atomically');
+const clientLoginStorage = { value: null, getItem() { return this.value; }, setItem(key, value) { if (key === 'cl:player-session:v1') this.value = value; }, removeItem() {} };
+const clientLoginAccount = new PlayerAccount(clientLoginStorage);
+const clientLoginPayload = await clientLoginAccount.login('pilot@example.com', 'correct-horse-crown');
+assert.equal(clientLoginAccount.getPlayer().id, userId, 'the browser accepts and stores the explicit nested sign-in session');
+assert.equal(clientLoginPayload.wallet.balance, 420, 'session normalization preserves the restored server Vault payload');
 
 const bootstrapResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/bootstrap', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.8' } }),
@@ -481,6 +508,14 @@ recoveryHashAccount.redirectResult = recoveryHashAccount.consumeAuthRedirect({
   search: '',
 }, { replaceState() {} });
 assert.equal(recoveryHashAccount.redirectResult.type, 'recovery', 'password recovery links use the same safe client-side token exchange');
+
+const signedInResult = recoveryHashAccount.consumeAuthRedirect({
+  hash: '',
+  href: 'https://crownlizard.com/?account=signed-in',
+  pathname: '/',
+  search: '?account=signed-in',
+}, { replaceState() {} });
+assert.equal(signedInResult.signedIn, true, 'the automatic session bootstrap opens the secured signed-in account state');
 
 globalThis.fetch = originalFetch;
 

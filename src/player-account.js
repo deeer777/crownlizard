@@ -9,6 +9,22 @@ const validSession = value => value
   && typeof value.refreshToken === 'string' && value.refreshToken.length > 20
   && typeof value.player?.id === 'string';
 
+const normalizeSession = value => {
+  const source = value?.session || value || {};
+  const player = source.player || source.user || {};
+  return {
+    accessToken: String(source.accessToken || source.access_token || ''),
+    refreshToken: String(source.refreshToken || source.refresh_token || ''),
+    expiresIn: Number(source.expiresIn || source.expires_in) || 3600,
+    expiresAt: Number(source.expiresAt || source.expires_at) || 0,
+    player: {
+      id: String(player.id || ''),
+      anonymous: Boolean(player.anonymous ?? player.is_anonymous ?? false),
+      email: String(player.email || ''),
+    },
+  };
+};
+
 const decodeJwtPayload = token => {
   try {
     const encoded = String(token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -84,6 +100,14 @@ export class PlayerAccount {
       clearRedirect();
       return { error };
     }
+    if (accountAction === 'signed-in') {
+      clearRedirect();
+      return { signedIn: true };
+    }
+    if (accountAction === 'sign-in') {
+      clearRedirect();
+      return { signIn: true };
+    }
     if (pendingVerification) {
       clearRedirect();
       return { pending: true, tokenHash, type: verificationType };
@@ -115,9 +139,10 @@ export class PlayerAccount {
   }
 
   saveSession(session) {
-    if (!validSession(session)) throw new Error('Invalid player session.');
-    const expiresAt = Number(session.expiresAt) || Math.floor(Date.now() / 1000) + Number(session.expiresIn || 3600);
-    this.session = { ...session, expiresAt };
+    const normalized = normalizeSession(session);
+    if (!validSession(normalized)) throw new Error('Invalid player session.');
+    const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
+    this.session = { ...normalized, expiresAt };
     try { this.storage?.setItem(this.storageKey, JSON.stringify(this.session)); } catch {}
     return this.session;
   }
@@ -243,13 +268,13 @@ export class PlayerAccount {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    this.saveSession(payload);
+    this.saveSession(payload.session || payload);
     try {
       this.storage?.setItem(PASSWORD_SETUP_KEY, 'done');
       this.storage?.removeItem(PENDING_CRATE_KEY);
       this.storage?.removeItem(PENDING_SETTLEMENT_KEY);
     } catch {}
-    return payload;
+    return { ...payload, ...this.session };
   }
 
   async settleRun(runId, summary) {
