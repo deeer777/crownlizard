@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-44';
+import { CONFIG } from './config.js?v=20260824-54-menu-performance';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -82,15 +82,15 @@ export class Game {
   loadSprites() {
     if (typeof Image === 'undefined') return {};
     const files = {
-      player: 'sprites/crown-lizard-player-v1.png',
-      chaser: 'sprites/ripper-v1.png',
-      shooter: 'sprites/hex-moth-v1.png',
-      tank: 'sprites/iron-scarab-v1.png',
-      crateClosed: 'sprites/weapon-crate-closed-v1.png',
-      crateOpen: 'sprites/weapon-crate-open-v1.png',
-      poisonPuddle: 'hazards/poison-puddle-v1.png',
-      poisonWarning: 'hazards/poison-warning-v1.png',
-      poisonHit: 'hazards/poison-hit-v1.png',
+      player: 'runtime/sprites/crown-lizard-player-v1.png',
+      chaser: 'runtime/sprites/ripper-v1.png',
+      shooter: 'runtime/sprites/hex-moth-v1.png',
+      tank: 'runtime/sprites/iron-scarab-v1.png',
+      crateClosed: 'runtime/sprites/weapon-crate-closed-v1.png',
+      crateOpen: 'runtime/sprites/weapon-crate-open-v1.png',
+      poisonPuddle: 'runtime/hazards/poison-puddle-v1.png',
+      poisonWarning: 'runtime/hazards/poison-warning-v1.png',
+      poisonHit: 'runtime/hazards/poison-hit-v1.png',
       meteorWarning: 'hazards/meteor-warning-v1.png',
       meteorCore: 'hazards/meteor-core-v1.png',
       meteorImpact: 'hazards/meteor-impact-v1.png',
@@ -107,7 +107,8 @@ export class Game {
     if (typeof Image === 'undefined') return;
     const image = new Image();
     image.decoding = 'async';
-    image.src = new URL(`../assets/sprites/${filename}`, import.meta.url).href;
+    const directory = filename === 'crown-lizard-player-v1.png' ? 'runtime/sprites' : 'sprites';
+    image.src = new URL(`../assets/${directory}/${filename}`, import.meta.url).href;
     this.sprites.player = image;
   }
 

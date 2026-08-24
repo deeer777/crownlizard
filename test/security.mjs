@@ -8,7 +8,7 @@ const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260824-53-wallet-bootstrap/, 'the single-request mobile wallet bootstrap ships behind a fresh browser cache key');
+assert.match(index, /main\.js\?v=20260824-54-menu-performance/, 'the current frontend ships behind a fresh browser cache key');
 assert.match(main, /player-account\.js\?v=20260824-53-wallet-bootstrap/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');

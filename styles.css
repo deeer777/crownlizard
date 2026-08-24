@@ -141,7 +141,7 @@ h1 span { color: transparent; -webkit-text-stroke: 1.5px var(--mint); }
   text-shadow: 3px 0 #163f3a, 0 4px #163f3a, 5px 5px #010609;
 }
 .hero-panel h1 span { color: var(--gold); -webkit-text-stroke: 0; text-shadow: 3px 0 #9a5e20, 0 4px #9a5e20, 5px 5px #010609; }
-.logo-lockup { position: relative; width: min(470px,100%); margin: 17px auto 2px; isolation: isolate; animation: logo-arrive .55s steps(7,end) both; }
+.logo-lockup { position: relative; width: min(470px,100%); margin: 17px auto 2px; isolation: isolate; animation: logo-arrive .3s cubic-bezier(.22,1,.36,1) both; }
 .logo-crest { position: absolute; left: 50%; top: -18px; z-index: 3; width: 46px; height: 30px; background: linear-gradient(to bottom, #fff0a0 0 24%, #ffc342 24% 58%, #c86d20 58% 100%); clip-path: polygon(0 20%,18% 43%,27% 0,48% 45%,69% 0,81% 43%,100% 20%,91% 100%,9% 100%); transform: translateX(-50%); filter: drop-shadow(3px 4px 0 #321d0b); }
 .logo-crest::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 7px; height: 7px; background: #79d9ff; box-shadow: inset -2px -2px #165c9b, 0 0 0 2px #7d4318; transform: translateX(-50%) rotate(45deg); }
 .logo-crest i { position: absolute; left: 7px; right: 7px; bottom: 2px; height: 4px; background: #7f4018; }
@@ -169,7 +169,7 @@ h1 span { color: transparent; -webkit-text-stroke: 1.5px var(--mint); }
 }
 .menu-scene::after { content: ""; position: absolute; left: 24%; right: 24%; bottom: 10px; height: 2px; background: linear-gradient(90deg, transparent, rgba(39,117,104,.55), transparent); }
 .menu-scene img { position: absolute; z-index: 2; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(4px 6px 0 rgba(0,0,0,.55)); }
-.scene-player { left: 50%; bottom: 9px; width: 68px; height: 68px; transform: translateX(-50%); animation: ship-arrive .72s steps(8,end) both .22s; }
+.scene-player { left: 50%; bottom: 9px; width: 68px; height: 68px; transform: translateX(-50%); animation: ship-arrive .38s cubic-bezier(.2,.82,.25,1.08) both .04s; }
 .scene-enemy { width: 45px; height: 45px; top: 21px; opacity: .92; }
 .scene-enemy-left { left: 16%; transform: rotate(18deg); }
 .scene-enemy-right { right: 16%; transform: rotate(-18deg); }
@@ -179,7 +179,7 @@ h1 span { color: transparent; -webkit-text-stroke: 1.5px var(--mint); }
 .scene-shot { position: absolute; z-index: 1; top: 53px; width: 18px; height: 3px; background: #ffd36b; box-shadow: 0 0 8px #ffd36b; }
 .shot-left { left: 31%; transform: rotate(10deg); }
 .shot-right { right: 31%; transform: rotate(-10deg); }
-@keyframes ship-arrive { from { opacity: 0; transform: translate(-50%,55px) scale(.35); } 75% { opacity: 1; transform: translate(-50%,-5px) scale(1.08); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes ship-arrive { from { opacity: 0; transform: translate(-50%,38px) scale(.58); } 72% { opacity: 1; transform: translate(-50%,-3px) scale(1.04); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
 h2 { margin: 14px 0 24px; font-size: clamp(32px, 8vw, 54px); letter-spacing: -.05em; }
 .tagline { margin: 24px auto 30px; max-width: 350px; color: var(--muted); font-size: 15px; }
 .hero-panel .tagline { margin: 12px auto 16px; color: #8db8ae; font: 800 9px ui-monospace, monospace; letter-spacing: .16em; }

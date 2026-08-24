@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260824-44">
+  <link rel="stylesheet" href="./styles.css?v=20260824-54-menu-performance">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -45,11 +45,11 @@
       <div class="menu-scene" aria-hidden="true">
         <i class="scene-orbit orbit-one"></i>
         <i class="scene-orbit orbit-two"></i>
-        <img class="scene-enemy scene-enemy-left" src="./assets/sprites/ripper-v1.png" alt="">
-        <img class="scene-enemy scene-enemy-right" src="./assets/sprites/hex-moth-v1.png" alt="">
+        <img class="scene-enemy scene-enemy-left" src="./assets/runtime/sprites/ripper-v1.png" alt="">
+        <img class="scene-enemy scene-enemy-right" src="./assets/runtime/sprites/hex-moth-v1.png" alt="">
         <span class="scene-shot shot-left"></span>
         <span class="scene-shot shot-right"></span>
-        <img class="scene-player" src="./assets/sprites/crown-lizard-player-v1.png" alt="">
+        <img class="scene-player" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="">
       </div>
       <p class="tagline">DASH · SURVIVE · CLAIM THE HIGH SCORE</p>
       <div class="menu-choices" aria-label="Main menu">
@@ -121,7 +121,7 @@
       <div class="tutorial-steps">
         <div><i>✥</i><b>MOVE</b><span>DRAG ANYWHERE<br>OR USE WASD</span></div>
         <div><i>»</i><b>DASH</b><span>TAP DASH<br>OR PRESS SPACE</span></div>
-        <div><img src="./assets/sprites/weapon-crate-closed-v1.png" alt=""><b>POWER UP</b><span>COLLECT CRATES<br>AND CROWN POWERS</span></div>
+        <div><img src="./assets/runtime/sprites/weapon-crate-closed-v1.png" alt=""><b>POWER UP</b><span>COLLECT CRATES<br>AND CROWN POWERS</span></div>
       </div>
       <button id="tutorialDone" class="system-action"><i>♛</i> BEGIN RUN</button>
     </div>
@@ -213,7 +213,7 @@
       <div class="reveal-panel">
         <div id="revealEyebrow" class="eyebrow">CRATE OPENED</div>
         <div id="revealTier" class="reveal-tier">UNCOMMON</div>
-        <div class="reveal-ship"><span></span><img id="revealShip" src="./assets/sprites/crown-lizard-player-v1.png" alt="Unlocked ship chassis"></div>
+        <div class="reveal-ship"><span></span><img id="revealShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Unlocked ship chassis"></div>
         <h3 id="revealName">VERDANT SCOUT</h3>
         <p id="revealMessage">NEW CHASSIS ACQUIRED</p>
         <button id="revealContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
@@ -221,14 +221,14 @@
     </div>
 
   <div id="crateOpeningCinematic" class="crate-opening-cinematic hidden" aria-hidden="true">
-    <div class="crate-cinematic-stage"><span></span><img id="cinematicCrateSprite" src="./assets/sprites/crown-crate-closed-v1.png" alt=""></div>
+    <div class="crate-cinematic-stage"><span></span><img id="cinematicCrateSprite" src="./assets/runtime/sprites/crown-crate-closed-v1.png" alt=""></div>
     <p id="crateCinematicText">VAULT SEAL ENGAGED</p>
   </div>
     <div id="cosmeticDetail" class="cosmetic-detail hidden" role="dialog" aria-modal="true" aria-labelledby="cosmeticDetailName">
       <div class="cosmetic-detail-panel">
         <div class="eyebrow">COLLECTION FILE</div>
         <div id="cosmeticDetailTier" class="cosmetic-detail-tier">UNCOMMON</div>
-        <div class="cosmetic-detail-preview"><span></span><img id="cosmeticDetailImage" src="./assets/sprites/crown-lizard-player-v1.png" alt="Ship cosmetic preview"></div>
+        <div class="cosmetic-detail-preview"><span></span><img id="cosmeticDetailImage" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Ship cosmetic preview"></div>
         <h3 id="cosmeticDetailName">VERDANT SCOUT</h3>
         <strong id="cosmeticDetailStatus">LOCKED</strong>
         <p id="cosmeticDetailHint">AVAILABLE IN CROWN CRATES</p>
@@ -252,6 +252,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260824-53-wallet-bootstrap"></script>
+  <script type="module" src="./src/main.js?v=20260824-54-menu-performance"></script>
 </body>
 </html>

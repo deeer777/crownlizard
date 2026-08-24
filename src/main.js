@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js?v=20260824-53-wallet-bootstrap';
+import { CONFIG } from './config.js?v=20260824-54-menu-performance';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-53-wallet-bootstrap';
+import { Game } from './game.js?v=20260824-54-menu-performance';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
@@ -10,6 +10,10 @@ import { PlayerAccount } from './player-account.js?v=20260824-53-wallet-bootstra
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
+const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
+  ? './assets/runtime/sprites/crown-lizard-player-v1.png'
+  : `./assets/sprites/${cosmetic.sprite}`;
+const crateSpriteUrl = state => `./assets/runtime/sprites/crown-crate-${state}-v1.png`;
 const debugParams = new URLSearchParams(location.search);
 const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 const serverEconomy = !localPreview;
@@ -161,7 +165,7 @@ const renderVault = () => {
     card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}`);
     card.style.setProperty('--tier-color', tier.color);
     const image = document.createElement('img');
-    image.src = `./assets/sprites/${cosmetic.sprite}`;
+    image.src = cosmeticSpriteUrl(cosmetic);
     image.alt = '';
     const copy = document.createElement('span');
     const name = document.createElement('b');
@@ -190,10 +194,10 @@ const renderVault = () => {
   const sponsoredOffer = localPreview ? shardWallet.getPendingSponsoredOffer() : null;
   ui.crownCrate.classList.toggle('signal-ready', Boolean(sponsoredOffer));
   ui.crownCrateSprite.src = crateOpening
-    ? './assets/sprites/crown-crate-open-v1.png'
+    ? crateSpriteUrl('open')
     : sponsoredOffer
-      ? './assets/sprites/crown-crate-signal-v1.png'
-      : './assets/sprites/crown-crate-closed-v1.png';
+      ? crateSpriteUrl('signal')
+      : crateSpriteUrl('closed');
   ui.vaultSponsoredSignal.classList.toggle('hidden', !sponsoredOffer);
   ui.vaultWatchAd.classList.toggle('hidden', !sponsoredOffer?.eligible);
   ui.vaultWatchAd.disabled = rewardedAdViewing || !sponsoredOffer?.eligible;
@@ -218,7 +222,7 @@ const showCosmeticDetail = cosmeticId => {
   const equipped = state.inventory.equipped.ship === cosmetic.id;
   selectedCosmeticDetailId = cosmetic.id;
   ui.cosmeticDetail.style.setProperty('--tier-color', tier.color);
-  ui.cosmeticDetailImage.src = `./assets/sprites/${cosmetic.sprite}`;
+  ui.cosmeticDetailImage.src = cosmeticSpriteUrl(cosmetic);
   ui.cosmeticDetailTier.textContent = tier.name;
   ui.cosmeticDetailName.textContent = cosmetic.name;
   ui.cosmeticDetailStatus.textContent = acquired ? 'OWNED' : 'LOCKED';
@@ -242,13 +246,13 @@ const playCrateOpeningCinematic = async ({ signal = false, tier = 'uncommon' } =
   const tierColor = RARITY_BY_KEY[tier]?.color || '#ffd36b';
   ui.crateOpeningCinematic.style.setProperty('--crate-tier-color', tierColor);
   ui.cinematicCrateSprite.src = signal
-    ? './assets/sprites/crown-crate-signal-v1.png'
-    : './assets/sprites/crown-crate-closed-v1.png';
+    ? crateSpriteUrl('signal')
+    : crateSpriteUrl('closed');
   ui.crateCinematicText.textContent = signal ? 'SPONSORED SIGNAL CHARGING' : 'VAULT SEAL CHARGING';
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic charging';
   void ui.crateOpeningCinematic.offsetWidth;
   await wait(reducedEffects ? 90 : 720);
-  ui.cinematicCrateSprite.src = './assets/sprites/crown-crate-open-v1.png';
+  ui.cinematicCrateSprite.src = crateSpriteUrl('open');
   ui.crateCinematicText.textContent = 'CROWN CRATE OPEN';
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic bursting';
   void ui.crateOpeningCinematic.offsetWidth;
@@ -267,7 +271,7 @@ const showCrateReveal = outcome => {
   ui.crateReveal.classList.remove(...COSMETIC_TIERS.map(item => `tier-${item.key}`));
   ui.crateReveal.classList.add(`tier-${tier.key}`);
   ui.crateReveal.style.setProperty('--tier-color', tier.color);
-  ui.revealShip.src = `./assets/sprites/${cosmetic.sprite}`;
+  ui.revealShip.src = cosmeticSpriteUrl(cosmetic);
   ui.revealEyebrow.textContent = outcome.duplicate
     ? 'DUPLICATE DETECTED'
     : outcome.guaranteedSovereign
@@ -310,7 +314,7 @@ const openVault = () => {
   crateRevealReturn = 'vault';
   if (!crownCrateOpenPreload) {
     crownCrateOpenPreload = new Image();
-    crownCrateOpenPreload.src = './assets/sprites/crown-crate-open-v1.png';
+    crownCrateOpenPreload.src = crateSpriteUrl('open');
   }
   vaultOddsExpanded = false;
   renderVault();
