@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-46-session-hotfix';
+import { CONFIG } from './config.js?v=20260824-47-mobile-start';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
@@ -775,8 +775,10 @@ game.reducedEffects = reducedEffects;
 applyEffectsSetting();
 renderSettings();
 
-if (serverEconomy) {
+const connectServerEconomy = () => {
   ui.play.disabled = true;
+  serverEconomyError = null;
+  ui.menuShards.textContent = '◆ CONNECTING...';
   playerReadyPromise = bootstrapServerEconomy()
     .then(result => {
       ui.play.disabled = false;
@@ -786,8 +788,14 @@ if (serverEconomy) {
       serverEconomyReady = false;
       serverEconomyError = error;
       ui.menuShards.textContent = error?.status === 403 ? '◆ INVENTORY MIGRATION REQUIRED' : '◆ SERVER WALLET OFFLINE';
+      ui.play.disabled = false;
       return null;
     });
+  return playerReadyPromise;
+};
+
+if (serverEconomy) {
+  connectServerEconomy();
 }
 
 const engine = new Engine({ update: dt => game.update(dt), render: () => game.render(), step: 1 / CONFIG.simulationHz });
@@ -878,7 +886,8 @@ const start = async () => {
   let registeredRun = null;
   if (serverEconomy) {
     try {
-      await playerReadyPromise;
+      if (!serverEconomyReady) await connectServerEconomy();
+      else await playerReadyPromise;
       if (!serverEconomyReady) throw serverEconomyError || new Error('SERVER_WALLET_OFFLINE');
       const accessToken = await playerAccount.getAccessToken();
       registeredRun = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);

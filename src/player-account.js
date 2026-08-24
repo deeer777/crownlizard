@@ -53,7 +53,7 @@ export class PlayerAccount {
     if (!validSession(session)) throw new Error('Invalid player session.');
     const expiresAt = Number(session.expiresAt) || Math.floor(Date.now() / 1000) + Number(session.expiresIn || 3600);
     this.session = { ...session, expiresAt };
-    this.storage?.setItem(this.storageKey, JSON.stringify(this.session));
+    try { this.storage?.setItem(this.storageKey, JSON.stringify(this.session)); } catch {}
     return this.session;
   }
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { legacyWalletPayload } from '../src/player-account.js';
+import { legacyWalletPayload, PlayerAccount } from '../src/player-account.js';
 import { calculateShardReward } from '../src/economy.js';
 import { calculateServerShardReward, onRequest, secureServerInt, validateEconomySummary, validateLegacyWallet } from '../functions/api/[[path]].js';
 
@@ -28,6 +28,17 @@ assert.deepEqual(validateLegacyWallet(payload).value, payload, 'a valid existing
 assert.match(validateLegacyWallet({ ...payload, balance: 50001 }).error, /Invalid legacy wallet/, 'legacy balance is capped during the migration window');
 assert.match(validateLegacyWallet({ ...payload, cosmetics: ['ship_fake'] }).error, /Invalid legacy inventory/, 'invented cosmetics cannot enter the server inventory');
 assert.match(validateLegacyWallet({ ...payload, equippedShip: 'ship_crown_sovereign' }).error, /Invalid equipped cosmetic/, 'a locked cosmetic cannot be imported as equipped');
+
+const restrictedStorageAccount = new PlayerAccount({
+  getItem: () => null,
+  setItem: () => { throw new Error('Storage denied'); },
+});
+assert.doesNotThrow(() => restrictedStorageAccount.saveSession({
+  accessToken: 'header.payload.signature-access',
+  refreshToken: 'refresh-token-with-enough-entropy',
+  expiresIn: 3600,
+  player: { id: '123e4567-e89b-42d3-a456-426614174000', anonymous: true },
+}), 'restricted mobile storage does not block the in-memory player session');
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', 'economy_transactions', 'auth_bootstrap_events']) {
@@ -115,6 +126,9 @@ assert.equal(sessionResponse.status, 201, 'an anonymous Supabase player session 
 assert.equal((await sessionResponse.json()).player.id, userId, 'the authenticated player id is returned');
 const authSignupCall = calls.find(call => call.url.includes('/auth/v1/signup'));
 assert.equal(authSignupCall.options.headers.apikey, env.SUPABASE_PUBLISHABLE_KEY, 'Auth uses the publishable key rather than exposing the server secret');
+const authSignupIndex = calls.findIndex(call => call.url.includes('/auth/v1/signup'));
+const authEventInsertIndex = calls.findIndex(call => call.url.endsWith('/rest/v1/auth_bootstrap_events'));
+assert.ok(authSignupIndex < authEventInsertIndex, 'failed signups cannot consume the successful-account rate limit');
 
 const walletResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/wallet', { headers: { Authorization: 'Bearer header.payload.signature-access' } }),

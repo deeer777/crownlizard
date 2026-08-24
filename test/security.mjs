@@ -8,7 +8,7 @@ const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260824-46-session-hotfix/, 'the session hotfix ships behind a fresh browser cache key');
+assert.match(index, /main\.js\?v=20260824-47-mobile-start/, 'the mobile start recovery ships behind a fresh browser cache key');
 assert.match(main, /const serverEconomy = !localPreview/, 'production selects the server wallet while localhost retains its test wallet');
 assert.match(main, /localPreview \? shardWallet\.openCrate\(\) : await playerAccount\.openCrate\(\)/, 'production crate openings cannot call the local wallet');
 assert.match(main, /if \(localPreview\) \{[\s\S]*shardWallet\.awardRun/, 'local shard settlement is isolated to localhost');

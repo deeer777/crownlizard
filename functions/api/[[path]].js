@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -8,7 +8,7 @@ const COSMETIC_IDS = new Set([
   'ship_solar_guard', 'ship_royal_vanguard', 'ship_rift_phantom', 'ship_crown_sovereign',
 ]);
 const LEGACY_BALANCE_CAP = 50_000;
-const AUTH_BOOTSTRAP_LIMIT = 5;
+const AUTH_BOOTSTRAP_LIMIT = 20;
 const SHARD_RULES = Object.freeze({
   minimumDurationSeconds: 30,
   minimumEnemies: 5,
@@ -202,10 +202,10 @@ const beginAnonymousSession = async (request, config) => {
   const query = new URLSearchParams({ select: 'id', ip_hash: `eq.${ipHash}`, created_at: `gte.${since}`, limit: String(AUTH_BOOTSTRAP_LIMIT + 1) });
   const recent = await supabaseFetch(config, `auth_bootstrap_events?${query}`);
   if (recent.length >= AUTH_BOOTSTRAP_LIMIT) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
-  await supabaseFetch(config, 'auth_bootstrap_events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ip_hash: ipHash }) });
   const payload = await authFetch(config, 'signup', { method: 'POST', body: '{}' });
   const session = sessionPayload(payload);
   if (!UUID_PATTERN.test(session.player.id) || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
+  await supabaseFetch(config, 'auth_bootstrap_events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ip_hash: ipHash }) });
   return json(session, 201);
 };
 
