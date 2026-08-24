@@ -228,6 +228,19 @@ assert.equal((await confirmEmailResponse.json()).player.id, userId, 'email verif
 const verifyCall = calls.find(call => call.url.endsWith('/auth/v1/verify'));
 assert.deepEqual(JSON.parse(verifyCall.options.body), { token_hash: 'valid-token-hash-with-enough-entropy', type: 'email_change' }, 'only the one-time verification hash reaches Supabase Auth');
 
+const callbackResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/callback?token_hash=callback-token-hash-with-enough-entropy&type=recovery'),
+  env,
+  params: { path: ['player', 'account', 'callback'] },
+});
+assert.equal(callbackResponse.status, 303, 'the email callback exchanges its one-time token and redirects back to the game');
+const callbackLocation = new URL(callbackResponse.headers.get('location'));
+assert.equal(callbackLocation.origin, 'https://crownlizard.com', 'the verified session can only return to Crown Lizard');
+assert.equal(callbackLocation.searchParams.get('account'), 'verified', 'the account UI receives an explicit verified state');
+assert.equal(callbackLocation.hash.includes('access_token='), true, 'the verified session is returned in the private URL fragment');
+assert.equal(callbackLocation.searchParams.has('token_hash'), false, 'the one-time verification token never reaches the game page URL');
+assert.equal(callbackResponse.headers.get('referrer-policy'), 'no-referrer', 'the callback token cannot leak through the next page referrer');
+
 const recoveryResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/recovery', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'Pilot@Example.com' }),

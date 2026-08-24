@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -338,6 +338,50 @@ const confirmPlayerEmail = async (request, config) => {
   }
 };
 
+const playerAccountCallback = async (request, config) => {
+  const url = new URL(request.url);
+  const tokenHash = String(url.searchParams.get('token_hash') || '');
+  const type = String(url.searchParams.get('type') || '');
+  const destination = new URL('/', url.origin);
+  const redirect = () => new Response(null, {
+    status: 303,
+    headers: {
+      Location: destination.href,
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+  const fail = message => {
+    destination.hash = new URLSearchParams({ error_description: message }).toString();
+    return redirect();
+  };
+  if (!/^[A-Za-z0-9_-]{20,512}$/.test(tokenHash) || !new Set(['email', 'email_change', 'recovery']).has(type)) {
+    return fail('This account link is invalid or has expired.');
+  }
+  try {
+    const payload = await authFetch(config, 'verify', {
+      method: 'POST',
+      body: JSON.stringify({ token_hash: tokenHash, type }),
+    });
+    const session = sessionPayload(payload);
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
+      return fail('Account verification could not be completed.');
+    }
+    destination.searchParams.set('account', 'verified');
+    destination.hash = new URLSearchParams({
+      access_token: session.accessToken,
+      refresh_token: session.refreshToken,
+      expires_in: String(session.expiresIn),
+      type,
+    }).toString();
+    return redirect();
+  } catch (error) {
+    if ([400, 401, 403, 422].includes(error.status)) return fail('This account link is invalid or has expired.');
+    throw error;
+  }
+};
+
 const requestPasswordRecovery = async (request, config) => {
   const credentials = await accountCredentials(request);
   if (credentials.error) return json({ error: credentials.error }, 422);
@@ -608,6 +652,7 @@ export const onRequest = async context => {
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
+    if (path === 'player/account/callback' && request.method === 'GET') return await playerAccountCallback(request, config);
     if (path === 'player/account/confirm' && request.method === 'POST') return await confirmPlayerEmail(request, config);
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);
