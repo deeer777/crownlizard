@@ -117,6 +117,7 @@ globalThis.fetch = async (url, options = {}) => {
     expiresIn: 3600,
     player: { id: userId, anonymous: false, email: 'pilot@example.com' },
   });
+  if (String(url).endsWith('/api/player/account/recovery')) return Response.json({ status: 'recovery_requested' }, { status: 202 });
   if (String(url).includes('/auth/v1/signup')) return Response.json({
     access_token: 'header.payload.signature-access',
     refresh_token: 'refresh-token-with-enough-entropy',
@@ -137,6 +138,7 @@ globalThis.fetch = async (url, options = {}) => {
     expires_in: 3600,
     user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
   });
+  if (String(url).includes('/auth/v1/recover')) return Response.json({});
   if (String(url).includes('/auth/v1/user')) {
     if (options.method === 'PUT') {
       const body = JSON.parse(options.body || '{}');
@@ -225,6 +227,17 @@ assert.equal(confirmEmailResponse.status, 200, 'the branded callback exchanges t
 assert.equal((await confirmEmailResponse.json()).player.id, userId, 'email verification keeps the linked player id');
 const verifyCall = calls.find(call => call.url.endsWith('/auth/v1/verify'));
 assert.deepEqual(JSON.parse(verifyCall.options.body), { token_hash: 'valid-token-hash-with-enough-entropy', type: 'email_change' }, 'only the one-time verification hash reaches Supabase Auth');
+
+const recoveryResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/recovery', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'Pilot@Example.com' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'recovery'] },
+});
+assert.equal(recoveryResponse.status, 202, 'password recovery returns the same accepted response for valid account-shaped requests');
+const recoveryCall = calls.find(call => call.url.includes('/auth/v1/recover?redirect_to='));
+assert.deepEqual(JSON.parse(recoveryCall.options.body), { email: 'pilot@example.com' }, 'recovery normalizes the email and never sends a password');
 
 mockedAuthUser = { id: userId, is_anonymous: false, email: 'pilot@example.com' };
 const setPasswordResponse = await onRequest({
@@ -411,6 +424,16 @@ assert.equal(hashAccount.redirectResult.pending, true, 'the branded email link i
 await hashAccount.completeAuthRedirect();
 assert.equal(hashAccount.getPlayer().anonymous, false, 'the browser switches to the verified permanent account before loading its wallet');
 assert.equal(hashAccount.needsPasswordSetup(), true, 'the verified callback opens Create Password immediately');
+assert.equal((await hashAccount.requestPasswordRecovery('pilot@example.com')).status, 'recovery_requested', 'the account client can request recovery without an active player session');
+
+const recoveryHashAccount = new PlayerAccount(hashStorage);
+recoveryHashAccount.redirectResult = recoveryHashAccount.consumeAuthRedirect({
+  hash: '#account=confirm&token_hash=recovery-token-hash-with-enough-entropy&type=recovery',
+  href: 'https://crownlizard.com/#account=confirm&token_hash=recovery-token-hash-with-enough-entropy&type=recovery',
+  pathname: '/',
+  search: '',
+}, { replaceState() {} });
+assert.equal(recoveryHashAccount.redirectResult.type, 'recovery', 'password recovery links use the same safe client-side token exchange');
 globalThis.fetch = originalFetch;
 
 console.log('Player account and legacy migration test passed');

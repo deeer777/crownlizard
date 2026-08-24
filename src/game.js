@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-58-password-first';
+import { CONFIG } from './config.js?v=20260824-59-account-recovery';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

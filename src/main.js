@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-58-password-first';
+import { CONFIG } from './config.js?v=20260824-59-account-recovery';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-58-password-first';
+import { Game } from './game.js?v=20260824-59-account-recovery';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-58-password-first';
+import { PlayerAccount } from './player-account.js?v=20260824-59-account-recovery';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -23,7 +23,7 @@ const ui = {
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
-  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountWarning: $('accountWarning'),
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
@@ -906,6 +906,7 @@ const renderAccount = () => {
   ui.accountEmailField.classList.toggle('hidden', passwordSetup);
   ui.accountPasswordField.classList.toggle('hidden', !passwordSetup && accountMode !== 'login');
   ui.accountWarning.classList.toggle('hidden', permanent || accountMode !== 'login');
+  ui.accountRecovery.classList.toggle('hidden', permanent || accountMode !== 'login');
   ui.accountSecureTab.classList.toggle('selected', accountMode === 'secure');
   ui.accountSecureTab.setAttribute('aria-selected', String(accountMode === 'secure'));
   ui.accountLoginTab.classList.toggle('selected', accountMode === 'login');
@@ -914,6 +915,7 @@ const renderAccount = () => {
   ui.accountPassword.required = passwordSetup || accountMode === 'login';
   ui.accountPassword.autocomplete = passwordSetup ? 'new-password' : 'current-password';
   ui.accountSubmit.disabled = accountBusy || localPreview;
+  ui.accountRecovery.disabled = accountBusy || localPreview;
   ui.accountSubmit.innerHTML = passwordSetup
     ? '<i>♛</i> CREATE PASSWORD'
     : accountMode === 'login'
@@ -1058,6 +1060,21 @@ ui.accountForm.addEventListener('submit', async event => {
       const result = await playerAccount.linkEmail(ui.accountEmail.value);
       setAccountStatus(`VERIFY LINK SENT TO ${result.email}`, 'success');
     }
+  } catch (error) {
+    setAccountStatus(String(error.message || 'ACCOUNT SERVICE UNAVAILABLE').toUpperCase(), 'error');
+  } finally {
+    accountBusy = false;
+    renderAccount();
+  }
+});
+ui.accountRecovery.addEventListener('click', async () => {
+  if (accountBusy || localPreview) return;
+  accountBusy = true;
+  setAccountStatus('REQUESTING RECOVERY LINK...');
+  renderAccount();
+  try {
+    await playerAccount.requestPasswordRecovery(ui.accountEmail.value);
+    setAccountStatus('IF THAT ACCOUNT EXISTS, A RECOVERY LINK IS ON ITS WAY', 'success');
   } catch (error) {
     setAccountStatus(String(error.message || 'ACCOUNT SERVICE UNAVAILABLE').toUpperCase(), 'error');
   } finally {

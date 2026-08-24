@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260824-58-password-first">
+  <link rel="stylesheet" href="./styles.css?v=20260824-59-account-recovery">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -171,6 +171,7 @@
         <label id="accountPasswordField" class="hidden">PASSWORD<input id="accountPassword" type="password" autocomplete="current-password" minlength="10" maxlength="128"></label>
         <p id="accountFormStatus" class="account-form-status" role="status"></p>
         <button id="accountSubmit" class="system-action" type="submit"><i>♛</i> SEND VERIFY LINK</button>
+        <button id="accountRecovery" class="system-link account-recovery hidden" type="button">FORGOT PASSWORD?</button>
       </form>
       <p id="accountWarning" class="account-warning hidden">SIGNING IN LOADS THAT ACCOUNT'S VAULT. GUEST PROGRESS IS NOT MERGED.</p>
       <button id="closeAccount" class="system-link" type="button">BACK TO SETTINGS</button>
@@ -276,6 +277,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260824-58-password-first"></script>
+  <script type="module" src="./src/main.js?v=20260824-59-account-recovery"></script>
 </body>
 </html>

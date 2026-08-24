@@ -434,6 +434,7 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .account-form input { width: 100%; min-height: 48px; padding: 9px 11px; color: var(--ink); background: #020a09; border: 1px solid #31544a; border-radius: 0; outline: 0; font: 700 11px var(--font-pixel-ui); box-shadow: inset 3px 3px #010403; }
 .account-form input:focus { border-color: var(--gold); }
 .account-form .system-action { width: 100%; min-height: 48px; margin: 0 auto; }
+.account-form .account-recovery { min-height: 44px; margin: -3px auto 0; padding-inline: 12px; }
 .account-form-status { min-height: 25px; margin: -2px 0 0; color: #88a19a; font: 700 7px/1.6 var(--font-pixel-ui); letter-spacing: .04em; }
 .account-form-status.error { color: #ff8a96; }
 .account-form-status.success { color: var(--mint); }

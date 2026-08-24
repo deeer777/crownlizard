@@ -9,9 +9,10 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260824-58-password-first/, 'the current frontend ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260824-58-password-first/, 'the account client cannot be served from an older browser cache');
+assert.match(index, /main\.js\?v=20260824-59-account-recovery/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260824-59-account-recovery/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /VERIFYING EMAIL\.\.\./, 'email verification presents immediate progress before the wallet finishes loading');
+assert.match(index, /id="accountRecovery"[\s\S]*FORGOT PASSWORD\?/, 'sign in exposes an accessible password recovery action');
 assert.match(serverApi, /'0\.15\.1-56'/, 'the released frontend version can register server-owned runs');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');

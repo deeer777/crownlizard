@@ -70,7 +70,7 @@ export class PlayerAccount {
     const verificationType = params.get('type');
     const pendingVerification = params.get('account') === 'confirm'
       && /^[A-Za-z0-9_-]{20,512}$/.test(String(tokenHash || ''))
-      && ['email', 'email_change'].includes(String(verificationType || ''));
+      && ['email', 'email_change', 'recovery'].includes(String(verificationType || ''));
     const confirmation = url.searchParams.get('account') === 'verified' || Boolean(params.get('message'));
     const clearRedirect = () => {
       try {
@@ -228,6 +228,13 @@ export class PlayerAccount {
     this.syncPlayer(payload.player);
     try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'done'); } catch {}
     return payload;
+  }
+
+  async requestPasswordRecovery(email) {
+    return requestJson('/api/player/account/recovery', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
   }
 
   async login(email, password) {
