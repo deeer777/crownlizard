@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -353,13 +353,14 @@ const playerAccountCallback = async (request, config) => {
     }
   }
   const destination = new URL('/', url.origin);
-  const redirect = () => new Response(null, {
+  const redirect = (headers = {}) => new Response(null, {
     status: 303,
     headers: {
       Location: destination.href,
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
       'X-Content-Type-Options': 'nosniff',
+      ...headers,
     },
   });
   const fail = message => {
@@ -394,17 +395,48 @@ const playerAccountCallback = async (request, config) => {
     if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
       return fail('Account verification could not be completed.');
     }
-    destination.searchParams.set('account', 'verified');
-    destination.hash = new URLSearchParams({
-      access_token: session.accessToken,
-      refresh_token: session.refreshToken,
-      expires_in: String(session.expiresIn),
-      type,
-    }).toString();
-    return redirect();
+    destination.searchParams.set('account', 'password');
+    return redirect({
+      'Set-Cookie': `cl_account_handoff=${encodeURIComponent(session.refreshToken)}; Max-Age=120; Path=/api/player/account/handoff; HttpOnly; Secure; SameSite=Lax`,
+    });
   } catch (error) {
     if ([400, 401, 403, 422].includes(error.status)) return fail('This account link is invalid or has expired.');
     throw error;
+  }
+};
+
+const completePlayerAccountHandoff = async (request, config) => {
+  const cookies = Object.fromEntries(String(request.headers.get('Cookie') || '').split(';').map(part => {
+    const separator = part.indexOf('=');
+    return separator < 0 ? ['', ''] : [part.slice(0, separator).trim(), part.slice(separator + 1)];
+  }).filter(([key]) => key));
+  let refreshToken = '';
+  try { refreshToken = decodeURIComponent(String(cookies.cl_account_handoff || '')); } catch {}
+  const clearCookie = 'cl_account_handoff=; Max-Age=0; Path=/api/player/account/handoff; HttpOnly; Secure; SameSite=Lax';
+  if (!refreshToken || refreshToken.length > 4096) {
+    return new Response(JSON.stringify({ error: 'Account setup session expired. Request a new recovery link.' }), {
+      status: 401,
+      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
+    });
+  }
+  try {
+    const payload = await authFetch(config, 'token?grant_type=refresh_token', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const session = sessionPayload(payload);
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
+      throw new Error('AUTH_SESSION_INVALID');
+    }
+    return new Response(JSON.stringify(session), {
+      status: 200,
+      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
+    });
+  } catch {
+    return new Response(JSON.stringify({ error: 'Account setup session expired. Request a new recovery link.' }), {
+      status: 401,
+      headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'Set-Cookie': clearCookie },
+    });
   }
 };
 
@@ -679,6 +711,7 @@ export const onRequest = async context => {
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
     if (path === 'player/account/callback' && (request.method === 'GET' || request.method === 'POST')) return await playerAccountCallback(request, config);
+    if (path === 'player/account/handoff' && request.method === 'POST') return await completePlayerAccountHandoff(request, config);
     if (path === 'player/account/confirm' && request.method === 'POST') return await confirmPlayerEmail(request, config);
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);

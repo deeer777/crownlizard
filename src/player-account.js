@@ -71,7 +71,8 @@ export class PlayerAccount {
     const pendingVerification = params.get('account') === 'confirm'
       && /^[A-Za-z0-9_-]{20,512}$/.test(String(tokenHash || ''))
       && ['email', 'email_change', 'recovery'].includes(String(verificationType || ''));
-    const confirmation = url.searchParams.get('account') === 'verified' || Boolean(params.get('message'));
+    const accountAction = url.searchParams.get('account');
+    const confirmation = accountAction === 'verified' || Boolean(params.get('message'));
     const clearRedirect = () => {
       try {
         url.hash = '';
@@ -82,6 +83,10 @@ export class PlayerAccount {
     if (error) {
       clearRedirect();
       return { error };
+    }
+    if (accountAction === 'password') {
+      clearRedirect();
+      return { handoff: true, type: 'recovery' };
     }
     if (pendingVerification) {
       clearRedirect();
@@ -217,6 +222,15 @@ export class PlayerAccount {
     this.saveSession(payload);
     try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
     this.redirectResult = { verified: true, session: this.session };
+    return this.redirectResult;
+  }
+
+  async completeAuthHandoff() {
+    if (!this.redirectResult?.handoff) return this.redirectResult;
+    const payload = await requestJson('/api/player/account/handoff', { method: 'POST', body: '{}' });
+    this.saveSession(payload);
+    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
+    this.redirectResult = { verified: true, passwordSetup: true, session: this.session };
     return this.redirectResult;
   }
 

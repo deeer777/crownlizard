@@ -117,6 +117,12 @@ globalThis.fetch = async (url, options = {}) => {
     expiresIn: 3600,
     player: { id: userId, anonymous: false, email: 'pilot@example.com' },
   });
+  if (String(url).endsWith('/api/player/account/handoff')) return Response.json({
+    accessToken: 'handoff.header.payload.signature-access',
+    refreshToken: 'handoff-refresh-token-with-enough-entropy',
+    expiresIn: 3600,
+    player: { id: userId, anonymous: false, email: 'pilot@example.com' },
+  });
   if (String(url).endsWith('/api/player/account/recovery')) return Response.json({ status: 'recovery_requested' }, { status: 202 });
   if (String(url).includes('/auth/v1/signup')) return Response.json({
     access_token: 'header.payload.signature-access',
@@ -128,6 +134,13 @@ globalThis.fetch = async (url, options = {}) => {
   if (String(url).includes('/auth/v1/token?grant_type=password')) return Response.json({
     access_token: 'login.header.payload.signature-access',
     refresh_token: 'login-refresh-token-with-enough-entropy',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
+  });
+  if (String(url).includes('/auth/v1/token?grant_type=refresh_token')) return Response.json({
+    access_token: 'handoff.header.payload.signature-access',
+    refresh_token: 'rotated-refresh-token-with-enough-entropy',
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
@@ -248,10 +261,23 @@ const callbackResponse = await onRequest({
 assert.equal(callbackResponse.status, 303, 'the email callback exchanges its one-time token and redirects back to the game');
 const callbackLocation = new URL(callbackResponse.headers.get('location'));
 assert.equal(callbackLocation.origin, 'https://crownlizard.com', 'the verified session can only return to Crown Lizard');
-assert.equal(callbackLocation.searchParams.get('account'), 'verified', 'the account UI receives an explicit verified state');
-assert.equal(callbackLocation.hash.includes('access_token='), true, 'the verified session is returned in the private URL fragment');
+assert.equal(callbackLocation.searchParams.get('account'), 'password', 'the account UI receives an explicit password handoff state');
+assert.equal(callbackLocation.hash, '', 'session credentials are never placed in a redirect URL');
 assert.equal(callbackLocation.searchParams.has('token_hash'), false, 'the one-time verification token never reaches the game page URL');
 assert.equal(callbackResponse.headers.get('referrer-policy'), 'no-referrer', 'the callback token cannot leak through the next page referrer');
+assert.match(callbackResponse.headers.get('set-cookie'), /cl_account_handoff=.*HttpOnly.*Secure.*SameSite=Lax/, 'the verified session uses a short-lived protected first-party handoff cookie');
+
+const handoffResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/handoff', {
+    method: 'POST',
+    headers: { Cookie: 'cl_account_handoff=confirmed-refresh-token-with-enough-entropy' },
+  }),
+  env,
+  params: { path: ['player', 'account', 'handoff'] },
+});
+assert.equal(handoffResponse.status, 200, 'the game can exchange the protected handoff cookie once');
+assert.equal((await handoffResponse.json()).player.email, 'pilot@example.com', 'the handoff restores the verified permanent player');
+assert.match(handoffResponse.headers.get('set-cookie'), /Max-Age=0/, 'the one-time handoff cookie is cleared immediately');
 
 const recoveryResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/recovery', {
@@ -459,6 +485,24 @@ recoveryHashAccount.redirectResult = recoveryHashAccount.consumeAuthRedirect({
   search: '',
 }, { replaceState() {} });
 assert.equal(recoveryHashAccount.redirectResult.type, 'recovery', 'password recovery links use the same safe client-side token exchange');
+
+const handoffStorage = {
+  values: new Map(),
+  getItem(key) { return this.values.get(key) || null; },
+  setItem(key, value) { this.values.set(key, value); },
+  removeItem(key) { this.values.delete(key); },
+};
+const handoffAccount = new PlayerAccount(handoffStorage);
+handoffAccount.redirectResult = handoffAccount.consumeAuthRedirect({
+  hash: '',
+  href: 'https://crownlizard.com/?account=password',
+  pathname: '/',
+  search: '?account=password',
+}, { replaceState() {} });
+assert.equal(handoffAccount.redirectResult.handoff, true, 'the password callback is recognized without URL credentials');
+await handoffAccount.completeAuthHandoff();
+assert.equal(handoffAccount.getPlayer().anonymous, false, 'the protected cookie handoff restores the permanent account');
+assert.equal(handoffAccount.needsPasswordSetup(), true, 'the cookie handoff always opens Create Password');
 globalThis.fetch = originalFetch;
 
 console.log('Player account and legacy migration test passed');

@@ -97,7 +97,7 @@ The Change email address and Reset password templates must use the server callba
 
 `{{ .SiteURL }}api/player/account/callback?token_hash={{ .TokenHash }}&amp;type=recovery`
 
-The callback first renders a branded, non-consuming confirmation page. Only the player's explicit POST consumes the token, then redirects the resulting session into a private URL fragment and opens `CREATE PASSWORD`. This prevents email security scanners and link previews from spending the one-time token before the player arrives.
+The callback first renders a branded, non-consuming confirmation page. Only the player's explicit POST consumes the token. The resulting session is handed to the game through a two-minute, `HttpOnly`, `Secure`, same-site cookie which is exchanged once and immediately cleared. No session credentials are placed in the redirect URL. This prevents email security scanners, link previews and email browsers that strip URL fragments from breaking password setup.
 
 Before enabling Build 55 in production, configure Supabase Auth:
 
