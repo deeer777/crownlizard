@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260824-42">
+  <link rel="stylesheet" href="./styles.css?v=20260824-44">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -55,6 +55,7 @@
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
         <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
+        <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ENTER CONFIRM</div>
@@ -155,6 +156,60 @@
     </div>
   </section>
 
+  <section id="vaultOverlay" class="overlay system-overlay vault-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="vaultTitle">
+    <div class="system-panel vault-panel">
+      <div class="eyebrow">THE ARMORY</div>
+      <h2 id="vaultTitle">CROWN VAULT</h2>
+      <div class="vault-wallet"><span>YOUR SHARDS</span><strong id="vaultBalance">◆ 0</strong></div>
+      <div class="vault-body">
+        <div class="vault-crate-column">
+          <div class="crown-crate" aria-hidden="true"><i>♛</i><b>VAULT</b><span></span></div>
+          <h3>CROWN CRATE</h3>
+          <p>ONE RANDOM SHIP CHASSIS</p>
+          <button id="openCrate" class="system-action vault-open" type="button"><i>♛</i> OPEN · ◆ 150</button>
+          <p id="vaultStatus" class="vault-status" role="status"></p>
+          <div class="vault-guarantee"><span>SOVEREIGN GUARANTEE</span><b id="vaultGuarantee">0 / 200</b><i><em id="vaultGuaranteeFill"></em></i></div>
+        </div>
+        <div class="vault-info-column">
+          <button id="vaultOddsToggle" class="vault-section-title vault-odds-toggle" type="button" aria-expanded="false" aria-controls="vaultOdds"><span>DROP ODDS</span><b>VIEW · ▼</b></button>
+          <div id="vaultOdds" class="vault-odds hidden"></div>
+          <div class="vault-section-title collection-title"><span>SHIP COLLECTION</span><b id="vaultOwned">0 / 8</b></div>
+          <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
+            <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship">SHIPS</button>
+            <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
+            <button type="button" role="tab" aria-selected="false" disabled>DASH FX <small>SOON</small></button>
+            <button type="button" role="tab" aria-selected="false" disabled>WEAPONS <small>SOON</small></button>
+          </div>
+          <div id="vaultCollection" class="vault-collection"></div>
+        </div>
+      </div>
+      <p class="vault-fineprint">DUPLICATES ARE SALVAGED FOR SHARDS · COSMETICS ONLY</p>
+      <button id="closeVault" class="system-action" type="button"><i>♛</i> BACK</button>
+    </div>
+    <div id="crateReveal" class="crate-reveal hidden" aria-live="assertive">
+      <div class="reveal-panel">
+        <div id="revealEyebrow" class="eyebrow">CRATE OPENED</div>
+        <div id="revealTier" class="reveal-tier">UNCOMMON</div>
+        <div class="reveal-ship"><span></span><img id="revealShip" src="./assets/sprites/crown-lizard-player-v1.png" alt="Unlocked ship chassis"></div>
+        <h3 id="revealName">VERDANT SCOUT</h3>
+        <p id="revealMessage">NEW CHASSIS ACQUIRED</p>
+        <button id="revealContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
+      </div>
+    </div>
+    <div id="cosmeticDetail" class="cosmetic-detail hidden" role="dialog" aria-modal="true" aria-labelledby="cosmeticDetailName">
+      <div class="cosmetic-detail-panel">
+        <div class="eyebrow">COLLECTION FILE</div>
+        <div id="cosmeticDetailTier" class="cosmetic-detail-tier">UNCOMMON</div>
+        <div class="cosmetic-detail-preview"><span></span><img id="cosmeticDetailImage" src="./assets/sprites/crown-lizard-player-v1.png" alt="Ship cosmetic preview"></div>
+        <h3 id="cosmeticDetailName">VERDANT SCOUT</h3>
+        <strong id="cosmeticDetailStatus">LOCKED</strong>
+        <p id="cosmeticDetailHint">AVAILABLE IN CROWN CRATES</p>
+        <button id="equipCosmetic" class="system-action cosmetic-equip hidden" type="button"><i>♛</i> EQUIP</button>
+        <button id="closeCosmeticDetail" class="system-action" type="button"><i>♛</i> BACK TO COLLECTION</button>
+      </div>
+    </div>
+  </section>
+
   <section id="perkOverlay" class="overlay perk-overlay hidden" aria-modal="true" role="dialog">
     <div class="perk-panel">
       <div class="eyebrow">WARDEN DEFEATED</div>
@@ -170,6 +225,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260824-42"></script>
+  <script type="module" src="./src/main.js?v=20260824-44b"></script>
 </body>
 </html>

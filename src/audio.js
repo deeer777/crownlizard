@@ -65,6 +65,11 @@ export class SoundFx {
       boss: [120, 48, .32, 'square', .055],
       perk: [390, 760, .2, 'triangle', .045],
       stage: [280, 560, .18, 'square', .035],
+      'vault-uncommon': [460, 720, .12, 'square', .035],
+      'vault-rare': [420, 980, .24, 'triangle', .045],
+      'vault-royal': [330, 1180, .34, 'square', .045],
+      'vault-mythic': [190, 1380, .48, 'sawtooth', .04],
+      'vault-sovereign': [220, 1680, .65, 'triangle', .055],
     };
     const [from, to, duration, wave, volume] = sounds[type] || sounds.confirm;
     const now = this.context.currentTime;

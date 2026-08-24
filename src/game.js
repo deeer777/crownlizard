@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-42';
+import { CONFIG } from './config.js?v=20260824-44';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -101,6 +101,14 @@ export class Game {
       image.src = new URL(`../assets/${filename}`, import.meta.url).href;
       return [key, image];
     }));
+  }
+
+  setPlayerSkin(filename = 'crown-lizard-player-v1.png') {
+    if (typeof Image === 'undefined') return;
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = new URL(`../assets/sprites/${filename}`, import.meta.url).href;
+    this.sprites.player = image;
   }
 
   loadEnvironmentSprites(zone) {
@@ -1466,16 +1474,19 @@ export class Game {
     const sprite = this.sprites.player;
     if (sprite?.complete && sprite.naturalWidth) {
       ctx.imageSmoothingEnabled = false;
+      const spriteRatio = sprite.naturalWidth / sprite.naturalHeight;
+      const playerHeight = 96;
+      const playerWidth = Math.min(96, Math.max(80, playerHeight * spriteRatio));
       if (player.dashTime > 0) {
         ctx.globalAlpha *= .32;
-        ctx.drawImage(sprite, -48, -39, 96, 108);
+        ctx.drawImage(sprite, -playerWidth * .56, -54, playerWidth * 1.12, 108);
         ctx.globalAlpha /= .32;
       }
       const [weaponMount] = this.loadWeaponFx(this.weapon);
       const mountProfile = {
         blaster: { width: 40, y: -31 }, spread: { width: 44, y: -31 }, pulse: { width: 37, y: -27 }, laser: { width: 30, y: -31 }, tesla: { width: 43, y: -25 },
       }[this.weapon];
-      ctx.drawImage(sprite, -43, -49, 86, 96);
+      ctx.drawImage(sprite, -playerWidth / 2, -49, playerWidth, playerHeight);
       if (weaponMount?.complete && weaponMount.naturalWidth) {
         const mountHeight = mountProfile.width / (weaponMount.naturalWidth / weaponMount.naturalHeight);
         ctx.drawImage(weaponMount, -mountProfile.width / 2, mountProfile.y - mountHeight / 2, mountProfile.width, mountHeight);

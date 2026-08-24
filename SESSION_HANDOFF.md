@@ -1,8 +1,8 @@
 # Crown Lizard — session handoff
 
-Current production version: **41** (`VER 0.10.3`)
-Latest completed local version: **42** (`VER 0.11.0`)
-Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=42`
+Current production version: **42** (`VER 0.11.0`)
+Latest completed local version: **44** (`VER 0.13.0`)
+Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&vault=6&shards=10000&sovereign=1&reload=44b`
 
 ## Product direction
 
@@ -35,6 +35,12 @@ Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=42`
 - Pass 1 shard economy: qualified-run rules, performance-based payout, local wallet/ledger, one-time settlement and a full Run Over breakdown.
 - Immediate deaths, idle runs, `END RUN`, reloads and repeated game-over callbacks cannot farm shards.
 - Runs lasting 90 seconds or defeating a Warden already record eligibility for the future sponsored crate, without exposing an ad flow yet.
+- Pass 2 Crown Vault: 150-shard Crown Crates, eight ship cosmetics across five visible rarity tiers, first-opening new-item guarantee and a Sovereign guarantee on opening 200.
+- Duplicate cosmetics are held as a durable pending reward and salvaged for their displayed shard value, including safely after a page reload.
+- The inventory records cosmetic ID, acquisition time and source so the same collection can later move to Supabase and support a direct-purchase market.
+- The Vault collection uses a scalable two-column mobile/four-column desktop grid, category scaffolding for ships/trails/dash effects/weapon skins, and a focused cosmetic detail view ready for Pass 3 equip actions.
+- Pass 3 includes eight distinct transparent pixel-art ship sprites plus the original Crown Lizard, a persistent equip system, active-skin markers, locked/owned detail states and actual in-run rendering of the selected chassis.
+- Generated ship sources were mechanically reduced with nearest-neighbor scaling for mobile delivery; the eight production assets total under 800 KB instead of roughly 11 MB raw.
 
 ## Menu and UI decisions
 
@@ -65,8 +71,8 @@ Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=42`
 
 ## Likely next priorities
 
-1. Build Pass 2: Crown Vault, one Crown Crate, rarity odds, first-crate guarantee and duplicate salvage.
-2. Build Pass 3: eight ship skins, preview/equip flow and the Sovereign cosmetic.
+1. Let the user playtest Build 44 locally, especially ship readability during live movement and Sovereign presentation.
+2. Tune crate price, odds or salvage only if the experience calls for it.
 3. Add the simulated rewarded-ad adapter only after crate balance is proven.
 4. Move wallet, inventory and purchases to Supabase before any real-money market launches.
 5. Do final real-device QA on iOS Safari and Android Chrome.
@@ -80,3 +86,4 @@ Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=42`
 - `src/audio.js` — music and synthesized 8-bit sound effects.
 - `src/config.js` — balancing, stages, weapons and Crown Powers.
 - `src/economy.js` — shard qualification, reward calculation and local wallet ledger.
+- `src/cosmetics.js` — cosmetic catalog, tier odds, crate price and Sovereign guarantee.

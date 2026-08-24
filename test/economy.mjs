@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { calculateShardReward, ShardWallet } from '../src/economy.js';
+import { COLLECTION_COSMETICS, CROWN_CRATE_COST, rollTier } from '../src/cosmetics.js';
 
 class MemoryStorage {
   constructor() { this.values = new Map(); }
@@ -47,4 +49,51 @@ const reloadedWallet = new ShardWallet(storage);
 assert.equal(reloadedWallet.getBalance(), 55, 'wallet balance survives a page reload');
 assert.equal(reloadedWallet.awardRun('run-standard', standardSummary).balance, 55, 'reload cannot replay an already settled run');
 
-console.log('Shard economy test passed:', { normalReward: standardReward.total, balance: reloadedWallet.getBalance() });
+assert.equal(rollTier(() => 0).key, 'uncommon', 'the odds table begins with uncommon');
+assert.equal(rollTier(() => .58).key, 'rare', 'rare begins at its published boundary');
+assert.equal(rollTier(() => .995).key, 'sovereign', 'sovereign occupies the final half percent');
+assert.equal(new Set(COLLECTION_COSMETICS.map(cosmetic => cosmetic.sprite)).size, COLLECTION_COSMETICS.length, 'every ship cosmetic uses a distinct sprite asset');
+COLLECTION_COSMETICS.forEach(cosmetic => {
+  assert.equal(existsSync(new URL(`../assets/sprites/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
+});
+
+const vaultStorage = new MemoryStorage();
+const vaultWallet = new ShardWallet(vaultStorage);
+const funded = vaultWallet.getState();
+funded.balance = 600;
+vaultWallet.write(funded);
+
+const firstOpen = vaultWallet.openCrate(() => 0);
+assert.equal(firstOpen.outcome.cosmeticId, 'ship_verdant_scout', 'a deterministic crate returns the expected chassis');
+assert.equal(firstOpen.outcome.duplicate, false, 'the first crate awards a new cosmetic');
+assert.equal(firstOpen.balance, 600 - CROWN_CRATE_COST, 'opening a crate deducts its published price');
+assert.ok(firstOpen.inventory.cosmetics.ship_verdant_scout, 'new cosmetics are stored in the market-ready inventory');
+assert.equal(vaultWallet.equipCosmetic('ship_verdant_scout').inventory.equipped.ship, 'ship_verdant_scout', 'an owned ship cosmetic can be equipped');
+assert.throws(() => vaultWallet.equipCosmetic('ship_void_hunter'), error => error.code === 'COSMETIC_LOCKED', 'a locked cosmetic cannot be equipped');
+assert.equal(new ShardWallet(vaultStorage).getState().inventory.equipped.ship, 'ship_verdant_scout', 'the equipped ship survives a reload');
+assert.equal(vaultWallet.equipCosmetic('ship_default').inventory.equipped.ship, 'ship_default', 'the original Crown Lizard can always be re-equipped');
+
+const duplicateOpen = vaultWallet.openCrate(() => 0);
+assert.equal(duplicateOpen.outcome.duplicate, true, 'a repeated cosmetic becomes a duplicate');
+assert.equal(duplicateOpen.outcome.salvageValue, 15, 'duplicate salvage follows its rarity tier');
+assert.throws(() => vaultWallet.openCrate(() => 0), error => error.code === 'PENDING_REWARD', 'the next crate waits until the duplicate is resolved');
+const salvaged = vaultWallet.salvagePending();
+assert.equal(salvaged.balance, 600 - CROWN_CRATE_COST * 2 + 15, 'salvage returns the displayed shard amount');
+assert.equal(salvaged.vault.pendingReward, null, 'salvage clears the durable pending reward');
+
+const guaranteeStorage = new MemoryStorage();
+const guaranteeWallet = new ShardWallet(guaranteeStorage);
+const guaranteeState = guaranteeWallet.getState();
+guaranteeState.balance = CROWN_CRATE_COST;
+guaranteeState.vault.opens = 199;
+guaranteeState.vault.sinceSovereign = 199;
+guaranteeWallet.write(guaranteeState);
+const guaranteed = guaranteeWallet.openCrate(() => 0);
+assert.equal(guaranteed.outcome.tier, 'sovereign', 'opening 200 forces the sovereign tier after 199 misses');
+assert.equal(guaranteed.outcome.guaranteedSovereign, true, 'the guaranteed reveal is explicitly identified');
+assert.equal(guaranteed.vault.sinceSovereign, 0, 'a sovereign resets its guarantee counter');
+
+const poorWallet = new ShardWallet(new MemoryStorage());
+assert.throws(() => poorWallet.openCrate(), error => error.code === 'NOT_ENOUGH_SHARDS', 'crates cannot create a negative shard balance');
+
+console.log('Shard economy and Crown Vault tests passed:', { normalReward: standardReward.total, balance: reloadedWallet.getBalance() });

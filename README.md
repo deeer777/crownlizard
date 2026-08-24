@@ -67,3 +67,17 @@ Pages Functions exponeras endast under `/api/*` via `_routes.json`; statiska spe
 Version 0.11 introducerar grunden för Crown Vault och den framtida cosmetic-marknaden. En reward-run kräver minst 30 sekunders överlevnad och fem besegrade fiender. Shards beräknas separat från highscore utifrån överlevnad, fiender, nådda zoner och besegrade Wardens.
 
 Utbetalningen sker endast vid verklig Game Over. `END RUN`, omladdning och övergivna rundor betalar ingenting, och varje lokalt run-ID kan bara lösas in en gång. Wallet och en begränsad transaktionshistorik sparas under `cl:economy:v1`. En framtida annons-crate markeras som kvalificerad efter 90 sekunder eller en besegrad Warden, men annonser och crates ingår inte i detta första pass.
+
+## Crown Vault MVP
+
+Version 0.12 lägger till Crown Vault med en Crown Crate för 150 shards. Craten innehåller åtta kosmetiska skeppschassin i fem tydligt redovisade tiers: Uncommon, Rare, Royal, Mythic och Sovereign. Den första öppningen garanterar ett nytt föremål, och efter 199 öppningar utan Sovereign blir öppning 200 garanterad Sovereign.
+
+Duplicates omvandlas direkt till den shard-mängd som visas i revealen. En väntande duplicate sparas lokalt innan den visas och återställs efter omladdning, så belöningen kan inte förloras genom att sidan stängs. Inventory-poster sparar kosmetiskt ID, tidpunkt och källa som grund för en framtida Supabase-baserad marknad. Build 43 använder tillfälliga färgvarianter av spelarskeppet; riktiga skins och equip-system hör till nästa pass.
+
+Samlingen visas i en skalbar grid med två kolumner på mobil och fyra på desktop. Kategorigrunden för skepp, trails, dash-effekter och vapenskins finns redan, och varje cosmetic har en egen detaljvy som Pass 3 kan komplettera med preview och equip utan en ny layoutombyggnad.
+
+## Ship cosmetics och equip
+
+Version 0.13 ersätter de tillfälliga färgfiltren med åtta individuella transparenta pixelart-skepp: Verdant Scout, Ember Runner, Crystal Dart, Void Hunter, Solar Guard, Royal Vanguard, Rift Phantom och Crown Sovereign. Originalskeppet Crown Lizard finns alltid tillgängligt som Standard.
+
+Ägda skins kan utrustas från detaljvyn. Det aktiva valet markeras i samlingen, sparas i samma lokala inventory och laddas av spelmotorn vid nästa run. Låsta skins kan inte utrustas. Alla nio skepp använder separata optimerade spritefiler och behåller samma gameplay-hitbox; skins är helt kosmetiska och påverkar därför inte highscore-balansen.

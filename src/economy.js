@@ -1,3 +1,12 @@
+import {
+  COSMETICS,
+  CROWN_CRATE_COST,
+  SOVEREIGN_GUARANTEE,
+  TIER_BY_KEY,
+  chooseCosmetic,
+  rollTier,
+} from './cosmetics.js?v=20260824-44';
+
 export const SHARD_RULES = Object.freeze({
   version: 1,
   minimumDurationSeconds: 30,
@@ -47,19 +56,65 @@ export const calculateShardReward = summary => {
   };
 };
 
-const emptyState = () => ({ version: SHARD_RULES.version, balance: 0, transactions: [] });
+const emptyState = () => ({
+  version: SHARD_RULES.version,
+  balance: 0,
+  transactions: [],
+  inventory: { cosmetics: {}, equipped: { ship: 'ship_default' } },
+  vault: { opens: 0, sinceSovereign: 0, pendingReward: null },
+});
 const cloneState = state => JSON.parse(JSON.stringify(state));
+const acquisitionSources = new Set(['crate', 'shop', 'sponsored', 'grant']);
+
+const normalizeOutcome = outcome => {
+  if (!outcome || typeof outcome.openingId !== 'string' || !TIER_BY_KEY[outcome.tier]) return null;
+  if (!COSMETICS.some(cosmetic => cosmetic.id === outcome.cosmeticId)) return null;
+  return {
+    openingId: outcome.openingId,
+    openingNumber: safeInteger(outcome.openingNumber, 1),
+    cosmeticId: outcome.cosmeticId,
+    tier: outcome.tier,
+    duplicate: Boolean(outcome.duplicate),
+    salvageValue: safeInteger(outcome.salvageValue),
+    guaranteedSovereign: Boolean(outcome.guaranteedSovereign),
+    createdAt: typeof outcome.createdAt === 'string' ? outcome.createdAt : new Date().toISOString(),
+  };
+};
 
 const normalizeState = value => {
   if (!value || value.version !== SHARD_RULES.version) return emptyState();
+  const cosmetics = {};
+  if (value.inventory?.cosmetics && typeof value.inventory.cosmetics === 'object') {
+    Object.entries(value.inventory.cosmetics).forEach(([id, acquisition]) => {
+      if (!COSMETICS.some(cosmetic => cosmetic.id === id)) return;
+      cosmetics[id] = {
+        acquiredAt: typeof acquisition?.acquiredAt === 'string' ? acquisition.acquiredAt : new Date().toISOString(),
+        source: acquisitionSources.has(acquisition?.source) ? acquisition.source : 'crate',
+      };
+    });
+  }
+  const requestedShip = typeof value.inventory?.equipped?.ship === 'string' ? value.inventory.equipped.ship : 'ship_default';
+  const equippedShip = requestedShip === 'ship_default' || cosmetics[requestedShip] ? requestedShip : 'ship_default';
   return {
     version: SHARD_RULES.version,
     balance: safeInteger(value.balance),
     transactions: Array.isArray(value.transactions)
-      ? value.transactions.filter(transaction => transaction && typeof transaction.runId === 'string').slice(-250)
+      ? value.transactions.filter(transaction => transaction && typeof transaction.id === 'string').slice(-250)
       : [],
+    inventory: {
+      cosmetics,
+      equipped: { ship: equippedShip },
+    },
+    vault: {
+      opens: safeInteger(value.vault?.opens),
+      sinceSovereign: Math.min(SOVEREIGN_GUARANTEE - 1, safeInteger(value.vault?.sinceSovereign)),
+      pendingReward: normalizeOutcome(value.vault?.pendingReward),
+    },
   };
 };
+
+const walletError = (code, message) => Object.assign(new Error(message), { code });
+const randomItem = (items, random) => items[Math.min(items.length - 1, Math.floor(Math.max(0, Math.min(.999999, Number(random()) || 0)) * items.length))];
 
 export class ShardWallet {
   constructor(storage = globalThis.localStorage, storageKey = SHARD_STORAGE_KEY) {
@@ -83,6 +138,17 @@ export class ShardWallet {
   }
 
   getBalance() { return this.read().balance; }
+  getState() { return this.read(); }
+
+  equipCosmetic(cosmeticId) {
+    if (typeof cosmeticId !== 'string' || !cosmeticId) throw new TypeError('A cosmetic id is required.');
+    const state = this.read();
+    if (cosmeticId !== 'ship_default' && !state.inventory.cosmetics[cosmeticId]) throw walletError('COSMETIC_LOCKED', 'This cosmetic is not owned.');
+    const cosmetic = cosmeticId === 'ship_default' ? { slot: 'ship' } : COSMETICS.find(item => item.id === cosmeticId);
+    if (!cosmetic || cosmetic.slot !== 'ship') throw walletError('INVALID_COSMETIC', 'This cosmetic cannot be equipped as a ship.');
+    state.inventory.equipped.ship = cosmeticId;
+    return this.write(state);
+  }
 
   awardRun(runId, summary) {
     if (typeof runId !== 'string' || !runId) throw new TypeError('A local run id is required.');
@@ -103,5 +169,70 @@ export class ShardWallet {
     state.transactions = state.transactions.slice(-250);
     const saved = this.write(state);
     return { reward, balance: saved.balance, duplicate: false };
+  }
+
+  openCrate(random = Math.random) {
+    const state = this.read();
+    if (state.vault.pendingReward) throw walletError('PENDING_REWARD', 'Salvage the pending duplicate first.');
+    if (state.balance < CROWN_CRATE_COST) throw walletError('NOT_ENOUGH_SHARDS', 'Not enough shards for a Crown Crate.');
+
+    const guaranteedSovereign = state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1;
+    const tier = guaranteedSovereign ? TIER_BY_KEY.sovereign : rollTier(random);
+    let cosmetic = chooseCosmetic(tier.key, random);
+    if (state.vault.opens === 0 && state.inventory.cosmetics[cosmetic.id]) {
+      const sameTier = COSMETICS.filter(item => item.rarity === tier.key && !state.inventory.cosmetics[item.id]);
+      const anyUnowned = COSMETICS.filter(item => !state.inventory.cosmetics[item.id]);
+      cosmetic = randomItem(sameTier.length ? sameTier : anyUnowned, random) || cosmetic;
+    }
+
+    const duplicate = Boolean(state.inventory.cosmetics[cosmetic.id]);
+    const openingNumber = state.vault.opens + 1;
+    const createdAt = new Date().toISOString();
+    const openingId = globalThis.crypto?.randomUUID?.() || `vault-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const outcome = {
+      openingId,
+      openingNumber,
+      cosmeticId: cosmetic.id,
+      tier: tier.key,
+      duplicate,
+      salvageValue: duplicate ? tier.salvage : 0,
+      guaranteedSovereign,
+      createdAt,
+    };
+
+    state.balance -= CROWN_CRATE_COST;
+    state.vault.opens = openingNumber;
+    state.vault.sinceSovereign = tier.key === 'sovereign' ? 0 : state.vault.sinceSovereign + 1;
+    if (duplicate) state.vault.pendingReward = outcome;
+    else state.inventory.cosmetics[cosmetic.id] = { acquiredAt: createdAt, source: 'crate' };
+    state.transactions.push({
+      id: `crate:${openingId}`,
+      kind: 'crate_open',
+      amount: -CROWN_CRATE_COST,
+      createdAt,
+      outcome,
+    });
+    state.transactions = state.transactions.slice(-250);
+    const saved = this.write(state);
+    return { outcome, balance: saved.balance, inventory: saved.inventory, vault: saved.vault };
+  }
+
+  salvagePending() {
+    const state = this.read();
+    const outcome = state.vault.pendingReward;
+    if (!outcome) return null;
+    state.balance += outcome.salvageValue;
+    state.vault.pendingReward = null;
+    state.transactions.push({
+      id: `salvage:${outcome.openingId}`,
+      kind: 'duplicate_salvage',
+      amount: outcome.salvageValue,
+      createdAt: new Date().toISOString(),
+      cosmeticId: outcome.cosmeticId,
+      openingId: outcome.openingId,
+    });
+    state.transactions = state.transactions.slice(-250);
+    const saved = this.write(state);
+    return { outcome, balance: saved.balance, inventory: saved.inventory, vault: saved.vault };
   }
 }

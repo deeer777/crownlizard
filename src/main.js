@@ -1,10 +1,11 @@
-import { CONFIG } from './config.js?v=20260824-42';
+import { CONFIG } from './config.js?v=20260824-44';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260820-26';
-import { Game } from './game.js?v=20260824-42';
-import { ShardWallet } from './economy.js?v=20260824-42';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-42';
+import { Music, SoundFx } from './audio.js?v=20260824-43';
+import { Game } from './game.js?v=20260824-44';
+import { ShardWallet } from './economy.js?v=20260824-44';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-44';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-44';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -12,9 +13,12 @@ const ui = {
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
-  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
+  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'),
+  crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
+  cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
   gameVersion: $('gameVersion'), menuShards: $('menuShards'),
@@ -58,6 +62,148 @@ const shardWallet = new ShardWallet();
 const createEconomyRunId = () => globalThis.crypto?.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const renderShardBalance = () => { ui.menuShards.textContent = `◆ ${shardWallet.getBalance().toLocaleString('en-US')} SHARDS`; };
 renderShardBalance();
+let crateOpening = false;
+let vaultOddsExpanded = false;
+let selectedCosmeticDetailId = '';
+
+const renderVaultOddsVisibility = () => {
+  ui.vaultOdds.classList.toggle('hidden', !vaultOddsExpanded);
+  ui.vaultOddsToggle.setAttribute('aria-expanded', String(vaultOddsExpanded));
+  ui.vaultOddsToggle.querySelector('b').textContent = vaultOddsExpanded ? 'HIDE · ▲' : 'VIEW · ▼';
+};
+
+const renderVault = () => {
+  const state = shardWallet.getState();
+  const owned = Object.keys(state.inventory.cosmetics);
+  ui.vaultBalance.textContent = `◆ ${state.balance.toLocaleString('en-US')}`;
+  ui.vaultOwned.textContent = `${owned.length} / ${COSMETICS.length}`;
+  ui.vaultGuarantee.textContent = `${state.vault.sinceSovereign} / ${SOVEREIGN_GUARANTEE}`;
+  ui.vaultGuaranteeFill.style.width = `${state.vault.sinceSovereign / SOVEREIGN_GUARANTEE * 100}%`;
+  ui.vaultOdds.replaceChildren(...COSMETIC_TIERS.map(tier => {
+    const row = document.createElement('div');
+    row.style.setProperty('--tier-color', tier.color);
+    const name = document.createElement('span');
+    name.textContent = tier.name;
+    const odds = document.createElement('b');
+    odds.textContent = `${tier.odds}%`;
+    row.append(name, odds);
+    return row;
+  }));
+  ui.vaultCollection.replaceChildren(...COLLECTION_COSMETICS.map(cosmetic => {
+    const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
+    const equipped = state.inventory.equipped.ship === cosmetic.id;
+    const tier = RARITY_BY_KEY[cosmetic.rarity];
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `vault-cosmetic ${acquired ? 'owned' : 'locked'}${equipped ? ' equipped' : ''}`;
+    card.dataset.cosmeticId = cosmetic.id;
+    card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}`);
+    card.style.setProperty('--tier-color', tier.color);
+    const image = document.createElement('img');
+    image.src = `./assets/sprites/${cosmetic.sprite}`;
+    image.alt = '';
+    const copy = document.createElement('span');
+    const name = document.createElement('b');
+    name.textContent = acquired ? cosmetic.name : 'LOCKED';
+    const rarity = document.createElement('small');
+    rarity.textContent = equipped ? 'EQUIPPED' : tier.name;
+    copy.append(name, rarity);
+    card.append(image, copy);
+    card.addEventListener('click', () => showCosmeticDetail(cosmetic.id));
+    return card;
+  }));
+  const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
+  ui.openCrate.disabled = crateOpening || Boolean(state.vault.pendingReward) || missing > 0;
+  ui.openCrate.innerHTML = missing
+    ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
+    : `<i>♛</i> OPEN · ◆ ${CROWN_CRATE_COST}`;
+  ui.vaultStatus.textContent = missing
+    ? 'EARN SHARDS BY COMPLETING QUALIFIED RUNS'
+    : state.vault.opens === 0
+      ? 'FIRST OPENING GUARANTEED NEW'
+      : state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1
+        ? 'NEXT CRATE GUARANTEED SOVEREIGN'
+        : 'DUPLICATES SALVAGE AUTOMATICALLY';
+  renderShardBalance();
+};
+
+const showCosmeticDetail = cosmeticId => {
+  const cosmetic = COSMETIC_BY_ID[cosmeticId];
+  if (!cosmetic) return;
+  const tier = RARITY_BY_KEY[cosmetic.rarity];
+  const state = shardWallet.getState();
+  const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
+  const equipped = state.inventory.equipped.ship === cosmetic.id;
+  selectedCosmeticDetailId = cosmetic.id;
+  ui.cosmeticDetail.style.setProperty('--tier-color', tier.color);
+  ui.cosmeticDetailImage.src = `./assets/sprites/${cosmetic.sprite}`;
+  ui.cosmeticDetailTier.textContent = tier.name;
+  ui.cosmeticDetailName.textContent = cosmetic.name;
+  ui.cosmeticDetailStatus.textContent = acquired ? 'OWNED' : 'LOCKED';
+  ui.cosmeticDetailStatus.classList.toggle('owned', acquired);
+  ui.cosmeticDetail.classList.toggle('detail-owned', acquired);
+  ui.cosmeticDetailHint.textContent = acquired ? (equipped ? 'ACTIVE SHIP CHASSIS' : 'READY FOR YOUR NEXT RUN') : 'AVAILABLE IN CROWN CRATES';
+  ui.equipCosmetic.classList.toggle('hidden', !acquired);
+  ui.equipCosmetic.disabled = equipped;
+  ui.equipCosmetic.innerHTML = equipped ? '<i>♛</i> EQUIPPED' : '<i>♛</i> EQUIP';
+  ui.cosmeticDetail.classList.remove('hidden');
+  (acquired ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
+};
+
+const closeCosmeticDetail = () => {
+  ui.cosmeticDetail.classList.add('hidden');
+  ui.vaultCollection.querySelector(`[data-cosmetic-id="${selectedCosmeticDetailId}"]`)?.focus({ preventScroll: true });
+};
+
+const showCrateReveal = outcome => {
+  const cosmetic = COSMETIC_BY_ID[outcome.cosmeticId];
+  const tier = RARITY_BY_KEY[outcome.tier];
+  if (!cosmetic || !tier) return;
+  ui.crateReveal.classList.remove(...COSMETIC_TIERS.map(item => `tier-${item.key}`));
+  ui.crateReveal.classList.add(`tier-${tier.key}`);
+  ui.crateReveal.style.setProperty('--tier-color', tier.color);
+  ui.revealShip.src = `./assets/sprites/${cosmetic.sprite}`;
+  ui.revealEyebrow.textContent = outcome.duplicate ? 'DUPLICATE DETECTED' : (outcome.guaranteedSovereign ? 'SOVEREIGN GUARANTEE' : 'CRATE OPENED');
+  ui.revealTier.textContent = tier.name;
+  ui.revealName.textContent = cosmetic.name;
+  ui.revealMessage.textContent = outcome.duplicate ? `SALVAGE VALUE · ◆ ${outcome.salvageValue}` : 'NEW CHASSIS ACQUIRED';
+  ui.revealContinue.innerHTML = outcome.duplicate ? `<i>♛</i> SALVAGE · +◆ ${outcome.salvageValue}` : '<i>♛</i> CONTINUE';
+  ui.crateReveal.classList.remove('hidden');
+  void ui.crateReveal.offsetWidth;
+  sfx.play(`vault-${tier.key}`);
+  if (hapticsEnabled && navigator.vibrate) {
+    const patterns = { rare: [28], royal: [35, 35, 45], mythic: [45, 30, 70], sovereign: [45, 35, 45, 35, 100] };
+    if (patterns[tier.key]) navigator.vibrate(patterns[tier.key]);
+  }
+  ui.revealContinue.focus({ preventScroll: true });
+};
+
+const closeCrateReveal = () => {
+  shardWallet.salvagePending();
+  ui.crateReveal.classList.add('hidden');
+  renderVault();
+  ui.openCrate.focus({ preventScroll: true });
+};
+
+const openVault = () => {
+  vaultOddsExpanded = false;
+  renderVault();
+  renderVaultOddsVisibility();
+  ui.vaultOverlay.classList.remove('hidden');
+  const pending = shardWallet.getState().vault.pendingReward;
+  if (pending) showCrateReveal(pending);
+  else ui.openCrate.focus({ preventScroll: true });
+};
+
+const closeVault = () => {
+  if (crateOpening) return;
+  shardWallet.salvagePending();
+  ui.crateReveal.classList.add('hidden');
+  ui.cosmeticDetail.classList.add('hidden');
+  ui.vaultOverlay.classList.add('hidden');
+  renderShardBalance();
+  selectMenuChoice(2, true);
+};
 let toastTimer = 0;
 let toastPriority = -1;
 const toastPriorities = { debug: 0, event: 1, threat: 2, weapon: 3, critical: 4 };
@@ -356,6 +502,13 @@ const game = new Game($('game'), input, {
   sfx: type => sfx.play(type),
 });
 
+const applyEquippedShip = () => {
+  const equippedId = shardWallet.getState().inventory.equipped.ship;
+  const cosmetic = COSMETIC_BY_ID[equippedId] || COSMETIC_BY_ID.ship_default;
+  game.setPlayerSkin(cosmetic.sprite);
+};
+
+applyEquippedShip();
 game.reducedEffects = reducedEffects;
 applyEffectsSetting();
 renderSettings();
@@ -390,7 +543,7 @@ const returnToMenu = () => {
   game.stop();
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
   ui.hud.classList.add('hidden');
   ui.dashButton.classList.add('hidden');
   ui.pauseButton.classList.add('hidden');
@@ -434,7 +587,7 @@ const finishTutorial = () => {
 };
 
 const start = () => {
-  [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
   ui.hud.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
@@ -462,9 +615,52 @@ ui.pauseButton.addEventListener('click', () => pauseRun(false));
 ui.tutorialDone.addEventListener('click', finishTutorial);
 ui.menuSettings.addEventListener('click', () => openSettings('menu'));
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
+ui.menuVault.addEventListener('click', openVault);
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
 ui.closeLeaderboard.addEventListener('click', closeLeaderboard);
+ui.closeVault.addEventListener('click', closeVault);
+ui.vaultOddsToggle.addEventListener('click', () => {
+  vaultOddsExpanded = !vaultOddsExpanded;
+  renderVaultOddsVisibility();
+  sfx.play('confirm');
+});
+ui.revealContinue.addEventListener('click', closeCrateReveal);
+ui.closeCosmeticDetail.addEventListener('click', closeCosmeticDetail);
+ui.equipCosmetic.addEventListener('click', () => {
+  try {
+    shardWallet.equipCosmetic(selectedCosmeticDetailId);
+    applyEquippedShip();
+    renderVault();
+    showCosmeticDetail(selectedCosmeticDetailId);
+    sfx.play('perk');
+    if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
+  } catch {
+    ui.cosmeticDetailHint.textContent = 'THIS CHASSIS IS STILL LOCKED';
+  }
+});
+ui.openCrate.addEventListener('click', () => {
+  if (crateOpening) return;
+  try {
+    crateOpening = true;
+    const result = shardWallet.openCrate();
+    ui.crownCrate.classList.remove('opening');
+    void ui.crownCrate.offsetWidth;
+    ui.crownCrate.classList.add('opening');
+    renderVault();
+    sfx.play('confirm');
+    setTimeout(() => {
+      crateOpening = false;
+      ui.crownCrate.classList.remove('opening');
+      renderVault();
+      showCrateReveal(result.outcome);
+    }, reducedEffects ? 80 : 650);
+  } catch (error) {
+    crateOpening = false;
+    renderVault();
+    ui.vaultStatus.textContent = error?.code === 'NOT_ENOUGH_SHARDS' ? 'NOT ENOUGH SHARDS' : 'RESOLVE THE CURRENT REWARD FIRST';
+  }
+});
 ui.leaderboardTabs.forEach(button => button.addEventListener('click', () => loadLeaderboard(button.dataset.boardDifficulty)));
 ui.playerInitials.addEventListener('input', () => {
   ui.playerInitials.dataset.pristine = 'false';
@@ -559,13 +755,16 @@ addEventListener('blur', () => pauseRun(true));
 addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
-  if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
+  if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
+  else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
+  else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
+  else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
   else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
   else pauseRun(false);
 });
 addEventListener('keydown', event => {
-  if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
+  if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     selectResultChoice(selectedResultChoice + 1, true);
@@ -581,7 +780,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();
@@ -602,8 +801,33 @@ addEventListener('keydown', event => {
 loadLeaderboard(selectedDifficulty, true);
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
-const debugMode = new URLSearchParams(location.search).has('debug') || location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-document.documentElement.classList.toggle('touch-preview', debugMode && new URLSearchParams(location.search).has('touch'));
+const debugParams = new URLSearchParams(location.search);
+const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+const debugMode = debugParams.has('debug') || localPreview;
+document.documentElement.classList.toggle('touch-preview', debugMode && debugParams.has('touch'));
+if (localPreview && debugParams.has('vault')) {
+  const previewState = shardWallet.getState();
+  const previewBatch = debugParams.get('vault') || '1';
+  const previewTarget = Math.min(50_000, Math.max(600, Math.floor(Number(debugParams.get('shards')) || 600)));
+  const previewId = `debug:vault-preview:${previewBatch}:${previewTarget}`;
+  if (!previewState.transactions.some(transaction => transaction.id === previewId)) {
+    const credit = Math.max(0, previewTarget - previewState.balance);
+    previewState.balance += credit;
+    previewState.transactions.push({ id: previewId, kind: 'debug_credit', amount: credit, createdAt: new Date().toISOString() });
+    shardWallet.write(previewState);
+    renderShardBalance();
+  }
+}
+if (localPreview && debugParams.has('sovereign')) {
+  const sovereignState = shardWallet.getState();
+  const sovereignPreviewId = `debug:sovereign-preview:${debugParams.get('sovereign') || '1'}`;
+  if (!sovereignState.transactions.some(transaction => transaction.id === sovereignPreviewId)) {
+    sovereignState.vault.sinceSovereign = SOVEREIGN_GUARANTEE - 1;
+    sovereignState.transactions.push({ id: sovereignPreviewId, kind: 'debug_guarantee', amount: 0, createdAt: new Date().toISOString() });
+    shardWallet.write(sovereignState);
+    renderShardBalance();
+  }
+}
 if (debugMode) {
   globalThis.__crownLizardDebug = game;
   const debugWeapons = { Digit1: 'blaster', Digit2: 'spread', Digit3: 'pulse', Digit4: 'laser', Digit5: 'tesla' };
