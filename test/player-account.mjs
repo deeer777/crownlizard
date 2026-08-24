@@ -108,6 +108,7 @@ let mockedRunOwner = userId;
 let rpcDuplicate = false;
 let crateResult = 'opened';
 let equipOwned = true;
+let mockedAuthUser = { id: userId, is_anonymous: true, email: '' };
 globalThis.fetch = async (url, options = {}) => {
   calls.push({ url: String(url), options });
   if (String(url).includes('/auth/v1/signup')) return Response.json({
@@ -117,7 +118,20 @@ globalThis.fetch = async (url, options = {}) => {
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     user: { id: userId, is_anonymous: true },
   });
-  if (String(url).includes('/auth/v1/user')) return Response.json({ id: userId, is_anonymous: true });
+  if (String(url).includes('/auth/v1/token?grant_type=password')) return Response.json({
+    access_token: 'login.header.payload.signature-access',
+    refresh_token: 'login-refresh-token-with-enough-entropy',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
+  });
+  if (String(url).includes('/auth/v1/user')) {
+    if (options.method === 'PUT') {
+      const body = JSON.parse(options.body || '{}');
+      return Response.json({ ...mockedAuthUser, email: body.email || mockedAuthUser.email });
+    }
+    return Response.json(mockedAuthUser);
+  }
   if (String(url).includes('auth_bootstrap_events?')) return Response.json([]);
   if (String(url).endsWith('/rest/v1/auth_bootstrap_events')) return new Response(null, { status: 201 });
   if (String(url).includes('player_wallets?on_conflict')) return new Response(null, { status: 201 });
@@ -175,6 +189,42 @@ assert.equal(walletResponse.status, 200, 'an authenticated player can read the s
 const walletPayload = await walletResponse.json();
 assert.equal(walletPayload.wallet.balance, 420, 'the browser receives the server balance');
 assert.equal(walletPayload.wallet.inventory[0].cosmeticId, 'ship_void_hunter', 'the browser receives server-owned inventory only');
+
+const linkEmailResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/link-email', {
+    method: 'POST', headers: { Authorization: 'Bearer header.payload.signature-access', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'Pilot@Example.com' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'link-email'] },
+});
+assert.equal(linkEmailResponse.status, 202, 'an anonymous player can request an email identity link');
+const linkEmailCall = calls.find(call => call.url.includes('/auth/v1/user?redirect_to='));
+assert.equal(JSON.parse(linkEmailCall.options.body).email, 'pilot@example.com', 'email linking normalizes the address before Supabase Auth');
+assert.equal(Object.hasOwn(JSON.parse(linkEmailCall.options.body), 'password'), false, 'the link step never accepts a password before email verification');
+
+mockedAuthUser = { id: userId, is_anonymous: false, email: 'pilot@example.com' };
+const setPasswordResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/password', {
+    method: 'POST', headers: { Authorization: 'Bearer header.payload.signature-access', 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'correct-horse-crown' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'password'] },
+});
+assert.equal(setPasswordResponse.status, 200, 'a verified permanent player can create a password');
+const passwordCall = calls.findLast(call => call.url.endsWith('/auth/v1/user') && call.options.method === 'PUT');
+assert.deepEqual(JSON.parse(passwordCall.options.body), { password: 'correct-horse-crown' }, 'only Supabase Auth receives the new password');
+
+const loginResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'pilot@example.com', password: 'correct-horse-crown' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'login'] },
+});
+assert.equal(loginResponse.status, 200, 'a permanent player can restore a session on another device');
+const loginPayload = await loginResponse.json();
+assert.equal(loginPayload.player.anonymous, false, 'restored sessions are permanent identities');
+assert.equal(loginPayload.wallet.balance, 420, 'sign-in returns the existing server-owned Vault atomically');
 
 const bootstrapResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/bootstrap', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.8' } }),
@@ -278,6 +328,25 @@ const lockedEquipResponse = await onRequest({
   params: { path: ['vault', 'equip'] },
 });
 assert.equal(lockedEquipResponse.status, 403, 'a locked cosmetic cannot be equipped by changing the request');
+
+const redirectStorage = {
+  values: new Map(),
+  getItem(key) { return this.values.get(key) || null; },
+  setItem(key, value) { this.values.set(key, value); },
+  removeItem(key) { this.values.delete(key); },
+};
+const redirectAccount = new PlayerAccount(redirectStorage);
+const encodedClaims = Buffer.from(JSON.stringify({ sub: userId, email: 'pilot@example.com', is_anonymous: false })).toString('base64url');
+const redirectToken = `header.${encodedClaims}.signature-with-enough-entropy`;
+const redirectResult = redirectAccount.consumeAuthRedirect({
+  hash: `#access_token=${redirectToken}&refresh_token=verified-refresh-token-with-entropy&expires_in=3600`,
+  href: `https://crownlizard.com/?account=verified#access_token=${redirectToken}`,
+  pathname: '/',
+  search: '?account=verified',
+}, { replaceState() {} });
+assert.equal(redirectResult.verified, true, 'the email verification redirect upgrades the stored browser session');
+assert.equal(redirectAccount.getPlayer().id, userId, 'identity linking preserves the anonymous player id and its inventory ownership');
+assert.equal(redirectAccount.needsPasswordSetup(), true, 'verified email immediately requires password completion');
 globalThis.fetch = originalFetch;
 
 console.log('Player account and legacy migration test passed');

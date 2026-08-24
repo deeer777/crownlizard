@@ -9,9 +9,9 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260824-54-menu-performance/, 'the current frontend ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260824-53-wallet-bootstrap/, 'the account client cannot be served from an older browser cache');
-assert.match(serverApi, /'0\.14\.9-54'/, 'the released frontend version can register server-owned runs');
+assert.match(index, /main\.js\?v=20260824-55-player-login/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260824-55-player-login/, 'the account client cannot be served from an older browser cache');
+assert.match(serverApi, /'0\.15\.0-55'/, 'the released frontend version can register server-owned runs');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
 assert.match(main, /cl:wallet-session-reset:v51/, 'one stale anonymous wallet session is discarded for the clean cutover');

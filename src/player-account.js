@@ -1,12 +1,21 @@
 const SESSION_KEY = 'cl:player-session:v1';
 const PENDING_CRATE_KEY = 'cl:pending-crate:v1';
 const PENDING_SETTLEMENT_KEY = 'cl:pending-settlement:v1';
+const PASSWORD_SETUP_KEY = 'cl:account-password:v1';
 const REQUEST_TIMEOUT = 20000;
 
 const validSession = value => value
   && typeof value.accessToken === 'string' && value.accessToken.length > 20
   && typeof value.refreshToken === 'string' && value.refreshToken.length > 20
   && typeof value.player?.id === 'string';
+
+const decodeJwtPayload = token => {
+  try {
+    const encoded = String(token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+    return JSON.parse(atob(padded));
+  } catch { return null; }
+};
 
 const requestJson = async (url, options = {}) => {
   const controller = new AbortController();
@@ -47,6 +56,36 @@ export class PlayerAccount {
     this.storage = storage;
     this.storageKey = storageKey;
     this.session = this.readSession();
+    this.redirectResult = this.consumeAuthRedirect();
+  }
+
+  consumeAuthRedirect(location = globalThis.location, history = globalThis.history) {
+    if (!location?.hash) return null;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const error = params.get('error_description');
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (error) {
+      try { history?.replaceState({}, '', `${location.pathname}${location.search}`); } catch {}
+      return { error };
+    }
+    if (!accessToken || !refreshToken) return null;
+    const claims = decodeJwtPayload(accessToken);
+    if (!claims?.sub) return { error: 'Account verification could not be completed.' };
+    const session = this.saveSession({
+      accessToken,
+      refreshToken,
+      expiresIn: Number(params.get('expires_in')) || 3600,
+      player: { id: String(claims.sub), anonymous: Boolean(claims.is_anonymous), email: String(claims.email || '') },
+    });
+    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
+    try {
+      const clean = new URL(location.href);
+      clean.hash = '';
+      clean.searchParams.delete('account');
+      history?.replaceState({}, '', `${clean.pathname}${clean.search}`);
+    } catch {}
+    return { verified: true, session };
   }
 
   readSession() {
@@ -67,6 +106,17 @@ export class PlayerAccount {
   clearSession() {
     this.session = null;
     try { this.storage?.removeItem(this.storageKey); } catch {}
+  }
+
+  getPlayer() { return this.session?.player || null; }
+
+  needsPasswordSetup() {
+    try { return this.storage?.getItem(PASSWORD_SETUP_KEY) === 'required'; } catch { return false; }
+  }
+
+  syncPlayer(player) {
+    if (!this.session || typeof player?.id !== 'string' || player.id !== this.session.player.id) return;
+    this.saveSession({ ...this.session, player: { ...this.session.player, ...player } });
   }
 
   createSession() {
@@ -108,7 +158,11 @@ export class PlayerAccount {
 
   async getAccessToken() { return (await this.ensureSession()).accessToken; }
 
-  getWallet() { return this.authorizedRequest('/api/player/wallet'); }
+  async getWallet() {
+    const payload = await this.authorizedRequest('/api/player/wallet');
+    this.syncPlayer(payload.player);
+    return payload;
+  }
 
   async bootstrapWallet() {
     if (this.session) return this.getWallet();
@@ -123,6 +177,37 @@ export class PlayerAccount {
     if (!session.accessToken || !session.refreshToken) throw new Error('Player bootstrap session is missing.');
     this.session = session;
     try { this.storage?.setItem(this.storageKey, JSON.stringify(session)); } catch {}
+    return payload;
+  }
+
+  linkEmail(email) {
+    return this.authorizedRequest('/api/player/account/link-email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async setPassword(password) {
+    const payload = await this.authorizedRequest('/api/player/account/password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+    this.syncPlayer(payload.player);
+    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'done'); } catch {}
+    return payload;
+  }
+
+  async login(email, password) {
+    const payload = await requestJson('/api/player/account/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    this.saveSession(payload);
+    try {
+      this.storage?.setItem(PASSWORD_SETUP_KEY, 'done');
+      this.storage?.removeItem(PENDING_CRATE_KEY);
+      this.storage?.removeItem(PENDING_SETTLEMENT_KEY);
+    } catch {}
     return payload;
   }
 

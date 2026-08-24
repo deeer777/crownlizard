@@ -23,8 +23,10 @@ Local checks cannot make a browser-owned wallet tamper-proof. Checksums or an em
 2. Settle shard rewards against the server-created run ID with atomic, idempotent database operations. Implemented in the staged server API with Auth ownership, elapsed-time/stat validation, a locked run row and a unique transaction key.
 3. Roll crates on the server with an atomic balance deduction and unique opening ID. Implemented in the staged API: Web Crypto rolls are generated in Cloudflare and cost, pity, tier, inventory and duplicate salvage settle under a database row lock.
 4. Verify rewarded-ad completion using the ad provider's server callback before issuing a sponsored opening token.
-5. Add an account or anonymous bearer credential that can later be linked to an account, plus rate limits and an audit log.
+5. Add an account or anonymous bearer credential that can later be linked to an account, plus rate limits and an audit log. Anonymous bearer sessions and permanent email/password linking are implemented in Build 55; a dedicated account-event audit table remains future hardening before a player market.
 
 Until the updated schema and Cloudflare variables are applied, the cutover intentionally fails closed rather than falling back to a mutable production wallet.
 
 Anonymous player creation is rate-limited per hashed IP. Before public account activation, Supabase Anonymous Sign-Ins must be enabled and `SUPABASE_PUBLISHABLE_KEY` configured in Cloudflare. The optional legacy import is fail-closed unless `ECONOMY_MIGRATION_DEADLINE` is a valid future timestamp.
+
+Player passwords are accepted only by the account route and forwarded to Supabase Auth over HTTPS. They are never stored in public tables, written to the economy ledger or included in application logs. Failed login responses are deliberately generic to reduce account enumeration, and password creation requires a verified non-anonymous Auth identity.

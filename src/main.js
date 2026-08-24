@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-54-menu-performance';
+import { CONFIG } from './config.js?v=20260824-55-player-login';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-54-menu-performance';
+import { Game } from './game.js?v=20260824-55-player-login';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-53-wallet-bootstrap';
+import { PlayerAccount } from './player-account.js?v=20260824-55-player-login';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -23,6 +23,7 @@ const ui = {
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountWarning: $('accountWarning'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
@@ -60,6 +61,8 @@ const tutorialKey = 'cl:tutorial:v1';
 const tutorialForced = new URLSearchParams(location.search).has('tutorial');
 let tutorialForcedUsed = false;
 let settingsReturn = 'menu';
+let accountMode = 'secure';
+let accountBusy = false;
 let leaderboardReturn = 'menu';
 let leaderboardDifficulty = selectedDifficulty;
 let runGeneration = 0;
@@ -378,6 +381,12 @@ const renderSettings = () => {
   });
   ui.sound.classList.toggle('off', !music.enabled);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
+  const player = playerAccount.getPlayer();
+  ui.accountBadge.textContent = localPreview
+    ? 'LIVE ONLY'
+    : player && !player.anonymous
+      ? playerAccount.needsPasswordSetup() ? 'FINISH SETUP' : 'SECURED'
+      : 'GUEST';
 };
 
 const selectMenuChoice = (index, focus = false) => {
@@ -767,6 +776,7 @@ const bootstrapServerEconomy = async () => {
   renderShardBalance();
   renderVault();
   applyEquippedShip();
+  renderSettings();
   return snapshot;
 };
 
@@ -790,6 +800,12 @@ const connectServerEconomy = () => {
 
 if (serverEconomy) {
   connectServerEconomy();
+  if (playerAccount.redirectResult) queueMicrotask(() => {
+    openSettings('menu');
+    openAccount();
+    if (playerAccount.redirectResult.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
+    else setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+  });
 }
 
 const engine = new Engine({ update: dt => game.update(dt), render: () => { if (game.active) game.render(); }, step: 1 / CONFIG.simulationHz });
@@ -825,7 +841,7 @@ const returnToMenu = () => {
   game.stop();
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -850,6 +866,65 @@ const openSettings = origin => {
 const closeSettings = () => {
   ui.settingsOverlay.classList.add('hidden');
   if (settingsReturn === 'pause' && game.paused) ui.pauseOverlay.classList.remove('hidden');
+};
+
+const setAccountStatus = (message = '', kind = '') => {
+  ui.accountFormStatus.textContent = message;
+  ui.accountFormStatus.className = `account-form-status${kind ? ` ${kind}` : ''}`;
+};
+
+const renderAccount = () => {
+  const player = playerAccount.getPlayer();
+  const permanent = Boolean(player && !player.anonymous);
+  const passwordSetup = permanent && playerAccount.needsPasswordSetup();
+  ui.accountIdentity.textContent = permanent ? (player.email || 'SECURED PLAYER') : 'GUEST VAULT';
+  ui.accountDescription.textContent = localPreview
+    ? 'PLAYER ACCOUNTS ARE AVAILABLE ON CROWNLIZARD.COM.'
+    : permanent
+      ? passwordSetup ? 'EMAIL VERIFIED · CREATE A PASSWORD TO FINISH.' : 'YOUR SHARDS AND SHIPS ARE PROTECTED.'
+      : accountMode === 'login'
+        ? 'LOAD AN EXISTING CROWN ACCOUNT ON THIS DEVICE.'
+        : 'KEEP THIS VAULT AND USE IT ON OTHER DEVICES.';
+  ui.accountTabs.classList.toggle('hidden', permanent);
+  ui.accountForm.classList.toggle('hidden', permanent && !passwordSetup);
+  ui.accountEmailField.classList.toggle('hidden', passwordSetup);
+  ui.accountPasswordField.classList.toggle('hidden', !passwordSetup && accountMode !== 'login');
+  ui.accountWarning.classList.toggle('hidden', permanent || accountMode !== 'login');
+  ui.accountSecureTab.classList.toggle('selected', accountMode === 'secure');
+  ui.accountSecureTab.setAttribute('aria-selected', String(accountMode === 'secure'));
+  ui.accountLoginTab.classList.toggle('selected', accountMode === 'login');
+  ui.accountLoginTab.setAttribute('aria-selected', String(accountMode === 'login'));
+  ui.accountEmail.required = !passwordSetup;
+  ui.accountPassword.required = passwordSetup || accountMode === 'login';
+  ui.accountPassword.autocomplete = passwordSetup ? 'new-password' : 'current-password';
+  ui.accountSubmit.disabled = accountBusy || localPreview;
+  ui.accountSubmit.innerHTML = passwordSetup
+    ? '<i>♛</i> CREATE PASSWORD'
+    : accountMode === 'login'
+      ? '<i>♛</i> SIGN IN'
+      : '<i>♛</i> SEND VERIFY LINK';
+  renderSettings();
+};
+
+const openAccount = () => {
+  accountMode = 'secure';
+  setAccountStatus(playerAccount.redirectResult?.error || '');
+  ui.settingsOverlay.classList.add('hidden');
+  ui.accountOverlay.classList.remove('hidden');
+  renderAccount();
+  const player = playerAccount.getPlayer();
+  const target = player && !player.anonymous && playerAccount.needsPasswordSetup() ? ui.accountPassword : ui.accountEmail;
+  if (!target.closest('.hidden')) target.focus({ preventScroll: true });
+};
+
+const closeAccount = () => {
+  if (accountBusy) return;
+  ui.accountOverlay.classList.add('hidden');
+  ui.settingsOverlay.classList.remove('hidden');
+  ui.accountPassword.value = '';
+  setAccountStatus();
+  renderSettings();
+  ui.openAccount.focus({ preventScroll: true });
 };
 
 const openTutorial = () => {
@@ -891,7 +966,7 @@ const start = async () => {
   rewardedAdViewing = false;
   lastSponsoredClaimedRunId = '';
   closeRewardedAdOverlay();
-  [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -926,6 +1001,54 @@ ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selec
 ui.menuVault.addEventListener('click', openVault);
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
+ui.openAccount.addEventListener('click', openAccount);
+ui.closeAccount.addEventListener('click', closeAccount);
+ui.accountSecureTab.addEventListener('click', () => {
+  accountMode = 'secure';
+  ui.accountPassword.value = '';
+  setAccountStatus();
+  renderAccount();
+  ui.accountEmail.focus({ preventScroll: true });
+});
+ui.accountLoginTab.addEventListener('click', () => {
+  accountMode = 'login';
+  setAccountStatus();
+  renderAccount();
+  ui.accountEmail.focus({ preventScroll: true });
+});
+ui.accountForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (accountBusy || localPreview) return;
+  accountBusy = true;
+  setAccountStatus('CONTACTING CROWN NETWORK...');
+  renderAccount();
+  try {
+    const player = playerAccount.getPlayer();
+    const passwordSetup = player && !player.anonymous && playerAccount.needsPasswordSetup();
+    if (passwordSetup) {
+      await playerAccount.setPassword(ui.accountPassword.value);
+      ui.accountPassword.value = '';
+      setAccountStatus('ACCOUNT SECURED · PASSWORD SAVED', 'success');
+    } else if (accountMode === 'login') {
+      const snapshot = await playerAccount.login(ui.accountEmail.value, ui.accountPassword.value);
+      acceptServerWallet(snapshot);
+      serverEconomyReady = true;
+      ui.accountPassword.value = '';
+      renderShardBalance();
+      renderVault();
+      applyEquippedShip();
+      setAccountStatus('SIGNED IN · VAULT RESTORED', 'success');
+    } else {
+      const result = await playerAccount.linkEmail(ui.accountEmail.value);
+      setAccountStatus(`VERIFY LINK SENT TO ${result.email}`, 'success');
+    }
+  } catch (error) {
+    setAccountStatus(String(error.message || 'ACCOUNT SERVICE UNAVAILABLE').toUpperCase(), 'error');
+  } finally {
+    accountBusy = false;
+    renderAccount();
+  }
+});
 ui.closeLeaderboard.addEventListener('click', closeLeaderboard);
 ui.closeVault.addEventListener('click', closeVault);
 ui.vaultOddsToggle.addEventListener('click', () => {
@@ -1079,6 +1202,7 @@ addEventListener('keydown', event => {
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
   else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
+  else if (!ui.accountOverlay.classList.contains('hidden')) closeAccount();
   else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
   else pauseRun(false);
@@ -1100,7 +1224,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();

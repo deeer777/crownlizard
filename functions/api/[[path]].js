@@ -1,8 +1,9 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COSMETIC_IDS = new Set([
   'ship_verdant_scout', 'ship_ember_runner', 'ship_crystal_dart', 'ship_void_hunter',
   'ship_solar_guard', 'ship_royal_vanguard', 'ship_rift_phantom', 'ship_crown_sovereign',
@@ -192,6 +193,7 @@ const sessionPayload = payload => ({
   player: {
     id: String(payload.user?.id || ''),
     anonymous: Boolean(payload.user?.is_anonymous ?? true),
+    email: String(payload.user?.email || ''),
   },
 });
 
@@ -277,7 +279,76 @@ export const validateLegacyWallet = body => {
 const getPlayerWallet = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
-  return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous) }, wallet: await walletSnapshot(config, user.id) });
+  return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous), email: String(user.email || '') }, wallet: await walletSnapshot(config, user.id) });
+};
+
+const accountCredentials = async request => {
+  let body;
+  try { body = await readJson(request); } catch { return { error: 'Invalid account request.' }; }
+  const email = String(body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
+  if (!EMAIL_PATTERN.test(email) || email.length > 254) return { error: 'Enter a valid email address.' };
+  return { email, password };
+};
+
+const linkPlayerEmail = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  if (!user.is_anonymous) return json({ error: 'This player account is already secured.' }, 409);
+  const credentials = await accountCredentials(request);
+  if (credentials.error) return json({ error: credentials.error }, 422);
+  const redirect = new URL('/?account=verified', request.url);
+  try {
+    await authFetch(config, `user?redirect_to=${encodeURIComponent(redirect.href)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${bearerToken(request)}` },
+      body: JSON.stringify({ email: credentials.email }),
+    });
+    return json({ status: 'verification_sent', email: credentials.email }, 202);
+  } catch (error) {
+    if (error.status === 422 || error.status === 400) return json({ error: 'That email cannot be linked. Sign in if it already has an account.' }, 409);
+    if (error.status === 429) return json({ error: 'Please wait before requesting another verification email.' }, 429);
+    throw error;
+  }
+};
+
+const setPlayerPassword = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  if (user.is_anonymous || !user.email) return json({ error: 'Verify your email before creating a password.' }, 409);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid account request.' }, 400); }
+  const password = String(body.password || '');
+  if (password.length < 10 || password.length > 128) return json({ error: 'Use at least 10 characters for your password.' }, 422);
+  try {
+    const updated = await authFetch(config, 'user', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${bearerToken(request)}` },
+      body: JSON.stringify({ password }),
+    });
+    return json({ player: { id: user.id, anonymous: false, email: String(updated.email || user.email) } });
+  } catch (error) {
+    if (error.status === 422 || error.status === 400) return json({ error: 'That password could not be saved.' }, 422);
+    throw error;
+  }
+};
+
+const loginPlayer = async (request, config) => {
+  const credentials = await accountCredentials(request);
+  if (credentials.error || credentials.password.length < 1 || credentials.password.length > 128) return json({ error: 'Email or password is incorrect.' }, 401);
+  try {
+    const payload = await authFetch(config, 'token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+    });
+    const session = sessionPayload(payload);
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
+    return json({ ...session, wallet: await walletSnapshot(config, session.player.id) });
+  } catch (error) {
+    if (error.status === 400 || error.status === 401 || error.message === 'AUTH_SESSION_INVALID') return json({ error: 'Email or password is incorrect.' }, 401);
+    if (error.status === 429) return json({ error: 'Too many sign-in attempts. Try again later.' }, 429);
+    throw error;
+  }
 };
 
 const bootstrapPlayerWallet = async (request, config) => {
@@ -494,6 +565,9 @@ export const onRequest = async context => {
     if (path === 'player/bootstrap' && request.method === 'POST') return await bootstrapPlayerWallet(request, config);
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
+    if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
+    if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);
+    if (path === 'player/account/login' && request.method === 'POST') return await loginPlayer(request, config);
     if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
