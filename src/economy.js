@@ -5,7 +5,8 @@ import {
   TIER_BY_KEY,
   chooseCosmetic,
   rollTier,
-} from './cosmetics.js?v=20260824-44';
+  secureRandom,
+} from './cosmetics.js?v=20260824-45-security';
 
 export const SHARD_RULES = Object.freeze({
   version: 1,
@@ -23,6 +24,10 @@ export const SHARD_RULES = Object.freeze({
   wardenShards: 15,
   wardenCap: 60,
   maximumRunReward: 150,
+});
+
+export const SPONSORED_RULES = Object.freeze({
+  dailyLimit: 3,
 });
 
 export const SHARD_STORAGE_KEY = 'cl:economy:v1';
@@ -62,6 +67,7 @@ const emptyState = () => ({
   transactions: [],
   inventory: { cosmetics: {}, equipped: { ship: 'ship_default' } },
   vault: { opens: 0, sinceSovereign: 0, pendingReward: null },
+  sponsored: { pendingRunId: '' },
 });
 const cloneState = state => JSON.parse(JSON.stringify(state));
 const acquisitionSources = new Set(['crate', 'shop', 'sponsored', 'grant']);
@@ -77,6 +83,7 @@ const normalizeOutcome = outcome => {
     duplicate: Boolean(outcome.duplicate),
     salvageValue: safeInteger(outcome.salvageValue),
     guaranteedSovereign: Boolean(outcome.guaranteedSovereign),
+    source: acquisitionSources.has(outcome.source) ? outcome.source : 'crate',
     createdAt: typeof outcome.createdAt === 'string' ? outcome.createdAt : new Date().toISOString(),
   };
 };
@@ -95,12 +102,21 @@ const normalizeState = value => {
   }
   const requestedShip = typeof value.inventory?.equipped?.ship === 'string' ? value.inventory.equipped.ship : 'ship_default';
   const equippedShip = requestedShip === 'ship_default' || cosmetics[requestedShip] ? requestedShip : 'ship_default';
+  const transactions = Array.isArray(value.transactions)
+    ? value.transactions.filter(transaction => transaction && typeof transaction.id === 'string').slice(-250)
+    : [];
+  const hasSponsoredState = Boolean(value.sponsored && Object.prototype.hasOwnProperty.call(value.sponsored, 'pendingRunId'));
+  const requestedPendingRunId = typeof value.sponsored?.pendingRunId === 'string' ? value.sponsored.pendingRunId : '';
+  const sponsoredClaimed = runId => transactions.some(transaction => transaction.kind === 'sponsored_crate' && transaction.runId === runId);
+  const sponsoredEligible = runId => transactions.some(transaction => transaction.kind === 'run_reward' && transaction.runId === runId && transaction.reward?.sponsoredEligible);
+  const latestEligibleRun = [...transactions].reverse().find(transaction => transaction.kind === 'run_reward' && transaction.reward?.sponsoredEligible && !sponsoredClaimed(transaction.runId));
+  const pendingRunId = requestedPendingRunId && sponsoredEligible(requestedPendingRunId) && !sponsoredClaimed(requestedPendingRunId)
+    ? requestedPendingRunId
+    : hasSponsoredState ? '' : latestEligibleRun?.runId || '';
   return {
     version: SHARD_RULES.version,
     balance: safeInteger(value.balance),
-    transactions: Array.isArray(value.transactions)
-      ? value.transactions.filter(transaction => transaction && typeof transaction.id === 'string').slice(-250)
-      : [],
+    transactions,
     inventory: {
       cosmetics,
       equipped: { ship: equippedShip },
@@ -110,11 +126,16 @@ const normalizeState = value => {
       sinceSovereign: Math.min(SOVEREIGN_GUARANTEE - 1, safeInteger(value.vault?.sinceSovereign)),
       pendingReward: normalizeOutcome(value.vault?.pendingReward),
     },
+    sponsored: { pendingRunId },
   };
 };
 
 const walletError = (code, message) => Object.assign(new Error(message), { code });
 const randomItem = (items, random) => items[Math.min(items.length - 1, Math.floor(Math.max(0, Math.min(.999999, Number(random()) || 0)) * items.length))];
+const utcDayKey = value => {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
 
 export class ShardWallet {
   constructor(storage = globalThis.localStorage, storageKey = SHARD_STORAGE_KEY) {
@@ -166,15 +187,61 @@ export class ShardWallet {
       createdAt: new Date().toISOString(),
       reward,
     });
+    if (reward.sponsoredEligible && !state.sponsored.pendingRunId) state.sponsored.pendingRunId = runId;
     state.transactions = state.transactions.slice(-250);
     const saved = this.write(state);
     return { reward, balance: saved.balance, duplicate: false };
   }
 
-  openCrate(random = Math.random) {
+  getSponsoredOffer(runId, now = new Date()) {
+    const state = this.read();
+    const runReward = state.transactions.find(transaction => transaction.kind === 'run_reward' && transaction.runId === runId);
+    const claimed = state.transactions.some(transaction => transaction.kind === 'sponsored_crate' && transaction.runId === runId);
+    const dayKey = utcDayKey(now);
+    const usedToday = state.transactions.filter(transaction => transaction.kind === 'sponsored_crate' && utcDayKey(transaction.createdAt) === dayKey).length;
+    const remainingToday = Math.max(0, SPONSORED_RULES.dailyLimit - usedToday);
+    let reason = '';
+    if (!runReward?.reward?.sponsoredEligible) reason = 'RUN_NOT_ELIGIBLE';
+    else if (claimed) reason = 'RUN_ALREADY_CLAIMED';
+    else if (remainingToday <= 0) reason = 'DAILY_LIMIT_REACHED';
+    else if (state.vault.pendingReward) reason = 'PENDING_REWARD';
+    return {
+      eligible: !reason,
+      runId,
+      reason,
+      claimed,
+      usedToday,
+      remainingToday,
+      dailyLimit: SPONSORED_RULES.dailyLimit,
+    };
+  }
+
+  getPendingSponsoredOffer(now = new Date()) {
+    const pendingRunId = this.read().sponsored.pendingRunId;
+    return pendingRunId ? this.getSponsoredOffer(pendingRunId, now) : null;
+  }
+
+  openCrate(random = secureRandom) {
+    return this.openCrateWith({ random, cost: CROWN_CRATE_COST, source: 'crate', transactionKind: 'crate_open' });
+  }
+
+  openSponsoredCrate(runId, random = secureRandom, now = new Date()) {
+    if (typeof runId !== 'string' || !runId) throw new TypeError('A local run id is required.');
+    const offer = this.getSponsoredOffer(runId, now);
+    if (!offer.eligible) throw walletError(offer.reason, 'This run cannot claim a sponsored crate.');
+    const result = this.openCrateWith({ random, cost: 0, source: 'sponsored', transactionKind: 'sponsored_crate', runId, now });
+    const state = this.read();
+    if (state.sponsored.pendingRunId === runId) {
+      state.sponsored.pendingRunId = '';
+      this.write(state);
+    }
+    return { ...result, sponsored: this.read().sponsored };
+  }
+
+  openCrateWith({ random = secureRandom, cost, source, transactionKind, runId = '', now = new Date() }) {
     const state = this.read();
     if (state.vault.pendingReward) throw walletError('PENDING_REWARD', 'Salvage the pending duplicate first.');
-    if (state.balance < CROWN_CRATE_COST) throw walletError('NOT_ENOUGH_SHARDS', 'Not enough shards for a Crown Crate.');
+    if (state.balance < cost) throw walletError('NOT_ENOUGH_SHARDS', 'Not enough shards for a Crown Crate.');
 
     const guaranteedSovereign = state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1;
     const tier = guaranteedSovereign ? TIER_BY_KEY.sovereign : rollTier(random);
@@ -187,8 +254,9 @@ export class ShardWallet {
 
     const duplicate = Boolean(state.inventory.cosmetics[cosmetic.id]);
     const openingNumber = state.vault.opens + 1;
-    const createdAt = new Date().toISOString();
-    const openingId = globalThis.crypto?.randomUUID?.() || `vault-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const createdAt = now.toISOString();
+    if (!globalThis.crypto?.randomUUID) throw walletError('SECURE_RANDOM_UNAVAILABLE', 'Secure crate opening is unavailable.');
+    const openingId = globalThis.crypto.randomUUID();
     const outcome = {
       openingId,
       openingNumber,
@@ -197,18 +265,20 @@ export class ShardWallet {
       duplicate,
       salvageValue: duplicate ? tier.salvage : 0,
       guaranteedSovereign,
+      source,
       createdAt,
     };
 
-    state.balance -= CROWN_CRATE_COST;
+    state.balance -= cost;
     state.vault.opens = openingNumber;
     state.vault.sinceSovereign = tier.key === 'sovereign' ? 0 : state.vault.sinceSovereign + 1;
     if (duplicate) state.vault.pendingReward = outcome;
-    else state.inventory.cosmetics[cosmetic.id] = { acquiredAt: createdAt, source: 'crate' };
+    else state.inventory.cosmetics[cosmetic.id] = { acquiredAt: createdAt, source };
     state.transactions.push({
-      id: `crate:${openingId}`,
-      kind: 'crate_open',
-      amount: -CROWN_CRATE_COST,
+      id: `${transactionKind}:${openingId}`,
+      kind: transactionKind,
+      runId: runId || undefined,
+      amount: -cost,
       createdAt,
       outcome,
     });

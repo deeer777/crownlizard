@@ -1,8 +1,18 @@
 # Crown Lizard — session handoff
 
-Current production version: **42** (`VER 0.11.0`)
-Latest completed local version: **44** (`VER 0.13.0`)
-Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&vault=6&shards=10000&sovereign=1&reload=44b`
+Current production version: **44** (`VER 0.13.0`)
+Latest completed local version: **45** (`VER 0.14.0`)
+Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=45-security`
+
+Security audit for Build 45 is completed locally: public query parameters can no longer enable debug shortcuts, crate/run randomness uses Web Crypto, and Cloudflare Pages security headers plus regression tests were added. The server-wallet cutover is implemented but not deployed; real ad verification and permanent identity linking remain before monetization or a player market. See `SECURITY.md`.
+
+Server-wallet Pass 1 provides Supabase Auth anonymous sessions, `player_wallets`, `player_inventory`, `economy_transactions`, RLS/revoked client grants, authenticated wallet reads, refresh flow and a deadline-gated one-time legacy import. Required setup before deployment: run the updated `supabase/schema.sql`, enable Anonymous Sign-Ins, add `SUPABASE_PUBLISHABLE_KEY`, and set a short `ECONOMY_MIGRATION_DEADLINE` only for the cutover window.
+
+Server settlement Pass 2: authenticated `/api/runs` requests bind the run to `user_id`; `/api/economy/settle` validates owner, server elapsed time and plausible run stats; `settle_run_reward` locks the run and atomically writes wallet balance, settlement timestamp and transaction. Replay returns the original result and another player receives 403.
+
+Atomic crate Pass 3: `cosmetic_catalog` is server-owned; `/api/vault/open` accepts only an idempotency UUID and generates tier/cosmetic rolls with Worker Web Crypto; `open_crown_crate` locks the wallet and atomically handles ◆150 cost, current Sovereign pity, first-open-new behavior, inventory, duplicate salvage and transaction history. Reusing the UUID returns the stored outcome without another debit.
+
+Frontend cutover Pass 4 is implemented: production bootstraps Auth and legacy import, refuses to start without an owned server run, settles shards with a retryable stored request, reads Vault state from Supabase, opens crates and equips ships through authenticated APIs, and never calls local wallet mutations. Localhost keeps local economy plus simulated ads for testing. Production ads are hidden until provider verification exists.
 
 ## Product direction
 
@@ -34,7 +44,10 @@ Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&vault=6&shards=10000&sovereign
 - Player-visible semantic version and build number on the title screen.
 - Pass 1 shard economy: qualified-run rules, performance-based payout, local wallet/ledger, one-time settlement and a full Run Over breakdown.
 - Immediate deaths, idle runs, `END RUN`, reloads and repeated game-over callbacks cannot farm shards.
-- Runs lasting 90 seconds or defeating a Warden already record eligibility for the future sponsored crate, without exposing an ad flow yet.
+- Runs lasting 90 seconds or defeating a Warden bank one optional simulated rewarded-ad crate. At most one Sponsored Signal can wait at a time; it survives score submission, menus and reloads and is claimable later in Crown Vault. It is cosmetic-only, limited to three rewarded openings per UTC day, and cancellation consumes nothing.
+- Crown Vault presents one shared crate station with clear `OPEN WITH SHARDS` and `WATCH AD · FREE OPEN` choices. The former CSS chest has been replaced by dedicated closed, signal-charged and open Crown Crate pixel sprites.
+- Crate opening now has a short arcade cinematic: seal charge and shake, a large golden open burst, then the opened chest recedes before the rarity reveal. Reduced Effects uses a shortened version.
+- Cinematic rays, particles and the screen burst inherit the rolled rarity color. A persisted `OPENING ANIMATION` switch in Vault can skip the cinematic entirely for rapid openings.
 - Pass 2 Crown Vault: 150-shard Crown Crates, eight ship cosmetics across five visible rarity tiers, first-opening new-item guarantee and a Sovereign guarantee on opening 200.
 - Duplicate cosmetics are held as a durable pending reward and salvaged for their displayed shard value, including safely after a page reload.
 - The inventory records cosmetic ID, acquisition time and source so the same collection can later move to Supabase and support a direct-purchase market.
@@ -71,9 +84,9 @@ Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&vault=6&shards=10000&sovereign
 
 ## Likely next priorities
 
-1. Let the user playtest Build 44 locally, especially ship readability during live movement and Sovereign presentation.
-2. Tune crate price, odds or salvage only if the experience calls for it.
-3. Add the simulated rewarded-ad adapter only after crate balance is proven.
+1. Let the user playtest Build 45 locally, especially the optional ad placement, cancellation and post-ad crate reveal on mobile.
+2. Tune the daily cap or qualification threshold only if the experience calls for it.
+3. Replace the simulated adapter with a production rewarded-ad provider only after UX approval.
 4. Move wallet, inventory and purchases to Supabase before any real-money market launches.
 5. Do final real-device QA on iOS Safari and Android Chrome.
 

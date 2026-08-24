@@ -1,13 +1,18 @@
-import { CONFIG } from './config.js?v=20260824-44';
+import { CONFIG } from './config.js?v=20260824-45';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
 import { Game } from './game.js?v=20260824-44';
-import { ShardWallet } from './economy.js?v=20260824-44';
-import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-44';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-44';
+import { ShardWallet } from './economy.js?v=20260824-45-security';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
+import { PlayerAccount } from './player-account.js?v=20260824-45-cutover';
+import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
+const debugParams = new URLSearchParams(location.search);
+const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
@@ -16,18 +21,20 @@ const ui = {
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
-  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'),
+  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
+  crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
-  gameVersion: $('gameVersion'), menuShards: $('menuShards'),
+  gameVersion: $('gameVersion'), menuShards: $('menuShards'), sponsoredReward: $('sponsoredReward'), watchAd: $('watchAd'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
+  rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
 };
 
 let selectedDifficulty = localStorage.getItem('crownlizard:difficulty') || 'arcade';
@@ -43,6 +50,7 @@ const music = new Music();
 const sfx = new SoundFx();
 let hapticsEnabled = localStorage.getItem('cl:haptics') !== 'off';
 let reducedEffects = localStorage.getItem('cl:reduced-effects') === 'on';
+let vaultAnimationEnabled = localStorage.getItem('cl:vault-animation') !== 'off';
 let dashSide = localStorage.getItem('cl:dash-side') === 'left' ? 'left' : 'right';
 const tutorialKey = 'cl:tutorial:v1';
 const tutorialForced = new URLSearchParams(location.search).has('tutorial');
@@ -59,12 +67,57 @@ let selectedResultChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
 const input = new Input($('game'), ui.dashButton, ui.joystick);
 const shardWallet = new ShardWallet();
-const createEconomyRunId = () => globalThis.crypto?.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const renderShardBalance = () => { ui.menuShards.textContent = `◆ ${shardWallet.getBalance().toLocaleString('en-US')} SHARDS`; };
+const playerAccount = new PlayerAccount();
+const rewardedAd = new SimulatedRewardedAdAdapter();
+let serverWallet = null;
+let serverEconomyReady = false;
+let serverEconomyError = null;
+let playerReadyPromise = Promise.resolve();
+const createEconomyRunId = () => {
+  if (!globalThis.crypto?.randomUUID) throw new Error('Secure run identifiers are unavailable.');
+  return globalThis.crypto.randomUUID();
+};
+const emptyWalletView = () => ({
+  balance: 0,
+  transactions: [],
+  inventory: { cosmetics: {}, equipped: { ship: 'ship_default' } },
+  vault: { opens: 0, sinceSovereign: 0, pendingReward: null },
+  sponsored: { pendingRunId: '' },
+});
+const serverWalletView = wallet => ({
+  balance: Number(wallet?.balance) || 0,
+  transactions: [],
+  inventory: {
+    cosmetics: Object.fromEntries((wallet?.inventory || []).map(item => [item.cosmeticId, { acquiredAt: item.acquiredAt, source: item.source }])),
+    equipped: { ship: wallet?.equippedShip || 'ship_default' },
+  },
+  vault: { opens: Number(wallet?.opens) || 0, sinceSovereign: Number(wallet?.sinceSovereign) || 0, pendingReward: null },
+  sponsored: { pendingRunId: '' },
+});
+const walletState = () => localPreview ? shardWallet.getState() : serverWallet || emptyWalletView();
+const acceptServerWallet = payload => {
+  serverWallet = serverWalletView(payload?.wallet);
+  serverEconomyReady = true;
+  return serverWallet;
+};
+const refreshServerWallet = async () => acceptServerWallet(await playerAccount.getWallet());
+const renderShardBalance = () => {
+  if (serverEconomy && !serverEconomyReady) {
+    ui.menuShards.textContent = '◆ CONNECTING...';
+    return;
+  }
+  ui.menuShards.textContent = `◆ ${walletState().balance.toLocaleString('en-US')} SHARDS`;
+};
 renderShardBalance();
 let crateOpening = false;
 let vaultOddsExpanded = false;
 let selectedCosmeticDetailId = '';
+let crateRevealReturn = 'vault';
+let rewardedAdViewing = false;
+let currentSponsoredOffer = null;
+let lastSponsoredClaimedRunId = '';
+let crownCrateOpenPreload = null;
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 const renderVaultOddsVisibility = () => {
   ui.vaultOdds.classList.toggle('hidden', !vaultOddsExpanded);
@@ -73,7 +126,7 @@ const renderVaultOddsVisibility = () => {
 };
 
 const renderVault = () => {
-  const state = shardWallet.getState();
+  const state = walletState();
   const owned = Object.keys(state.inventory.cosmetics);
   ui.vaultBalance.textContent = `◆ ${state.balance.toLocaleString('en-US')}`;
   ui.vaultOwned.textContent = `${owned.length} / ${COSMETICS.length}`;
@@ -113,17 +166,38 @@ const renderVault = () => {
     return card;
   }));
   const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
-  ui.openCrate.disabled = crateOpening || Boolean(state.vault.pendingReward) || missing > 0;
+  ui.openCrate.disabled = crateOpening || (serverEconomy && !serverEconomyReady) || Boolean(state.vault.pendingReward) || missing > 0;
   ui.openCrate.innerHTML = missing
     ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
-    : `<i>♛</i> OPEN · ◆ ${CROWN_CRATE_COST}`;
-  ui.vaultStatus.textContent = missing
+    : `<i>♛</i> OPEN WITH ◆ ${CROWN_CRATE_COST}`;
+  ui.vaultStatus.textContent = serverEconomy && !serverEconomyReady
+    ? 'PLAYER WALLET CONNECTING'
+    : missing
     ? 'EARN SHARDS BY COMPLETING QUALIFIED RUNS'
     : state.vault.opens === 0
       ? 'FIRST OPENING GUARANTEED NEW'
       : state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1
         ? 'NEXT CRATE GUARANTEED SOVEREIGN'
         : 'DUPLICATES SALVAGE AUTOMATICALLY';
+  const sponsoredOffer = localPreview ? shardWallet.getPendingSponsoredOffer() : null;
+  ui.crownCrate.classList.toggle('signal-ready', Boolean(sponsoredOffer));
+  ui.crownCrateSprite.src = crateOpening
+    ? './assets/sprites/crown-crate-open-v1.png'
+    : sponsoredOffer
+      ? './assets/sprites/crown-crate-signal-v1.png'
+      : './assets/sprites/crown-crate-closed-v1.png';
+  ui.vaultSponsoredSignal.classList.toggle('hidden', !sponsoredOffer);
+  ui.vaultWatchAd.classList.toggle('hidden', !sponsoredOffer?.eligible);
+  ui.vaultWatchAd.disabled = rewardedAdViewing || !sponsoredOffer?.eligible;
+  if (sponsoredOffer?.eligible) {
+    ui.vaultSponsoredStatus.textContent = `1 FREE OPEN SAVED · ${sponsoredOffer.remainingToday} OF ${sponsoredOffer.dailyLimit} LEFT TODAY`;
+  } else if (sponsoredOffer?.reason === 'DAILY_LIMIT_REACHED') {
+    ui.vaultSponsoredStatus.textContent = '1 FREE OPEN SAVED · AVAILABLE TOMORROW';
+  } else if (sponsoredOffer) {
+    ui.vaultSponsoredStatus.textContent = '1 FREE OPEN SAVED · FINISH CURRENT REVEAL';
+  }
+  ui.vaultAnimationToggle.setAttribute('aria-checked', String(vaultAnimationEnabled));
+  ui.vaultAnimationToggle.querySelector('b').textContent = vaultAnimationEnabled ? 'ON' : 'OFF';
   renderShardBalance();
 };
 
@@ -131,7 +205,7 @@ const showCosmeticDetail = cosmeticId => {
   const cosmetic = COSMETIC_BY_ID[cosmeticId];
   if (!cosmetic) return;
   const tier = RARITY_BY_KEY[cosmetic.rarity];
-  const state = shardWallet.getState();
+  const state = walletState();
   const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
   const equipped = state.inventory.equipped.ship === cosmetic.id;
   selectedCosmeticDetailId = cosmetic.id;
@@ -155,6 +229,29 @@ const closeCosmeticDetail = () => {
   ui.vaultCollection.querySelector(`[data-cosmetic-id="${selectedCosmeticDetailId}"]`)?.focus({ preventScroll: true });
 };
 
+const playCrateOpeningCinematic = async ({ signal = false, tier = 'uncommon' } = {}) => {
+  if (!vaultAnimationEnabled) return;
+  const tierColor = RARITY_BY_KEY[tier]?.color || '#ffd36b';
+  ui.crateOpeningCinematic.style.setProperty('--crate-tier-color', tierColor);
+  ui.cinematicCrateSprite.src = signal
+    ? './assets/sprites/crown-crate-signal-v1.png'
+    : './assets/sprites/crown-crate-closed-v1.png';
+  ui.crateCinematicText.textContent = signal ? 'SPONSORED SIGNAL CHARGING' : 'VAULT SEAL CHARGING';
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic charging';
+  void ui.crateOpeningCinematic.offsetWidth;
+  await wait(reducedEffects ? 90 : 720);
+  ui.cinematicCrateSprite.src = './assets/sprites/crown-crate-open-v1.png';
+  ui.crateCinematicText.textContent = 'CROWN CRATE OPEN';
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic bursting';
+  void ui.crateOpeningCinematic.offsetWidth;
+  await wait(reducedEffects ? 100 : 390);
+  ui.crateCinematicText.textContent = 'REWARD IDENTIFIED';
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic receding';
+  void ui.crateOpeningCinematic.offsetWidth;
+  await wait(reducedEffects ? 90 : 480);
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
+};
+
 const showCrateReveal = outcome => {
   const cosmetic = COSMETIC_BY_ID[outcome.cosmeticId];
   const tier = RARITY_BY_KEY[outcome.tier];
@@ -163,7 +260,11 @@ const showCrateReveal = outcome => {
   ui.crateReveal.classList.add(`tier-${tier.key}`);
   ui.crateReveal.style.setProperty('--tier-color', tier.color);
   ui.revealShip.src = `./assets/sprites/${cosmetic.sprite}`;
-  ui.revealEyebrow.textContent = outcome.duplicate ? 'DUPLICATE DETECTED' : (outcome.guaranteedSovereign ? 'SOVEREIGN GUARANTEE' : 'CRATE OPENED');
+  ui.revealEyebrow.textContent = outcome.duplicate
+    ? 'DUPLICATE DETECTED'
+    : outcome.guaranteedSovereign
+      ? 'SOVEREIGN GUARANTEE'
+      : outcome.source === 'sponsored' ? 'SPONSORED CRATE' : 'CRATE OPENED';
   ui.revealTier.textContent = tier.name;
   ui.revealName.textContent = cosmetic.name;
   ui.revealMessage.textContent = outcome.duplicate ? `SALVAGE VALUE · ◆ ${outcome.salvageValue}` : 'NEW CHASSIS ACQUIRED';
@@ -179,25 +280,42 @@ const showCrateReveal = outcome => {
 };
 
 const closeCrateReveal = () => {
-  shardWallet.salvagePending();
+  if (localPreview) shardWallet.salvagePending();
   ui.crateReveal.classList.add('hidden');
   renderVault();
-  ui.openCrate.focus({ preventScroll: true });
+  if (crateRevealReturn === 'gameover') {
+    const offer = localPreview && lastSponsoredClaimedRunId
+      ? shardWallet.getSponsoredOffer(lastSponsoredClaimedRunId)
+      : localPreview ? shardWallet.getPendingSponsoredOffer() : null;
+    renderSponsoredOffer(offer);
+    const balance = ui.shardReward.querySelector('.shard-balance b');
+    if (balance) balance.textContent = walletState().balance.toLocaleString('en-US');
+    selectResultChoice(0, true);
+  } else {
+    const vaultFocus = !ui.vaultWatchAd.classList.contains('hidden') ? ui.vaultWatchAd : ui.openCrate;
+    vaultFocus.focus({ preventScroll: true });
+  }
+  crateRevealReturn = 'vault';
 };
 
 const openVault = () => {
+  crateRevealReturn = 'vault';
+  if (!crownCrateOpenPreload) {
+    crownCrateOpenPreload = new Image();
+    crownCrateOpenPreload.src = './assets/sprites/crown-crate-open-v1.png';
+  }
   vaultOddsExpanded = false;
   renderVault();
   renderVaultOddsVisibility();
   ui.vaultOverlay.classList.remove('hidden');
-  const pending = shardWallet.getState().vault.pendingReward;
+  const pending = walletState().vault.pendingReward;
   if (pending) showCrateReveal(pending);
   else ui.openCrate.focus({ preventScroll: true });
 };
 
 const closeVault = () => {
   if (crateOpening) return;
-  shardWallet.salvagePending();
+  if (localPreview) shardWallet.salvagePending();
   ui.crateReveal.classList.add('hidden');
   ui.cosmeticDetail.classList.add('hidden');
   ui.vaultOverlay.classList.add('hidden');
@@ -426,6 +544,118 @@ const renderShardReward = result => {
   `;
 };
 
+const renderSponsoredOffer = offer => {
+  currentSponsoredOffer = offer;
+  ui.watchAd.classList.add('hidden');
+  ui.watchAd.disabled = rewardedAdViewing;
+  ui.sponsoredReward.className = 'sponsored-reward hidden';
+  ui.sponsoredReward.textContent = '';
+  if (!offer || offer.reason === 'RUN_NOT_ELIGIBLE') return;
+
+  ui.sponsoredReward.classList.remove('hidden');
+  if (offer.claimed) {
+    ui.sponsoredReward.classList.add('sponsored-claimed');
+    ui.sponsoredReward.innerHTML = '<b>♛ SPONSORED CRATE CLAIMED</b><span>COSMETIC REWARD SECURED · SCORE UNCHANGED</span>';
+    return;
+  }
+  if (offer.reason === 'DAILY_LIMIT_REACHED') {
+    ui.sponsoredReward.classList.add('sponsored-limit');
+    ui.sponsoredReward.innerHTML = '<b>DAILY SIGNAL LIMIT REACHED</b><span>MORE OPTIONAL CRATES AVAILABLE TOMORROW</span>';
+    return;
+  }
+  if (!offer.eligible) return;
+  ui.sponsoredReward.innerHTML = `<b>♛ OPTIONAL COSMETIC CRATE</b><span>WATCH ONE AD · ${offer.remainingToday} / ${offer.dailyLimit} AVAILABLE TODAY · NO SCORE ADVANTAGE</span>`;
+  ui.watchAd.classList.remove('hidden');
+  ui.watchAd.disabled = rewardedAdViewing;
+};
+
+const renderRewardedAdProgress = progress => {
+  const percent = Math.max(0, Math.min(100, Math.floor(progress * 100)));
+  ui.rewardedAdFill.style.transform = `scaleX(${percent / 100})`;
+  ui.rewardedAdCountdown.textContent = percent >= 100 ? 'REWARD GRANTED' : `SIGNAL ${percent}%`;
+};
+
+const closeRewardedAdOverlay = () => {
+  ui.rewardedAdOverlay.classList.add('hidden');
+  renderRewardedAdProgress(0);
+};
+
+const showRewardedCrate = async () => {
+  if (serverEconomy) return;
+  const offer = shardWallet.getPendingSponsoredOffer();
+  if (rewardedAdViewing || !offer?.eligible || !rewardedAd.isReady()) return;
+  const origin = !ui.vaultOverlay.classList.contains('hidden') ? 'vault' : 'gameover';
+  rewardedAdViewing = true;
+  if (origin === 'gameover') renderSponsoredOffer(offer);
+  renderVault();
+  ui.rewardedAdMessage.textContent = 'KEEP THIS SIGNAL OPEN TO RECEIVE ONE COSMETIC CRATE.';
+  renderRewardedAdProgress(0);
+  ui.rewardedAdOverlay.classList.remove('hidden');
+  ui.cancelRewardedAd.focus({ preventScroll: true });
+  const result = await rewardedAd.show({ onProgress: renderRewardedAdProgress });
+  rewardedAdViewing = false;
+  closeRewardedAdOverlay();
+  if (result.status !== REWARDED_AD_STATUS.granted) {
+    const pendingOffer = shardWallet.getPendingSponsoredOffer();
+    renderVault();
+    if (origin === 'vault') {
+      ui.vaultSponsoredStatus.textContent = 'SIGNAL CANCELLED · THE FREE CRATE IS STILL WAITING';
+      ui.vaultWatchAd.focus({ preventScroll: true });
+    } else {
+      renderSponsoredOffer(pendingOffer);
+      ui.sponsoredReward.classList.remove('hidden');
+      ui.sponsoredReward.innerHTML = '<b>SIGNAL CANCELLED · NO REWARD USED</b><span>THE OPTIONAL CRATE IS STILL AVAILABLE</span>';
+      const visibleChoices = ui.resultChoices.filter(button => !button.classList.contains('hidden') && !button.disabled);
+      selectResultChoice(Math.max(0, visibleChoices.indexOf(ui.watchAd)), true);
+    }
+    return;
+  }
+  try {
+    const crate = shardWallet.openSponsoredCrate(offer.runId);
+    lastSponsoredClaimedRunId = offer.runId;
+    crateOpening = true;
+    renderVault();
+    if (origin === 'gameover') renderSponsoredOffer(shardWallet.getSponsoredOffer(offer.runId));
+    crateRevealReturn = origin;
+    await playCrateOpeningCinematic({ signal: true, tier: crate.outcome.tier });
+    crateOpening = false;
+    renderVault();
+    showCrateReveal(crate.outcome);
+  } catch {
+    crateOpening = false;
+    ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
+    renderVault();
+    if (origin === 'vault') ui.vaultSponsoredStatus.textContent = 'REWARD LINK FAILED · THE SIGNAL REMAINS SAVED';
+    else {
+      renderSponsoredOffer(shardWallet.getPendingSponsoredOffer());
+      ui.sponsoredReward.classList.remove('hidden');
+      ui.sponsoredReward.innerHTML = '<b>REWARD LINK FAILED</b><span>NO OFFER WAS CONSUMED · TRY AGAIN</span>';
+    }
+  }
+};
+
+const renderShardVerification = message => {
+  ui.shardReward.className = 'shard-reward shard-unqualified';
+  ui.shardReward.innerHTML = `<div class="shard-reward-head"><span>◆ SERVER PAYOUT</span><b>${message}</b></div>`;
+};
+
+const settleServerReward = async summary => {
+  try {
+    const run = await currentRunPromise;
+    if (!run?.id) throw new Error('RUN_NOT_REGISTERED');
+    const result = await playerAccount.settleRun(run.id, summary);
+    if (serverWallet) serverWallet.balance = Number(result.balance) || serverWallet.balance;
+    await refreshServerWallet();
+    renderShardReward(result);
+    renderShardBalance();
+  } catch {
+    renderShardVerification('PENDING');
+    const balance = document.createElement('p');
+    balance.textContent = 'REWARD SAVED · WILL RETRY ON YOUR NEXT VISIT';
+    ui.shardReward.append(balance);
+  }
+};
+
 const game = new Game($('game'), input, {
   hud: state => {
     ui.score.textContent = state.score.toLocaleString('en-US');
@@ -464,8 +694,15 @@ const game = new Game($('game'), input, {
     ui.recordMessage.textContent = record ? `New local record: ${best.toLocaleString('en-US')} points!` : `Local best: ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
-    const shardResult = shardWallet.awardRun(economyRunId, summary);
-    renderShardReward(shardResult);
+    if (localPreview) {
+      const shardResult = shardWallet.awardRun(economyRunId, summary);
+      renderShardReward(shardResult);
+      renderSponsoredOffer(shardWallet.getPendingSponsoredOffer());
+    } else {
+      renderShardVerification('VERIFYING...');
+      renderSponsoredOffer(null);
+      void settleServerReward(summary);
+    }
     renderShardBalance();
     prepareScoreEntry(score, summary);
     selectResultChoice(0);
@@ -503,15 +740,55 @@ const game = new Game($('game'), input, {
 });
 
 const applyEquippedShip = () => {
-  const equippedId = shardWallet.getState().inventory.equipped.ship;
+  const equippedId = walletState().inventory.equipped.ship;
   const cosmetic = COSMETIC_BY_ID[equippedId] || COSMETIC_BY_ID.ship_default;
   game.setPlayerSkin(cosmetic.sprite);
+};
+
+const bootstrapServerEconomy = async () => {
+  await playerAccount.ensureSession();
+  await playerAccount.retryPendingSettlement().catch(() => null);
+  let snapshot = await playerAccount.getWallet();
+  const localState = shardWallet.getState();
+  const hasLegacyProgress = localState.balance > 0
+    || localState.vault.opens > 0
+    || Object.keys(localState.inventory.cosmetics).length > 0;
+  const pristineServerWallet = snapshot.wallet.balance === 0
+    && snapshot.wallet.opens === 0
+    && snapshot.wallet.inventory.length === 0;
+  if (!snapshot.wallet.legacyImported && pristineServerWallet) {
+    try {
+      snapshot = await playerAccount.importLegacy(localState);
+    } catch (error) {
+      if (hasLegacyProgress) throw error;
+    }
+  }
+  acceptServerWallet(snapshot);
+  renderShardBalance();
+  renderVault();
+  applyEquippedShip();
+  return snapshot;
 };
 
 applyEquippedShip();
 game.reducedEffects = reducedEffects;
 applyEffectsSetting();
 renderSettings();
+
+if (serverEconomy) {
+  ui.play.disabled = true;
+  playerReadyPromise = bootstrapServerEconomy()
+    .then(result => {
+      ui.play.disabled = false;
+      return result;
+    })
+    .catch(error => {
+      serverEconomyReady = false;
+      serverEconomyError = error;
+      ui.menuShards.textContent = error?.status === 403 ? '◆ INVENTORY MIGRATION REQUIRED' : '◆ SERVER WALLET OFFLINE';
+      return null;
+    });
+}
 
 const engine = new Engine({ update: dt => game.update(dt), render: () => game.render(), step: 1 / CONFIG.simulationHz });
 engine.start();
@@ -540,10 +817,16 @@ const pauseRun = automatic => {
 };
 
 const returnToMenu = () => {
+  rewardedAd.cancel();
+  rewardedAdViewing = false;
+  closeRewardedAdOverlay();
   game.stop();
   economyRunId = '';
   input.clear();
   [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  ui.crateReveal.classList.add('hidden');
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
+  ui.cosmeticDetail.classList.add('hidden');
   ui.hud.classList.add('hidden');
   ui.dashButton.classList.add('hidden');
   ui.pauseButton.classList.add('hidden');
@@ -586,8 +869,35 @@ const finishTutorial = () => {
   sfx.play('confirm');
 };
 
-const start = () => {
+let startingRun = false;
+const start = async () => {
+  if (startingRun) return;
+  startingRun = true;
+  ui.play.disabled = true;
+  ui.retry.disabled = true;
+  let registeredRun = null;
+  if (serverEconomy) {
+    try {
+      await playerReadyPromise;
+      if (!serverEconomyReady) throw serverEconomyError || new Error('SERVER_WALLET_OFFLINE');
+      const accessToken = await playerAccount.getAccessToken();
+      registeredRun = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);
+    } catch {
+      ui.menuShards.textContent = '◆ SERVER WALLET OFFLINE · TRY AGAIN';
+      ui.play.disabled = false;
+      ui.retry.disabled = false;
+      startingRun = false;
+      return;
+    }
+  }
+  rewardedAd.cancel();
+  rewardedAdViewing = false;
+  lastSponsoredClaimedRunId = '';
+  closeRewardedAdOverlay();
   [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  ui.crateReveal.classList.add('hidden');
+  ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
+  ui.cosmeticDetail.classList.add('hidden');
   ui.hud.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
@@ -597,13 +907,20 @@ const start = () => {
   pendingScore = null;
   ui.scoreEntry.classList.add('hidden');
   ui.submitScore.classList.add('hidden');
-  currentRunPromise = leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`)
-    .then(run => generation === runGeneration ? run : null)
-    .catch(() => null);
+  ui.watchAd.classList.add('hidden');
+  ui.sponsoredReward.className = 'sponsored-reward hidden';
+  currentRunPromise = serverEconomy
+    ? Promise.resolve(registeredRun)
+    : leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`)
+      .then(run => generation === runGeneration ? run : null)
+      .catch(() => null);
   game.reducedEffects = reducedEffects;
   music.play();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
   if (needsTutorial) openTutorial();
+  ui.play.disabled = false;
+  ui.retry.disabled = false;
+  startingRun = false;
 };
 
 ui.play.addEventListener('click', start);
@@ -625,11 +942,22 @@ ui.vaultOddsToggle.addEventListener('click', () => {
   renderVaultOddsVisibility();
   sfx.play('confirm');
 });
+ui.vaultAnimationToggle.addEventListener('click', () => {
+  vaultAnimationEnabled = !vaultAnimationEnabled;
+  localStorage.setItem('cl:vault-animation', vaultAnimationEnabled ? 'on' : 'off');
+  renderVault();
+  sfx.play('confirm');
+});
 ui.revealContinue.addEventListener('click', closeCrateReveal);
+ui.watchAd.addEventListener('click', showRewardedCrate);
+ui.vaultWatchAd.addEventListener('click', showRewardedCrate);
+ui.cancelRewardedAd.addEventListener('click', () => rewardedAd.cancel());
 ui.closeCosmeticDetail.addEventListener('click', closeCosmeticDetail);
-ui.equipCosmetic.addEventListener('click', () => {
+ui.equipCosmetic.addEventListener('click', async () => {
   try {
-    shardWallet.equipCosmetic(selectedCosmeticDetailId);
+    ui.equipCosmetic.disabled = true;
+    if (localPreview) shardWallet.equipCosmetic(selectedCosmeticDetailId);
+    else acceptServerWallet(await playerAccount.equipCosmetic(selectedCosmeticDetailId));
     applyEquippedShip();
     renderVault();
     showCosmeticDetail(selectedCosmeticDetailId);
@@ -637,28 +965,26 @@ ui.equipCosmetic.addEventListener('click', () => {
     if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
   } catch {
     ui.cosmeticDetailHint.textContent = 'THIS CHASSIS IS STILL LOCKED';
+    ui.equipCosmetic.disabled = false;
   }
 });
-ui.openCrate.addEventListener('click', () => {
+ui.openCrate.addEventListener('click', async () => {
   if (crateOpening) return;
   try {
     crateOpening = true;
-    const result = shardWallet.openCrate();
-    ui.crownCrate.classList.remove('opening');
-    void ui.crownCrate.offsetWidth;
-    ui.crownCrate.classList.add('opening');
+    const result = localPreview ? shardWallet.openCrate() : await playerAccount.openCrate();
+    if (serverEconomy) await refreshServerWallet();
     renderVault();
     sfx.play('confirm');
-    setTimeout(() => {
-      crateOpening = false;
-      ui.crownCrate.classList.remove('opening');
-      renderVault();
-      showCrateReveal(result.outcome);
-    }, reducedEffects ? 80 : 650);
-  } catch (error) {
+    await playCrateOpeningCinematic({ tier: result.outcome.tier });
     crateOpening = false;
     renderVault();
-    ui.vaultStatus.textContent = error?.code === 'NOT_ENOUGH_SHARDS' ? 'NOT ENOUGH SHARDS' : 'RESOLVE THE CURRENT REWARD FIRST';
+    showCrateReveal(result.outcome);
+  } catch (error) {
+    crateOpening = false;
+    ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
+    renderVault();
+    ui.vaultStatus.textContent = error?.code === 'NOT_ENOUGH_SHARDS' || error?.status === 409 ? 'NOT ENOUGH SHARDS' : 'VAULT LINK FAILED · TRY AGAIN';
   }
 });
 ui.leaderboardTabs.forEach(button => button.addEventListener('click', () => loadLeaderboard(button.dataset.boardDifficulty)));
@@ -687,6 +1013,7 @@ ui.scoreEntry.addEventListener('submit', async event => {
   ui.scoreSubmitStatus.textContent = 'TRANSMITTING...';
   try {
     const summary = pendingScore.summary;
+    const accessToken = serverEconomy ? await playerAccount.getAccessToken() : '';
     const result = await leaderboard.submit({
       runId: pendingScore.run.id,
       initials,
@@ -699,7 +1026,7 @@ ui.scoreEntry.addEventListener('submit', async event => {
       crates: summary.crates,
       bestCombo: summary.bestCombo,
       gameVersion: `${CONFIG.version.release}-${CONFIG.version.build}`,
-    });
+    }, accessToken);
     localStorage.setItem('cl:initials', initials);
     ui.scoreSubmitStatus.textContent = `SCORE ACCEPTED · RANK ${result.rank || '—'}`;
     ui.scoreEntry.classList.add('hidden');
@@ -755,7 +1082,9 @@ addEventListener('blur', () => pauseRun(true));
 addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
-  if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
+  if (!ui.crateOpeningCinematic.classList.contains('hidden')) return;
+  if (!ui.rewardedAdOverlay.classList.contains('hidden')) rewardedAd.cancel();
+  else if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
   else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
@@ -764,7 +1093,7 @@ addEventListener('keydown', event => {
   else pauseRun(false);
 });
 addEventListener('keydown', event => {
-  if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
+  if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.rewardedAdOverlay.classList.contains('hidden') || !ui.crateOpeningCinematic.classList.contains('hidden') || !ui.crateReveal.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     selectResultChoice(selectedResultChoice + 1, true);
@@ -801,9 +1130,8 @@ addEventListener('keydown', event => {
 loadLeaderboard(selectedDifficulty, true);
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
-const debugParams = new URLSearchParams(location.search);
-const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-const debugMode = debugParams.has('debug') || localPreview;
+// Never let a query string enable test controls on the public site.
+const debugMode = localPreview && debugParams.has('debug');
 document.documentElement.classList.toggle('touch-preview', debugMode && debugParams.has('touch'));
 if (localPreview && debugParams.has('vault')) {
   const previewState = shardWallet.getState();
@@ -863,6 +1191,16 @@ if (debugMode) {
       showToast('DEBUG · VOID SKIMMER', 'debug');
     }
     if (event.code === 'KeyO' && game.active) {
+      game.player.health = 1;
+      game.player.invulnerable = 0;
+      game.player.dashTime = 0;
+      game.hitPlayer(game.player.x, game.player.y - 1);
+    }
+    if (event.code === 'KeyR' && game.active && ui.tutorialOverlay.classList.contains('hidden')) {
+      game.time = Math.max(game.time, 95);
+      game.score = Math.max(game.score, 5000);
+      game.runStats.enemies = Math.max(game.runStats.enemies, 24);
+      game.runStats.wardens = Math.max(game.runStats.wardens, 1);
       game.player.health = 1;
       game.player.invulnerable = 0;
       game.player.dashTime = 0;

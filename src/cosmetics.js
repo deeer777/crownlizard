@@ -30,7 +30,14 @@ export const TIER_BY_KEY = Object.freeze(Object.fromEntries(COSMETIC_TIERS.map(t
 export const RARITY_BY_KEY = Object.freeze({ standard: STANDARD_TIER, ...TIER_BY_KEY });
 export const COSMETIC_BY_ID = Object.freeze(Object.fromEntries(COLLECTION_COSMETICS.map(cosmetic => [cosmetic.id, cosmetic])));
 
-export const rollTier = (random = Math.random) => {
+export const secureRandom = () => {
+  const values = new Uint32Array(1);
+  if (!globalThis.crypto?.getRandomValues) throw new Error('Secure randomness is unavailable.');
+  globalThis.crypto.getRandomValues(values);
+  return values[0] / 0x1_0000_0000;
+};
+
+export const rollTier = (random = secureRandom) => {
   const roll = Math.floor(Math.max(0, Math.min(.999999, Number(random()) || 0)) * 10_000);
   let threshold = 0;
   return COSMETIC_TIERS.find(tier => {
@@ -39,7 +46,7 @@ export const rollTier = (random = Math.random) => {
   }) || COSMETIC_TIERS[0];
 };
 
-export const chooseCosmetic = (tierKey, random = Math.random) => {
+export const chooseCosmetic = (tierKey, random = secureRandom) => {
   const choices = COSMETICS.filter(cosmetic => cosmetic.rarity === tierKey);
   const index = Math.min(choices.length - 1, Math.floor(Math.max(0, Math.min(.999999, Number(random()) || 0)) * choices.length));
   return choices[index];

@@ -23,9 +23,10 @@ const request = async (url, options = {}) => {
 };
 
 export const leaderboard = {
-  async beginRun(difficulty, gameVersion) {
+  async beginRun(difficulty, gameVersion, accessToken = '') {
     return request('/api/runs', {
       method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       body: JSON.stringify({ difficulty, gameVersion }),
     });
   },
@@ -35,9 +36,10 @@ export const leaderboard = {
     return request(`/api/scores?${query}`);
   },
 
-  async submit(entry) {
+  async submit(entry, accessToken = '') {
     return request('/api/scores', {
       method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       body: JSON.stringify(entry),
     });
   },

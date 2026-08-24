@@ -83,6 +83,7 @@
       <div class="run-meta" id="runMeta">ZONE 1 · ARCADE</div>
       <div class="run-summary" id="runSummary"></div>
       <div id="shardReward" class="shard-reward" aria-live="polite"></div>
+      <div id="sponsoredReward" class="sponsored-reward hidden" aria-live="polite"></div>
       <p id="recordMessage">The next run starts stronger.</p>
       <form id="scoreEntry" class="score-entry hidden">
         <label for="playerInitials">ENTER YOUR INITIALS<small>GLOBAL LEADERBOARD</small></label>
@@ -94,9 +95,22 @@
       </form>
       <div class="result-choices" aria-label="Run over menu">
         <button id="submitScore" class="primary result-choice hidden" data-result-choice="submit" type="submit" form="scoreEntry"><i>♛</i> SUBMIT SCORE</button>
+        <button id="watchAd" class="primary result-choice hidden" data-result-choice="sponsored" type="button"><i>♛</i> WATCH AD · OPEN CRATE</button>
         <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
         <button id="home" class="primary result-choice" data-result-choice="home"><i>♛</i> BACK TO MENU</button>
       </div>
+    </div>
+  </section>
+
+  <section id="rewardedAdOverlay" class="rewarded-ad-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="rewardedAdTitle">
+    <div class="rewarded-ad-panel">
+      <div class="eyebrow">OPTIONAL REWARD · DEMO AD</div>
+      <h2 id="rewardedAdTitle">CROWN SIGNAL</h2>
+      <div class="rewarded-ad-screen" aria-hidden="true"><i>♛</i><span>TRANSMISSION</span><b></b></div>
+      <p id="rewardedAdMessage">KEEP THIS SIGNAL OPEN TO RECEIVE ONE COSMETIC CRATE.</p>
+      <div class="rewarded-ad-progress"><i id="rewardedAdFill"></i></div>
+      <strong id="rewardedAdCountdown">SIGNAL 0%</strong>
+      <button id="cancelRewardedAd" class="system-action" type="button">CANCEL · NO REWARD</button>
     </div>
   </section>
 
@@ -163,12 +177,19 @@
       <div class="vault-wallet"><span>YOUR SHARDS</span><strong id="vaultBalance">◆ 0</strong></div>
       <div class="vault-body">
         <div class="vault-crate-column">
-          <div class="crown-crate" aria-hidden="true"><i>♛</i><b>VAULT</b><span></span></div>
+          <div class="crown-crate" aria-hidden="true"><span></span><img id="crownCrateSprite" alt=""></div>
           <h3>CROWN CRATE</h3>
-          <p>ONE RANDOM SHIP CHASSIS</p>
-          <button id="openCrate" class="system-action vault-open" type="button"><i>♛</i> OPEN · ◆ 150</button>
+          <p>ONE RANDOM SHIP CHASSIS · COSMETICS ONLY</p>
+          <div class="crate-open-options">
+            <button id="openCrate" class="system-action vault-open" type="button"><i>♛</i> OPEN WITH ◆ 150</button>
+            <div id="vaultSponsoredSignal" class="vault-sponsored-signal hidden">
+              <span id="vaultSponsoredStatus">1 FREE OPEN SAVED</span>
+              <button id="vaultWatchAd" class="system-action" type="button"><i>♛</i> WATCH AD · FREE OPEN</button>
+            </div>
+          </div>
           <p id="vaultStatus" class="vault-status" role="status"></p>
           <div class="vault-guarantee"><span>SOVEREIGN GUARANTEE</span><b id="vaultGuarantee">0 / 200</b><i><em id="vaultGuaranteeFill"></em></i></div>
+          <button id="vaultAnimationToggle" class="vault-animation-toggle" type="button" role="switch" aria-checked="true"><span>OPENING ANIMATION</span><b>ON</b></button>
         </div>
         <div class="vault-info-column">
           <button id="vaultOddsToggle" class="vault-section-title vault-odds-toggle" type="button" aria-expanded="false" aria-controls="vaultOdds"><span>DROP ODDS</span><b>VIEW · ▼</b></button>
@@ -186,7 +207,9 @@
       <p class="vault-fineprint">DUPLICATES ARE SALVAGED FOR SHARDS · COSMETICS ONLY</p>
       <button id="closeVault" class="system-action" type="button"><i>♛</i> BACK</button>
     </div>
-    <div id="crateReveal" class="crate-reveal hidden" aria-live="assertive">
+  </section>
+
+  <div id="crateReveal" class="crate-reveal hidden" aria-live="assertive">
       <div class="reveal-panel">
         <div id="revealEyebrow" class="eyebrow">CRATE OPENED</div>
         <div id="revealTier" class="reveal-tier">UNCOMMON</div>
@@ -196,6 +219,11 @@
         <button id="revealContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
       </div>
     </div>
+
+  <div id="crateOpeningCinematic" class="crate-opening-cinematic hidden" aria-hidden="true">
+    <div class="crate-cinematic-stage"><span></span><img id="cinematicCrateSprite" src="./assets/sprites/crown-crate-closed-v1.png" alt=""></div>
+    <p id="crateCinematicText">VAULT SEAL ENGAGED</p>
+  </div>
     <div id="cosmeticDetail" class="cosmetic-detail hidden" role="dialog" aria-modal="true" aria-labelledby="cosmeticDetailName">
       <div class="cosmetic-detail-panel">
         <div class="eyebrow">COLLECTION FILE</div>
@@ -208,7 +236,6 @@
         <button id="closeCosmeticDetail" class="system-action" type="button"><i>♛</i> BACK TO COLLECTION</button>
       </div>
     </div>
-  </section>
 
   <section id="perkOverlay" class="overlay perk-overlay hidden" aria-modal="true" role="dialog">
     <div class="perk-panel">
@@ -225,6 +252,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260824-44b"></script>
+  <script type="module" src="./src/main.js?v=20260824-45-cutover"></script>
 </body>
 </html>

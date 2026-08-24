@@ -66,7 +66,32 @@ Pages Functions exponeras endast under `/api/*` via `_routes.json`; statiska spe
 
 Version 0.11 introducerar grunden för Crown Vault och den framtida cosmetic-marknaden. En reward-run kräver minst 30 sekunders överlevnad och fem besegrade fiender. Shards beräknas separat från highscore utifrån överlevnad, fiender, nådda zoner och besegrade Wardens.
 
-Utbetalningen sker endast vid verklig Game Over. `END RUN`, omladdning och övergivna rundor betalar ingenting, och varje lokalt run-ID kan bara lösas in en gång. Wallet och en begränsad transaktionshistorik sparas under `cl:economy:v1`. En framtida annons-crate markeras som kvalificerad efter 90 sekunder eller en besegrad Warden, men annonser och crates ingår inte i detta första pass.
+Utbetalningen sker endast vid verklig Game Over. `END RUN`, omladdning och övergivna rundor betalar ingenting, och varje lokalt run-ID kan bara lösas in en gång. Wallet och en begränsad transaktionshistorik sparas under `cl:economy:v1`.
+
+Efter minst 90 sekunder eller en besegrad Warden sparas ett frivilligt erbjudande om en kosmetisk crate. Build 45 använder en simulerad rewarded-adapter för att prova UX och balans innan en riktig annonsleverantör ansluts. Högst en Sponsored Signal kan ligga väntande; den överlever score-submit, huvudmeny och omladdning och kan öppnas senare från Crown Vault. Erbjudandet kan användas en gång och högst tre rewarded crates får öppnas per UTC-dygn. Avbruten visning ger ingen belöning och förbrukar inte erbjudandet. Craten påverkar aldrig score, ranking eller run-prestanda.
+
+Crown Vault använder en gemensam crate-station för både shard- och annonsöppningar, så spelaren ser att odds och innehåll är identiska. Crown Crate har separata pixelart-sprites för closed, saved-signal och open state.
+Öppningssekvensens strålar, partiklar och screen burst färgas efter den rullade rariteten. En beständig `OPENING ANIMATION`-switch i Vault låter spelaren hoppa direkt till belöningen vid många öppningar.
+
+### Säkerhetsmodell för Vault
+
+Build 45 använder kryptografisk slump för vanliga crateöppningar och testkommandon kan endast aktiveras på `localhost`; en publik `?debug=1` ger inga genvägar. Highscore skickas via en engångs-run från Cloudflare-funktionen och valideras separat från kosmetiken.
+
+Shards, inventory och cratehistorik är fortfarande lokal progression i denna MVP. En spelare med utvecklarverktyg kan därför ändra sin egen Vault-data. Detta ger ingen gameplay- eller rankingfördel, men innan cosmetics får bytesvärde, konton eller riktiga annonsbelöningar måste ekonomi, annonsverifiering och crate-RNG flyttas till en serverauktoritativ tjänst.
+
+### Server wallet – pågående Build 45-migrering
+
+Supabase-schemat innehåller nu `player_wallets`, `player_inventory` och en append-only grund för `economy_transactions`. Alla tabeller har RLS, saknar publik skrivpolicy och nås endast via Cloudflare-funktionen. En spelare skapas först som ett riktigt anonymt Supabase Auth-konto och kan senare länka e-post eller OAuth utan att dess `user_id` och inventory byts.
+
+Aktivera **Anonymous Sign-Ins** i Supabase Auth och lägg `SUPABASE_PUBLISHABLE_KEY` som vanlig Cloudflare-variabel. En tidsbegränsad import av befintlig lokal Vault kan öppnas med `ECONOMY_MIGRATION_DEADLINE`; utan ett giltigt framtida ISO-datum är importen stängd. Importen kan bara göras en gång till en tom serverwallet, godkänner endast spelets riktiga cosmetic-ID:n och accepterar högst 50 000 legacy-shards.
+
+Frontendens kontoklient i `src/player-account.js` är nu den aktiva walletvägen utanför localhost. Vid första anslutningen importeras den gamla lokala Vaulten en gång om serverwalleten är tom. Därefter kommer saldo, inventory, pity och equipped ship endast från Supabase. Localhost behåller `ShardWallet` för isolerad provspelning.
+
+Server-side shard settlement är också förberedd. En Auth-verifierad run binds till spelarens `user_id` när den startar. Vid Game Over räknar Cloudflare om belöningen, jämför rapporterad tid med serverns starttid och avvisar orimliga zon-, Warden- och fiendevärden. Databasfunktionen `settle_run_reward` låser run-raden och uppdaterar run, wallet och transaktionslogg atomiskt. Kombinationen av row lock, `economy_settled_at` och ett unikt `(user_id, external_id)` gör replay idempotent.
+
+Atomic server crates används via `/api/vault/open` på live. Klienten skickar endast ett beständigt UUID som idempotency key. Cloudflare skapar två unbiased Web Crypto-rolls; `open_crown_crate` låser wallet och bestämmer kostnad, aktuell pity, tier, katalogskin, duplicate salvage, inventory, nytt saldo och transaktion i samma databasoperation. Klientfält som påstår tier eller saldo ignoreras. Samma UUID returnerar den lagrade öppningen utan ny debitering. Duplicate salvage krediteras atomiskt direkt men presenteras fortfarande i revealen.
+
+Serverägda runs startas innan gameplay börjar. Game Over settlement sparas lokalt som enbart ett väntande request-underlag tills servern bekräftat det, så en omladdning efter nätverksfel kan återuppta samma idempotenta utbetalning. Equip verifierar ägarskap i databasen. Simulerade rewarded ads är avstängda utanför localhost tills en riktig annonsleverantör kan verifieras server-side.
 
 ## Crown Vault MVP
 
