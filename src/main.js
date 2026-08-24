@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-50-mobile-start';
+import { CONFIG } from './config.js?v=20260824-51-wallet-link';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-50-mobile-start';
+import { Game } from './game.js?v=20260824-51-wallet-link';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-50-mobile-start';
+import { PlayerAccount } from './player-account.js?v=20260824-51-wallet-link';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -67,6 +67,14 @@ let selectedResultChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
 const input = new Input($('game'), ui.dashButton, ui.joystick);
 const shardWallet = new ShardWallet();
+try {
+  const walletResetKey = 'cl:wallet-session-reset:v51';
+  if (localStorage.getItem(walletResetKey) !== 'done') {
+    localStorage.removeItem('cl:player-session:v1');
+    localStorage.removeItem('cl:pending-settlement:v1');
+    localStorage.setItem(walletResetKey, 'done');
+  }
+} catch {}
 const playerAccount = new PlayerAccount();
 const rewardedAd = new SimulatedRewardedAdAdapter();
 let serverWallet = null;
@@ -748,7 +756,6 @@ const applyEquippedShip = () => {
 
 const bootstrapServerEconomy = async () => {
   await playerAccount.ensureSession();
-  await playerAccount.retryPendingSettlement().catch(() => null);
   const snapshot = await playerAccount.getWallet();
   acceptServerWallet(snapshot);
   renderShardBalance();
@@ -866,7 +873,7 @@ const start = async () => {
   currentRunPromise = (async () => {
     let accessToken = '';
     if (serverEconomy) {
-      if (!serverEconomyReady) await Promise.race([playerReadyPromise, wait(1200)]).catch(() => null);
+      if (!serverEconomyReady) await playerReadyPromise.catch(() => null);
       if (serverEconomyReady) accessToken = await playerAccount.getAccessToken().catch(() => '');
     }
     const run = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);

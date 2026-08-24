@@ -8,10 +8,12 @@ const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260824-50-mobile-start/, 'the non-blocking mobile start ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260824-50-mobile-start/, 'the account client cannot be served from an older browser cache');
+assert.match(index, /main\.js\?v=20260824-51-wallet-link/, 'the mobile wallet relink ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260824-51-wallet-link/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
+assert.match(main, /cl:wallet-session-reset:v51/, 'one stale anonymous wallet session is discarded for the clean cutover');
+assert.doesNotMatch(main, /Promise\.race\(\[playerReadyPromise, wait\(1200\)\]\)/, 'run registration no longer outruns the mobile wallet connection');
 assert.match(main, /const serverEconomy = !localPreview/, 'production selects the server wallet while localhost retains its test wallet');
 assert.match(main, /localPreview \? shardWallet\.openCrate\(\) : await playerAccount\.openCrate\(\)/, 'production crate openings cannot call the local wallet');
 assert.match(main, /if \(localPreview\) \{[\s\S]*shardWallet\.awardRun/, 'local shard settlement is isolated to localhost');
