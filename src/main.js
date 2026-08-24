@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260824-49-mobile-auth';
+import { CONFIG } from './config.js?v=20260824-50-mobile-start';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260824-44';
+import { Game } from './game.js?v=20260824-50-mobile-start';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260824-49-mobile-auth';
+import { PlayerAccount } from './player-account.js?v=20260824-50-mobile-start';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -71,7 +71,6 @@ const playerAccount = new PlayerAccount();
 const rewardedAd = new SimulatedRewardedAdAdapter();
 let serverWallet = null;
 let serverEconomyReady = false;
-let serverEconomyError = null;
 let playerReadyPromise = Promise.resolve();
 const createEconomyRunId = () => {
   if (!globalThis.crypto?.randomUUID) throw new Error('Secure run identifiers are unavailable.');
@@ -642,16 +641,18 @@ const renderShardVerification = message => {
 const settleServerReward = async summary => {
   try {
     const run = await currentRunPromise;
-    if (!run?.id) throw new Error('RUN_NOT_REGISTERED');
+    if (!run?.id || !run.walletBound || !serverEconomyReady) throw new Error('WALLET_NOT_BOUND');
     const result = await playerAccount.settleRun(run.id, summary);
     if (serverWallet) serverWallet.balance = Number(result.balance) || serverWallet.balance;
     await refreshServerWallet();
     renderShardReward(result);
     renderShardBalance();
   } catch {
-    renderShardVerification('PENDING');
+    renderShardVerification(serverEconomyReady ? 'PENDING' : 'VAULT OFFLINE');
     const balance = document.createElement('p');
-    balance.textContent = 'REWARD SAVED · WILL RETRY ON YOUR NEXT VISIT';
+    balance.textContent = serverEconomyReady
+      ? 'REWARD SAVED · WILL RETRY ON YOUR NEXT VISIT'
+      : 'RUN COUNTS FOR HIGH SCORE · NO SHARDS CREDITED';
     ui.shardReward.append(balance);
   }
 };
@@ -748,21 +749,7 @@ const applyEquippedShip = () => {
 const bootstrapServerEconomy = async () => {
   await playerAccount.ensureSession();
   await playerAccount.retryPendingSettlement().catch(() => null);
-  let snapshot = await playerAccount.getWallet();
-  const localState = shardWallet.getState();
-  const hasLegacyProgress = localState.balance > 0
-    || localState.vault.opens > 0
-    || Object.keys(localState.inventory.cosmetics).length > 0;
-  const pristineServerWallet = snapshot.wallet.balance === 0
-    && snapshot.wallet.opens === 0
-    && snapshot.wallet.inventory.length === 0;
-  if (!snapshot.wallet.legacyImported && pristineServerWallet) {
-    try {
-      snapshot = await playerAccount.importLegacy(localState);
-    } catch (error) {
-      if (hasLegacyProgress) throw error;
-    }
-  }
+  const snapshot = await playerAccount.getWallet();
   acceptServerWallet(snapshot);
   renderShardBalance();
   renderVault();
@@ -776,19 +763,11 @@ applyEffectsSetting();
 renderSettings();
 
 const connectServerEconomy = () => {
-  ui.play.disabled = true;
-  serverEconomyError = null;
   ui.menuShards.textContent = '◆ CONNECTING...';
   playerReadyPromise = bootstrapServerEconomy()
-    .then(result => {
-      ui.play.disabled = false;
-      return result;
-    })
-    .catch(error => {
+    .catch(() => {
       serverEconomyReady = false;
-      serverEconomyError = error;
-      ui.menuShards.textContent = error?.status === 403 ? '◆ INVENTORY MIGRATION REQUIRED' : '◆ SERVER WALLET OFFLINE';
-      ui.play.disabled = false;
+      ui.menuShards.textContent = '◆ VAULT OFFLINE · GAME READY';
       return null;
     });
   return playerReadyPromise;
@@ -798,7 +777,7 @@ if (serverEconomy) {
   connectServerEconomy();
 }
 
-const engine = new Engine({ update: dt => game.update(dt), render: () => game.render(), step: 1 / CONFIG.simulationHz });
+const engine = new Engine({ update: dt => game.update(dt), render: () => { if (game.active) game.render(); }, step: 1 / CONFIG.simulationHz });
 engine.start();
 
 const runVisible = () => ui.menu.classList.contains('hidden') && ui.gameover.classList.contains('hidden') && ui.tutorialOverlay.classList.contains('hidden') && game.player.health > 0;
@@ -883,22 +862,16 @@ const start = async () => {
   startingRun = true;
   ui.play.disabled = true;
   ui.retry.disabled = true;
-  let registeredRun = null;
-  if (serverEconomy) {
-    try {
-      if (!serverEconomyReady) await connectServerEconomy();
-      else await playerReadyPromise;
-      if (!serverEconomyReady) throw serverEconomyError || new Error('SERVER_WALLET_OFFLINE');
-      const accessToken = await playerAccount.getAccessToken();
-      registeredRun = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);
-    } catch {
-      ui.menuShards.textContent = '◆ SERVER WALLET OFFLINE · TRY AGAIN';
-      ui.play.disabled = false;
-      ui.retry.disabled = false;
-      startingRun = false;
-      return;
+  const generation = ++runGeneration;
+  currentRunPromise = (async () => {
+    let accessToken = '';
+    if (serverEconomy) {
+      if (!serverEconomyReady) await Promise.race([playerReadyPromise, wait(1200)]).catch(() => null);
+      if (serverEconomyReady) accessToken = await playerAccount.getAccessToken().catch(() => '');
     }
-  }
+    const run = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);
+    return generation === runGeneration ? { ...run, walletBound: Boolean(accessToken) } : null;
+  })().catch(() => null);
   rewardedAd.cancel();
   rewardedAdViewing = false;
   lastSponsoredClaimedRunId = '';
@@ -912,17 +885,11 @@ const start = async () => {
   ui.pauseButton.classList.remove('hidden');
   game.start(selectedDifficulty);
   economyRunId = createEconomyRunId();
-  const generation = ++runGeneration;
   pendingScore = null;
   ui.scoreEntry.classList.add('hidden');
   ui.submitScore.classList.add('hidden');
   ui.watchAd.classList.add('hidden');
   ui.sponsoredReward.className = 'sponsored-reward hidden';
-  currentRunPromise = serverEconomy
-    ? Promise.resolve(registeredRun)
-    : leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`)
-      .then(run => generation === runGeneration ? run : null)
-      .catch(() => null);
   game.reducedEffects = reducedEffects;
   music.play();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
@@ -1022,7 +989,7 @@ ui.scoreEntry.addEventListener('submit', async event => {
   ui.scoreSubmitStatus.textContent = 'TRANSMITTING...';
   try {
     const summary = pendingScore.summary;
-    const accessToken = serverEconomy ? await playerAccount.getAccessToken() : '';
+    const accessToken = serverEconomy && serverEconomyReady ? await playerAccount.getAccessToken().catch(() => '') : '';
     const result = await leaderboard.submit({
       runId: pendingScore.run.id,
       initials,

@@ -357,10 +357,10 @@ export class Game {
 
   update(dt) {
     if (this.paused) return;
+    if (!this.active) return;
     this.updateStars(dt);
     this.flash = Math.max(0, this.flash - dt * 3.5);
     this.shake = Math.max(0, this.shake - dt * 18);
-    if (!this.active) return;
     const bossLocksStage = this.enemies.some(enemy => enemy.type === 'boss' && !enemy.dead) && (this.time % CONFIG.stageDuration) >= CONFIG.stageDuration - .2;
     if (!bossLocksStage) this.time += dt;
     this.stageIndex = Math.floor(this.time / CONFIG.stageDuration);
