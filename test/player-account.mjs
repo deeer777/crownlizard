@@ -72,6 +72,8 @@ assert.equal(recoverySessionRequests, 1, 'session recovery creates exactly one r
 globalThis.fetch = fetchBeforeRecoveryTest;
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
+assert.match(serverApi, /const AUTH_BOOTSTRAP_LIMIT = 60;/, 'anonymous account bootstrap remains rate-limited but tolerates shared mobile and home networks');
 for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', 'economy_transactions', 'auth_bootstrap_events']) {
   assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`), `${table} has RLS enabled`);
   assert.match(schema, new RegExp(`revoke all on table public\\.${table} from anon, authenticated`), `${table} denies direct browser access`);
