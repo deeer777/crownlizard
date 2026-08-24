@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260824-60-account-callback';
+import { CONFIG } from './config.js?v=20260824-61-safe-account-link';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

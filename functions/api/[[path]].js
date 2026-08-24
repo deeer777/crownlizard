@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -340,8 +340,18 @@ const confirmPlayerEmail = async (request, config) => {
 
 const playerAccountCallback = async (request, config) => {
   const url = new URL(request.url);
-  const tokenHash = String(url.searchParams.get('token_hash') || '');
-  const type = String(url.searchParams.get('type') || '');
+  let tokenHash = String(url.searchParams.get('token_hash') || '');
+  let type = String(url.searchParams.get('type') || '');
+  if (request.method === 'POST') {
+    try {
+      const form = await request.formData();
+      tokenHash = String(form.get('token_hash') || '');
+      type = String(form.get('type') || '');
+    } catch {
+      tokenHash = '';
+      type = '';
+    }
+  }
   const destination = new URL('/', url.origin);
   const redirect = () => new Response(null, {
     status: 303,
@@ -358,6 +368,22 @@ const playerAccountCallback = async (request, config) => {
   };
   if (!/^[A-Za-z0-9_-]{20,512}$/.test(tokenHash) || !new Set(['email', 'email_change', 'recovery']).has(type)) {
     return fail('This account link is invalid or has expired.');
+  }
+  if (request.method === 'GET') {
+    const action = new URL('/api/player/account/callback', url.origin).pathname;
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
+*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:monospace;text-align:center}.panel{width:min(440px,100%);border:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-weight:900;letter-spacing:4px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:11px;letter-spacing:2px}h1{margin:0 0 14px;font-size:22px;letter-spacing:1px}p{margin:0 auto 24px;max-width:330px;color:#b8d8d0;line-height:1.55}.button{width:100%;min-height:58px;border:0;background:#ffd36b;color:#071014;font:900 14px monospace;letter-spacing:1px;box-shadow:0 5px 0 #8f541c;cursor:pointer}.button:active{transform:translateY(3px);box-shadow:0 2px 0 #8f541c}.note{margin:18px 0 0;color:#77958d;font-size:10px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">SECURE ACCOUNT LINK</div><h1>LINK READY</h1><p>Continue to open the protected password screen. This one-time link is only used after you press the button.</p><form method="post" action="${action}"><input type="hidden" name="token_hash" value="${tokenHash}"><input type="hidden" name="type" value="${type}"><button class="button" type="submit">♛ CONTINUE TO CREATE PASSWORD</button></form><div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main></body></html>`;
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Referrer-Policy': 'no-referrer',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      },
+    });
   }
   try {
     const payload = await authFetch(config, 'verify', {
@@ -652,7 +678,7 @@ export const onRequest = async context => {
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
-    if (path === 'player/account/callback' && request.method === 'GET') return await playerAccountCallback(request, config);
+    if (path === 'player/account/callback' && (request.method === 'GET' || request.method === 'POST')) return await playerAccountCallback(request, config);
     if (path === 'player/account/confirm' && request.method === 'POST') return await confirmPlayerEmail(request, config);
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);

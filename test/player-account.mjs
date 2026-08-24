@@ -228,8 +228,20 @@ assert.equal((await confirmEmailResponse.json()).player.id, userId, 'email verif
 const verifyCall = calls.find(call => call.url.endsWith('/auth/v1/verify'));
 assert.deepEqual(JSON.parse(verifyCall.options.body), { token_hash: 'valid-token-hash-with-enough-entropy', type: 'email_change' }, 'only the one-time verification hash reaches Supabase Auth');
 
-const callbackResponse = await onRequest({
+const verifyCountBeforeLanding = calls.filter(call => call.url.endsWith('/auth/v1/verify')).length;
+const callbackLandingResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/callback?token_hash=callback-token-hash-with-enough-entropy&type=recovery'),
+  env,
+  params: { path: ['player', 'account', 'callback'] },
+});
+assert.equal(callbackLandingResponse.status, 200, 'the email link opens a same-origin confirmation landing page');
+assert.match(await callbackLandingResponse.text(), /CONTINUE TO CREATE PASSWORD/, 'the account landing clearly explains the required user action');
+assert.equal(calls.filter(call => call.url.endsWith('/auth/v1/verify')).length, verifyCountBeforeLanding, 'email scanners cannot consume the one-time token with a GET request');
+const callbackResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/callback', {
+    method: 'POST',
+    body: new URLSearchParams({ token_hash: 'callback-token-hash-with-enough-entropy', type: 'recovery' }),
+  }),
   env,
   params: { path: ['player', 'account', 'callback'] },
 });
