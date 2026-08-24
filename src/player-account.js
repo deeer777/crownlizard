@@ -66,6 +66,11 @@ export class PlayerAccount {
     const error = params.get('error_description');
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
+    const tokenHash = params.get('token_hash');
+    const verificationType = params.get('type');
+    const pendingVerification = params.get('account') === 'confirm'
+      && /^[A-Za-z0-9_-]{20,512}$/.test(String(tokenHash || ''))
+      && ['email', 'email_change'].includes(String(verificationType || ''));
     const confirmation = url.searchParams.get('account') === 'verified' || Boolean(params.get('message'));
     const clearRedirect = () => {
       try {
@@ -77,6 +82,10 @@ export class PlayerAccount {
     if (error) {
       clearRedirect();
       return { error };
+    }
+    if (pendingVerification) {
+      clearRedirect();
+      return { pending: true, tokenHash, type: verificationType };
     }
     if (!accessToken || !refreshToken) {
       if (!confirmation) return null;
@@ -197,6 +206,18 @@ export class PlayerAccount {
     });
     try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
     return payload;
+  }
+
+  async completeAuthRedirect() {
+    if (!this.redirectResult?.pending) return this.redirectResult;
+    const payload = await requestJson('/api/player/account/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ tokenHash: this.redirectResult.tokenHash, type: this.redirectResult.type }),
+    });
+    this.saveSession(payload);
+    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
+    this.redirectResult = { verified: true, session: this.session };
+    return this.redirectResult;
   }
 
   async setPassword(password) {

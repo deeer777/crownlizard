@@ -111,6 +111,12 @@ let equipOwned = true;
 let mockedAuthUser = { id: userId, is_anonymous: true, email: '' };
 globalThis.fetch = async (url, options = {}) => {
   calls.push({ url: String(url), options });
+  if (String(url).endsWith('/api/player/account/confirm')) return Response.json({
+    accessToken: 'confirmed.header.payload.signature-access',
+    refreshToken: 'confirmed-refresh-token-with-enough-entropy',
+    expiresIn: 3600,
+    player: { id: userId, anonymous: false, email: 'pilot@example.com' },
+  });
   if (String(url).includes('/auth/v1/signup')) return Response.json({
     access_token: 'header.payload.signature-access',
     refresh_token: 'refresh-token-with-enough-entropy',
@@ -123,6 +129,12 @@ globalThis.fetch = async (url, options = {}) => {
     refresh_token: 'login-refresh-token-with-enough-entropy',
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
+  });
+  if (String(url).includes('/auth/v1/verify')) return Response.json({
+    access_token: 'confirmed.header.payload.signature-access',
+    refresh_token: 'confirmed-refresh-token-with-enough-entropy',
+    expires_in: 3600,
     user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
   });
   if (String(url).includes('/auth/v1/user')) {
@@ -201,6 +213,18 @@ assert.equal(linkEmailResponse.status, 202, 'an anonymous player can request an 
 const linkEmailCall = calls.find(call => call.url.includes('/auth/v1/user?redirect_to='));
 assert.equal(JSON.parse(linkEmailCall.options.body).email, 'pilot@example.com', 'email linking normalizes the address before Supabase Auth');
 assert.equal(Object.hasOwn(JSON.parse(linkEmailCall.options.body), 'password'), false, 'the link step never accepts a password before email verification');
+
+const confirmEmailResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/confirm', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenHash: 'valid-token-hash-with-enough-entropy', type: 'email_change' }),
+  }),
+  env,
+  params: { path: ['player', 'account', 'confirm'] },
+});
+assert.equal(confirmEmailResponse.status, 200, 'the branded callback exchanges the one-time hash for the verified player session');
+assert.equal((await confirmEmailResponse.json()).player.id, userId, 'email verification keeps the linked player id');
+const verifyCall = calls.find(call => call.url.endsWith('/auth/v1/verify'));
+assert.deepEqual(JSON.parse(verifyCall.options.body), { token_hash: 'valid-token-hash-with-enough-entropy', type: 'email_change' }, 'only the one-time verification hash reaches Supabase Auth');
 
 mockedAuthUser = { id: userId, is_anonymous: false, email: 'pilot@example.com' };
 const setPasswordResponse = await onRequest({
@@ -369,6 +393,24 @@ const messageResult = messageAccount.consumeAuthRedirect({
 assert.equal(messageResult.confirmed, true, 'a confirmation-only redirect is recognized without exposing tokens');
 messageAccount.syncPlayer({ id: userId, anonymous: false, email: 'pilot@example.com' });
 assert.equal(messageAccount.needsPasswordSetup(), true, 'the refreshed permanent identity opens password setup after a confirmation-only redirect');
+
+const hashStorage = {
+  values: new Map(),
+  getItem(key) { return this.values.get(key) || null; },
+  setItem(key, value) { this.values.set(key, value); },
+  removeItem(key) { this.values.delete(key); },
+};
+const hashAccount = new PlayerAccount(hashStorage);
+hashAccount.redirectResult = hashAccount.consumeAuthRedirect({
+  hash: '#account=confirm&token_hash=valid-token-hash-with-enough-entropy&type=email_change',
+  href: 'https://crownlizard.com/#account=confirm&token_hash=valid-token-hash-with-enough-entropy&type=email_change',
+  pathname: '/',
+  search: '',
+}, { replaceState() {} });
+assert.equal(hashAccount.redirectResult.pending, true, 'the branded email link is recognized without sending its secret hash to the web server');
+await hashAccount.completeAuthRedirect();
+assert.equal(hashAccount.getPlayer().anonymous, false, 'the browser switches to the verified permanent account before loading its wallet');
+assert.equal(hashAccount.needsPasswordSetup(), true, 'the verified callback opens Create Password immediately');
 globalThis.fetch = originalFetch;
 
 console.log('Player account and legacy migration test passed');

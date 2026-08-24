@@ -89,7 +89,13 @@ Frontendens kontoklient i `src/player-account.js` är nu den aktiva walletvägen
 
 ### Permanent player login
 
-Build 55 adds `PLAYER ACCOUNT` to Settings. An anonymous player can link an email to the existing Supabase Auth user, verify it and then create a password. Because the Auth user ID is preserved, shards, inventory, pity and equipped cosmetics stay on the same server wallet. `SIGN IN` restores an existing account and its Vault on another device; temporary guest progress is intentionally not merged into an existing account.
+Build 57 adds `PLAYER ACCOUNT` to Settings. An anonymous player can link an email to the existing Supabase Auth user, verify it and then create a password. Because the Auth user ID is preserved, shards, inventory, pity and equipped cosmetics stay on the same server wallet. `SIGN IN` restores an existing account and its Vault on another device; temporary guest progress is intentionally not merged into an existing account.
+
+The Change email address template must use a client-side token-hash callback so the browser that opens the email receives the verified session before loading the Vault:
+
+`{{ .SiteURL }}#account=confirm&amp;token_hash={{ .TokenHash }}&amp;type=email_change`
+
+This avoids exposing the one-time token in ordinary page requests and reliably opens `CREATE PASSWORD`, including when the message is opened in a different browser.
 
 Before enabling Build 55 in production, configure Supabase Auth:
 

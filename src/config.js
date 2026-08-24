@@ -1,5 +1,5 @@
 export const CONFIG = Object.freeze({
-  version: Object.freeze({ release: '0.15.1', build: 56 }),
+  version: Object.freeze({ release: '0.15.2', build: 57 }),
   simulationHz: 60,
   player: {
     radius: 17,

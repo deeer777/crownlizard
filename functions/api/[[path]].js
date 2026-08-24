@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -312,6 +312,32 @@ const linkPlayerEmail = async (request, config) => {
   }
 };
 
+const confirmPlayerEmail = async (request, config) => {
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid verification link.' }, 400); }
+  const tokenHash = String(body.tokenHash || '');
+  const type = String(body.type || '');
+  if (!/^[A-Za-z0-9_-]{20,512}$/.test(tokenHash) || !new Set(['email', 'email_change']).has(type)) {
+    return json({ error: 'Invalid verification link.' }, 400);
+  }
+  try {
+    const payload = await authFetch(config, 'verify', {
+      method: 'POST',
+      body: JSON.stringify({ token_hash: tokenHash, type }),
+    });
+    const session = sessionPayload(payload);
+    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
+      throw new Error('AUTH_SESSION_INVALID');
+    }
+    return json(session);
+  } catch (error) {
+    if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
+      return json({ error: 'This verification link is invalid or has expired.' }, 400);
+    }
+    throw error;
+  }
+};
+
 const setPlayerPassword = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
@@ -566,6 +592,7 @@ export const onRequest = async context => {
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
+    if (path === 'player/account/confirm' && request.method === 'POST') return await confirmPlayerEmail(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);
     if (path === 'player/account/login' && request.method === 'POST') return await loginPlayer(request, config);
     if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);
