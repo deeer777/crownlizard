@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -344,7 +344,7 @@ const confirmPlayerEmail = async (request, config) => {
 const accountPage = ({ title, eyebrow, message, body, status = 200, cookie = '', script = '' }) => {
   const nonce = script ? crypto.randomUUID().replace(/-/g, '') : '';
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
-*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:monospace;text-align:center}.panel{width:min(440px,100%);border:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-weight:900;letter-spacing:4px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:11px;letter-spacing:2px}h1{margin:0 0 14px;font-size:22px;letter-spacing:1px}p{margin:0 auto 24px;max-width:350px;color:#b8d8d0;line-height:1.55}.field{display:block;margin:0 0 17px;text-align:left}.field span{display:block;margin:0 0 7px;color:#8cc8b9;font-size:10px;font-weight:900;letter-spacing:2px}.field input{width:100%;min-height:52px;border:2px solid #377f72;border-radius:0;background:#02090c;color:#fff;padding:10px 12px;font:700 16px monospace;outline:0}.field input:focus{border-color:#ffd36b;box-shadow:0 0 0 2px #8f541c}.button{display:grid;place-items:center;width:100%;min-height:58px;border:0;background:#ffd36b;color:#071014;text-decoration:none;font:900 14px monospace;letter-spacing:1px;box-shadow:0 5px 0 #8f541c;cursor:pointer}.button:active{transform:translateY(3px);box-shadow:0 2px 0 #8f541c}.error{margin:-5px 0 18px;color:#ff8c83;font-size:12px;font-weight:900;line-height:1.5}.note{margin:18px 0 0;color:#77958d;font-size:10px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${message}</p>${body}<div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main>${script ? `<script nonce="${nonce}">${script}</script>` : ''}</body></html>`, {
+@font-face{font-family:PressStart;src:url('/assets/fonts/PressStart2P-Regular.ttf')}@font-face{font-family:Silkscreen;src:url('/assets/fonts/Silkscreen-Bold.ttf')}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:Silkscreen,monospace;text-align:center}.panel{width:min(440px,100%);border-block:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-family:PressStart,monospace;font-size:14px;letter-spacing:1px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:10px;letter-spacing:2px}h1{margin:0 0 14px;font:400 20px/1.45 PressStart,monospace;letter-spacing:0}p{margin:0 auto 24px;max-width:350px;color:#b8d8d0;font-size:12px;line-height:1.55}.field{display:block;margin:0 0 17px;text-align:left}.field span{display:block;margin:0 0 7px;color:#8cc8b9;font-size:10px;letter-spacing:2px}.field input{width:100%;min-height:52px;border:2px solid #377f72;border-radius:0;background:#02090c;color:#fff;padding:10px 12px;font:700 16px Silkscreen,monospace;outline:0}.field input:focus{border-color:#ffd36b;box-shadow:0 0 0 2px #8f541c}.button{display:grid;place-items:center;width:100%;min-height:58px;border:0;background:transparent;color:#e8fff8;text-decoration:none;font:400 11px/1.7 PressStart,monospace;letter-spacing:1px;text-shadow:2px 2px #164b41;cursor:pointer}.button:hover,.button:focus{color:#ffd36b;outline:0}.button:active{transform:translateY(2px)}.error{margin:-5px 0 18px;color:#ff8c83;font-size:12px;line-height:1.5}.note{margin:18px 0 0;color:#77958d;font-size:9px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${message}</p>${body}<div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main>${script ? `<script nonce="${nonce}">${script}</script>` : ''}</body></html>`, {
   status,
   headers: {
     'Content-Type': 'text/html; charset=utf-8',
@@ -352,21 +352,22 @@ const accountPage = ({ title, eyebrow, message, body, status = 200, cookie = '',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; ${script ? `script-src 'nonce-${nonce}';` : ''} form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+    'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; ${script ? `script-src 'nonce-${nonce}';` : ''} form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
     ...(cookie ? { 'Set-Cookie': cookie } : {}),
   },
   });
 };
 
-const sessionReadyPage = (session, cookie) => {
+const sessionReadyPage = (session, cookie, flow = 'password') => {
   const safeSession = JSON.stringify(session)
     .replace(/&/g, '\\u0026')
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
-  const script = `(()=>{try{const session=${safeSession};session.expiresIn=Number(session.expiresIn)||3600;session.expiresAt=Number(session.expiresAt)||Math.floor(Date.now()/1000)+session.expiresIn;localStorage.setItem('cl:player-session:v1',JSON.stringify(session));localStorage.setItem('cl:account-password:v1','done');setTimeout(()=>location.replace('/?account=signed-in'),700)}catch{setTimeout(()=>location.replace('/?account=sign-in'),700)}})();`;
-  return accountPage({ title: 'PASSWORD SAVED', eyebrow: 'VAULT SECURED', message: 'Your Crown account is ready. Signing you in and restoring your Vault now.', body: '<a class="button" href="/?account=signed-in">♛ OPEN CROWN LIZARD</a>', cookie, script });
+  const script = `(()=>{try{const session=${safeSession};session.expiresIn=Number(session.expiresIn)||3600;session.expiresAt=Number(session.expiresAt)||Math.floor(Date.now()/1000)+session.expiresIn;localStorage.setItem('cl:player-session:v1',JSON.stringify(session));localStorage.setItem('cl:account-password:v1','done')}catch{}})();`;
+  const login = flow === 'login';
+  return accountPage({ title: login ? 'SIGNED IN' : 'PASSWORD SAVED', eyebrow: login ? 'VAULT RESTORED' : 'ACCOUNT READY', message: login ? 'Your Crown account is active on this device.' : 'Your password is saved and your Crown account is ready.', body: '<a class="button" href="/">♛ ENTER CROWN LIZARD</a>', cookie, script });
 };
 
 const passwordSetupForm = error => `<form method="post" action="/api/player/account/password/complete"><label class="field"><span>NEW PASSWORD</span><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required autofocus></label><label class="field"><span>CONFIRM PASSWORD</span><input name="confirm_password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>${error ? `<div class="error" role="alert">${error}</div>` : ''}<button class="button" type="submit">♛ SAVE PASSWORD</button></form>`;
@@ -539,7 +540,7 @@ const completePlayerLoginPage = async (request, config) => {
     });
     const session = sessionPayload(payload);
     if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
-    return sessionReadyPage(session, '');
+    return sessionReadyPage(session, '', 'login');
   } catch (error) {
     if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
       return accountPage({ title: 'SIGN IN FAILED', eyebrow: 'CROWN ACCOUNT', message: 'The email or password is incorrect.', body: '<a class="button" href="/?account=sign-in">TRY AGAIN</a>', status: 401 });

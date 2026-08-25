@@ -1,12 +1,13 @@
-import { CONFIG } from './config.js?v=20260825-66-stable-session';
+import { CONFIG } from './config.js?v=20260825-67-account-overhaul';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-66-stable-session';
+import { Game } from './game.js?v=20260825-67-account-overhaul';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-66-stable-session';
+import { PlayerAccount } from './player-account.js?v=20260825-67-account-overhaul';
+import { buildAccountPresentation } from './account-presentation.js?v=20260825-67-account-overhaul';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -23,7 +24,7 @@ const ui = {
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
-  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'),
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
@@ -83,6 +84,8 @@ try {
   }
 } catch {}
 const playerAccount = new PlayerAccount();
+const currentAccountState = () => localPreview ? 'preview' : playerAccount.getAccountState();
+const accountPresentation = () => buildAccountPresentation({ state: currentAccountState(), mode: accountMode, email: playerAccount.getPlayer()?.email });
 const rewardedAd = new SimulatedRewardedAdAdapter();
 let serverWallet = null;
 let serverEconomyReady = false;
@@ -381,12 +384,7 @@ const renderSettings = () => {
   });
   ui.sound.classList.toggle('off', !music.enabled);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
-  const player = playerAccount.getPlayer();
-  ui.accountBadge.textContent = localPreview
-    ? 'LIVE ONLY'
-    : player && !player.anonymous
-      ? playerAccount.needsPasswordSetup() ? 'FINISH SETUP' : 'SECURED'
-      : 'GUEST';
+  ui.accountBadge.textContent = accountPresentation().badge;
 };
 
 const selectMenuChoice = (index, focus = false) => {
@@ -794,9 +792,15 @@ const connectServerEconomy = () => {
   if (serverEconomyConnecting) return playerReadyPromise;
   serverEconomyConnecting = true;
   playerReadyPromise = bootstrapServerEconomy()
-    .catch(() => {
+    .catch(error => {
       serverEconomyReady = false;
       ui.menuShards.textContent = '◆ VAULT OFFLINE · GAME READY';
+      renderSettings();
+      if (!ui.accountOverlay.classList.contains('hidden')) {
+        renderAccount();
+        if (currentAccountState() === 'expired') setAccountStatus('SESSION EXPIRED · SIGN IN AGAIN', 'error');
+        else if (!playerAccount.redirectResult?.pending) setAccountStatus(String(error?.message || 'VAULT CONNECTION FAILED').toUpperCase(), 'error');
+      }
       return null;
     })
     .finally(() => { serverEconomyConnecting = false; });
@@ -805,24 +809,33 @@ const connectServerEconomy = () => {
 
 if (serverEconomy) {
   const connection = connectServerEconomy();
-  if (playerAccount.redirectResult) {
+  const redirect = playerAccount.redirectResult;
+  const shouldPresentAccount = Boolean(redirect?.pending || redirect?.signIn || redirect?.error || redirect?.confirmed || redirect?.verified);
+  if (shouldPresentAccount) {
     queueMicrotask(() => {
       openSettings('menu');
-      openAccount(playerAccount.redirectResult?.signIn ? 'login' : 'secure');
-      if (playerAccount.redirectResult?.pending) setAccountStatus('VERIFYING EMAIL...', '');
+      openAccount(redirect?.signIn ? 'login' : 'secure');
+      if (redirect?.pending) setAccountStatus('VERIFYING EMAIL...', '');
     });
-    const accountPresentation = playerAccount.redirectResult.pending ? authRedirectReady : connection;
-    void accountPresentation.then(() => {
+    const redirectPresentation = redirect.pending ? authRedirectReady : connection;
+    void redirectPresentation.then(() => {
       renderAccount();
-      if (playerAccount.redirectResult?.error) setAccountStatus(playerAccount.redirectResult.error.toUpperCase(), 'error');
-      else if (playerAccount.redirectResult?.signedIn) setAccountStatus('ACCOUNT SECURED · SIGNED IN', 'success');
-      else if (playerAccount.redirectResult?.signIn) setAccountStatus('ENTER YOUR NEW PASSWORD TO SIGN IN', '');
-      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous && playerAccount.needsPasswordSetup()) setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
-      else if (playerAccount.getPlayer() && !playerAccount.getPlayer().anonymous) setAccountStatus('ACCOUNT SECURED · SIGNED IN', 'success');
+      if (redirect?.error) setAccountStatus(redirect.error.toUpperCase(), 'error');
+      else if (redirect?.signIn) setAccountStatus('ENTER YOUR PASSWORD TO SIGN IN', '');
+      else if (currentAccountState() === 'setup') setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+      else if (currentAccountState() === 'signed-in') setAccountStatus('SIGNED IN · VAULT RESTORED', 'success');
       else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
     }).catch(error => {
       renderAccount();
       setAccountStatus(String(error?.message || 'EMAIL VERIFICATION FAILED').toUpperCase(), 'error');
+    });
+  }
+  if (redirect?.sessionReturn) {
+    void connection.then(() => {
+      if (currentAccountState() === 'signed-in') return;
+      openSettings('menu');
+      openAccount('login');
+      setAccountStatus('SIGN-IN WAS NOT RESTORED · PLEASE SIGN IN AGAIN', 'error');
     });
   }
 }
@@ -893,23 +906,17 @@ const setAccountStatus = (message = '', kind = '') => {
 };
 
 const renderAccount = () => {
-  const player = playerAccount.getPlayer();
-  const permanent = Boolean(player && !player.anonymous);
-  const passwordSetup = permanent && playerAccount.needsPasswordSetup();
-  ui.accountIdentity.textContent = permanent ? (player.email || 'SECURED PLAYER') : 'GUEST VAULT';
-  ui.accountDescription.textContent = localPreview
-    ? 'PLAYER ACCOUNTS ARE AVAILABLE ON CROWNLIZARD.COM.'
-    : permanent
-      ? passwordSetup ? 'EMAIL VERIFIED · CREATE A PASSWORD TO FINISH.' : 'YOUR SHARDS AND SHIPS ARE PROTECTED.'
-      : accountMode === 'login'
-        ? 'LOAD AN EXISTING CROWN ACCOUNT ON THIS DEVICE.'
-        : 'KEEP THIS VAULT AND USE IT ON OTHER DEVICES.';
-  ui.accountTabs.classList.toggle('hidden', permanent);
-  ui.accountForm.classList.toggle('hidden', permanent && !passwordSetup);
-  ui.accountEmailField.classList.toggle('hidden', passwordSetup);
-  ui.accountPasswordField.classList.toggle('hidden', !passwordSetup && accountMode !== 'login');
-  ui.accountWarning.classList.toggle('hidden', permanent || accountMode !== 'login');
-  ui.accountRecovery.classList.toggle('hidden', permanent || accountMode !== 'login');
+  const presentation = accountPresentation();
+  const passwordSetup = presentation.state === 'setup';
+  ui.accountStatePanel.dataset.state = presentation.state;
+  ui.accountIdentity.textContent = presentation.identity;
+  ui.accountDescription.textContent = presentation.description;
+  ui.accountTabs.classList.toggle('hidden', !presentation.showTabs);
+  ui.accountForm.classList.toggle('hidden', !presentation.showForm);
+  ui.accountEmailField.classList.toggle('hidden', !presentation.showEmail);
+  ui.accountPasswordField.classList.toggle('hidden', !presentation.showPassword);
+  ui.accountWarning.classList.toggle('hidden', !presentation.showWarning);
+  ui.accountRecovery.classList.toggle('hidden', !presentation.showRecovery);
   ui.accountSecureTab.classList.toggle('selected', accountMode === 'secure');
   ui.accountSecureTab.setAttribute('aria-selected', String(accountMode === 'secure'));
   ui.accountLoginTab.classList.toggle('selected', accountMode === 'login');
@@ -919,23 +926,18 @@ const renderAccount = () => {
   ui.accountPassword.autocomplete = passwordSetup ? 'new-password' : 'current-password';
   ui.accountSubmit.disabled = accountBusy || localPreview;
   ui.accountRecovery.disabled = accountBusy || localPreview;
-  ui.accountSubmit.innerHTML = passwordSetup
-    ? '<i>♛</i> CREATE PASSWORD'
-    : accountMode === 'login'
-      ? '<i>♛</i> SIGN IN'
-      : '<i>♛</i> SEND VERIFY LINK';
+  ui.accountSubmit.innerHTML = `<i>♛</i> ${presentation.action}`;
   renderSettings();
 };
 
 const openAccount = (mode = 'secure') => {
-  accountMode = mode === 'login' ? 'login' : 'secure';
+  accountMode = mode === 'login' || currentAccountState() === 'expired' ? 'login' : 'secure';
   setAccountStatus(playerAccount.redirectResult?.error || '');
   ui.settingsOverlay.classList.add('hidden');
   ui.accountOverlay.classList.remove('hidden');
   renderAccount();
-  const player = playerAccount.getPlayer();
-  const target = player && !player.anonymous && playerAccount.needsPasswordSetup() ? ui.accountPassword : ui.accountEmail;
-  if (!target.closest('.hidden')) target.focus({ preventScroll: true });
+  const target = currentAccountState() === 'setup' ? ui.accountPassword : currentAccountState() === 'signed-in' ? null : ui.accountEmail;
+  if (target && !target.closest('.hidden')) target.focus({ preventScroll: true });
 };
 
 const closeAccount = () => {
@@ -1022,7 +1024,7 @@ ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selec
 ui.menuVault.addEventListener('click', openVault);
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
-ui.openAccount.addEventListener('click', openAccount);
+ui.openAccount.addEventListener('click', () => openAccount());
 ui.closeAccount.addEventListener('click', closeAccount);
 ui.accountSecureTab.addEventListener('click', () => {
   accountMode = 'secure';
@@ -1038,17 +1040,13 @@ ui.accountLoginTab.addEventListener('click', () => {
   ui.accountEmail.focus({ preventScroll: true });
 });
 ui.accountForm.addEventListener('submit', async event => {
-  const currentPlayer = playerAccount.getPlayer();
-  const currentPasswordSetup = currentPlayer && !currentPlayer.anonymous && playerAccount.needsPasswordSetup();
-  if (accountMode === 'login' && !currentPasswordSetup && !localPreview) return;
   event.preventDefault();
   if (accountBusy || localPreview) return;
   accountBusy = true;
   setAccountStatus('CONTACTING CROWN NETWORK...');
   renderAccount();
   try {
-    const player = playerAccount.getPlayer();
-    const passwordSetup = player && !player.anonymous && playerAccount.needsPasswordSetup();
+    const passwordSetup = currentAccountState() === 'setup';
     if (passwordSetup) {
       await playerAccount.setPassword(ui.accountPassword.value);
       ui.accountPassword.value = '';

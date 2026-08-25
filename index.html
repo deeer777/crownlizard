@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260825-66-stable-session">
+  <link rel="stylesheet" href="./styles.css?v=20260825-67-account-overhaul">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -159,20 +159,20 @@
       <div class="eyebrow">PLAYER IDENTITY</div>
       <h2 id="accountTitle">CROWN ACCOUNT</h2>
       <div class="account-state">
-        <b id="accountIdentity">GUEST VAULT</b>
-        <p id="accountDescription">SECURE YOUR SHARDS AND SHIPS FOR OTHER DEVICES.</p>
+        <b id="accountIdentity">GUEST PLAYER</b>
+        <p id="accountDescription">THIS VAULT IS SAVED ONLY ON THIS DEVICE.</p>
       </div>
       <div id="accountTabs" class="account-tabs" role="tablist" aria-label="Account action">
-        <button id="accountSecureTab" class="selected" type="button" role="tab" aria-selected="true">SECURE VAULT</button>
+        <button id="accountSecureTab" class="selected" type="button" role="tab" aria-selected="true">CREATE ACCOUNT</button>
         <button id="accountLoginTab" type="button" role="tab" aria-selected="false">SIGN IN</button>
       </div>
-      <form id="accountForm" class="account-form" method="post" action="/api/player/account/login/complete">
+      <form id="accountForm" class="account-form">
         <label id="accountEmailField">EMAIL<input id="accountEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required></label>
         <label id="accountPasswordField" class="hidden">PASSWORD<input id="accountPassword" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128"></label>
-        <p id="accountFormStatus" class="account-form-status" role="status"></p>
         <button id="accountSubmit" class="system-action" type="submit"><i>♛</i> SEND VERIFY LINK</button>
         <button id="accountRecovery" class="system-link account-recovery hidden" type="button">FORGOT PASSWORD?</button>
       </form>
+      <p id="accountFormStatus" class="account-form-status" role="status"></p>
       <p id="accountWarning" class="account-warning hidden">SIGNING IN LOADS THAT ACCOUNT'S VAULT. GUEST PROGRESS IS NOT MERGED.</p>
       <button id="closeAccount" class="system-link" type="button">BACK TO SETTINGS</button>
     </div>
@@ -277,6 +277,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260825-66-stable-session"></script>
+  <script type="module" src="./src/main.js?v=20260825-67-account-overhaul"></script>
 </body>
 </html>

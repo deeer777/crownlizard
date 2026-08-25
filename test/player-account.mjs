@@ -51,6 +51,7 @@ normalizedSessionAccount.saveSession({ session: {
   user: { id: '123e4567-e89b-42d3-a456-426614174000', is_anonymous: false, email: 'pilot@example.com' },
 } });
 assert.equal(normalizedSessionAccount.getPlayer().email, 'pilot@example.com', 'the client normalizes nested Supabase-style sessions before validating them');
+assert.equal(normalizedSessionAccount.getAccountState(), 'setup', 'a verified account without completed password setup has one explicit state');
 
 const missingExpiryStorage = {
   value: JSON.stringify({
@@ -117,8 +118,11 @@ globalThis.fetch = async url => {
   }
   throw new Error(`Unexpected permanent recovery request: ${url}`);
 };
-await assert.rejects(new PlayerAccount(expiredPermanentStorage).ensureSession(), /Sign in again/, 'an expired permanent account asks for sign-in instead of silently becoming a guest');
+const expiredPermanentAccount = new PlayerAccount(expiredPermanentStorage);
+await assert.rejects(expiredPermanentAccount.ensureSession(), /Sign in again/, 'an expired permanent account asks for sign-in instead of silently becoming a guest');
 assert.equal(permanentGuestRequests, 0, 'permanent account recovery never creates an anonymous replacement account');
+assert.equal(expiredPermanentAccount.getAccountState(), 'expired', 'an expired permanent identity remains distinguishable from a guest');
+assert.ok(expiredPermanentStorage.value, 'the permanent identity is retained so the UI can request sign-in honestly');
 globalThis.fetch = fetchBeforeRecoveryTest;
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
@@ -330,6 +334,8 @@ const callbackSavedPage = await callbackPasswordResponse.text();
 assert.match(callbackSavedPage, /PASSWORD SAVED/, 'the player receives an unambiguous completion page');
 assert.match(callbackSavedPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the verified permanent session replaces the stale guest session before returning to the game');
 assert.match(callbackSavedPage, /session\.expiresAt=Number\(session\.expiresAt\)\|\|Math\.floor\(Date\.now\(\)\/1000\)\+session\.expiresIn/, 'the completion boundary guarantees a usable session expiry before returning to the game');
+assert.doesNotMatch(callbackSavedPage, /setTimeout\(\(\)=>location\.replace/, 'password completion waits for the player instead of abruptly redirecting them');
+assert.match(callbackSavedPage, /href="\/">♛ ENTER CROWN LIZARD/, 'password completion returns through one clear arcade action');
 assert.match(callbackPasswordResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'the one-time session bootstrap script is protected by a per-response CSP nonce');
 assert.match(callbackPasswordResponse.headers.get('set-cookie'), /Max-Age=0/, 'the password setup cookie is cleared immediately after use');
 const callbackPasswordCall = calls.findLast(call => call.url.endsWith('/auth/v1/user') && call.options.method === 'PUT');
@@ -387,6 +393,8 @@ const serverRenderedLoginResponse = await onRequest({
 assert.equal(serverRenderedLoginResponse.status, 200, 'the robust sign-in path bypasses the failing client JSON session boundary');
 const serverRenderedLoginPage = await serverRenderedLoginResponse.text();
 assert.match(serverRenderedLoginPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the server-rendered sign-in installs the verified session directly');
+assert.match(serverRenderedLoginPage, /<h1>SIGNED IN<\/h1>/, 'fallback sign-in uses accurate copy instead of claiming a password was saved');
+assert.doesNotMatch(serverRenderedLoginPage, /<h1>PASSWORD SAVED<\/h1>/, 'ordinary sign-in never reuses password-creation feedback');
 assert.doesNotMatch(serverRenderedLoginPage, /correct-horse-crown/, 'the submitted password is never echoed into the completion page');
 assert.match(serverRenderedLoginResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'server-rendered sign-in uses the same nonce-protected session bootstrap');
 
@@ -568,7 +576,8 @@ const signedInResult = recoveryHashAccount.consumeAuthRedirect({
   pathname: '/',
   search: '?account=signed-in',
 }, { replaceState() {} });
-assert.equal(signedInResult.signedIn, true, 'the automatic session bootstrap opens the secured signed-in account state');
+assert.equal(signedInResult.sessionReturn, true, 'legacy completion URLs request a session check instead of claiming sign-in succeeded');
+assert.equal(signedInResult.signedIn, undefined, 'a URL flag can never masquerade as authenticated account state');
 
 globalThis.fetch = originalFetch;
 

@@ -71,6 +71,7 @@ export class PlayerAccount {
   constructor(storage = globalThis.localStorage, storageKey = SESSION_KEY) {
     this.storage = storage;
     this.storageKey = storageKey;
+    this.sessionExpired = false;
     this.session = this.readSession();
     this.redirectResult = this.consumeAuthRedirect();
   }
@@ -102,7 +103,7 @@ export class PlayerAccount {
     }
     if (accountAction === 'signed-in') {
       clearRedirect();
-      return { signedIn: true };
+      return { sessionReturn: true };
     }
     if (accountAction === 'sign-in') {
       clearRedirect();
@@ -147,16 +148,25 @@ export class PlayerAccount {
     if (!validSession(normalized)) throw new Error('Invalid player session.');
     const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
     this.session = { ...normalized, expiresAt };
+    this.sessionExpired = false;
     try { this.storage?.setItem(this.storageKey, JSON.stringify(this.session)); } catch {}
     return this.session;
   }
 
   clearSession() {
     this.session = null;
+    this.sessionExpired = false;
     try { this.storage?.removeItem(this.storageKey); } catch {}
   }
 
   getPlayer() { return this.session?.player || null; }
+
+  getAccountState() {
+    if (!this.session?.player || this.session.player.anonymous) return 'guest';
+    if (this.sessionExpired) return 'expired';
+    if (this.needsPasswordSetup()) return 'setup';
+    return 'signed-in';
+  }
 
   needsPasswordSetup() {
     if (!this.session?.player || this.session.player.anonymous) return false;
@@ -175,17 +185,23 @@ export class PlayerAccount {
   async recoverExpiredSession(error) {
     if (error?.status !== 400 && error?.status !== 401) throw error;
     const permanentAccount = Boolean(this.session?.player && !this.session.player.anonymous);
-    this.clearSession();
     if (permanentAccount) {
+      this.sessionExpired = true;
       const expired = new Error('Player session expired. Sign in again.');
       expired.status = 401;
       throw expired;
     }
+    this.clearSession();
     return this.createSession();
   }
 
   async ensureSession() {
     if (!this.session) return this.createSession();
+    if (this.sessionExpired) {
+      const expired = new Error('Player session expired. Sign in again.');
+      expired.status = 401;
+      throw expired;
+    }
     if (this.session.expiresAt * 1000 > Date.now() + 30_000) return this.session;
     try { return await this.refresh(); } catch (error) { return this.recoverExpiredSession(error); }
   }

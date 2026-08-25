@@ -4,16 +4,21 @@ import { secureRandom } from '../src/cosmetics.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
 const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
 
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
-assert.match(index, /main\.js\?v=20260825-66-stable-session/, 'the current frontend ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260825-66-stable-session/, 'the account client cannot be served from an older browser cache');
-assert.match(index, /action="\/api\/player\/account\/login\/complete"/, 'manual sign-in uses the server-rendered session boundary');
+assert.match(index, /main\.js\?v=20260825-67-account-overhaul/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260825-67-account-overhaul/, 'the account client cannot be served from an older browser cache');
+assert.match(main, /account-presentation\.js\?v=20260825-67-account-overhaul/, 'the single account presentation model ships behind the same cache boundary');
+assert.doesNotMatch(index, /action="\/api\/player\/account\/login\/complete"/, 'manual sign-in cannot accidentally leave the in-game account screen');
+assert.match(main, /accountForm\.addEventListener\('submit',[\s\S]*event\.preventDefault\(\);[\s\S]*playerAccount\.login/, 'manual sign-in remains in the account UI and installs the verified session atomically');
+assert.match(main, /currentAccountState\(\) === 'signed-in'/, 'signed-in presentation is derived from the stored permanent session, not redirect copy');
 assert.match(main, /VERIFYING EMAIL\.\.\./, 'email verification presents immediate progress before the wallet finishes loading');
 assert.match(index, /id="accountRecovery"[\s\S]*FORGOT PASSWORD\?/, 'sign in exposes an accessible password recovery action');
+assert.match(styles, /\.system-link \{[^}]*min-width: 245px[^}]*font: 400 11px\/1\.7 var\(--font-pixel-display\)/, 'secondary navigation uses the same full-size arcade typography as primary menu actions');
 assert.match(serverApi, /'0\.15\.1-56'/, 'the released frontend version can register server-owned runs');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
