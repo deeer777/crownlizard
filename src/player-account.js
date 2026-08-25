@@ -4,10 +4,12 @@ const PENDING_SETTLEMENT_KEY = 'cl:pending-settlement:v1';
 const PASSWORD_SETUP_KEY = 'cl:account-password:v1';
 const REQUEST_TIMEOUT = 20000;
 
+const validToken = value => typeof value === 'string' && value.length > 0 && value.length <= 8192;
+
 const validSession = value => value
-  && typeof value.accessToken === 'string' && value.accessToken.length > 20
-  && typeof value.refreshToken === 'string' && value.refreshToken.length > 20
-  && typeof value.player?.id === 'string';
+  && validToken(value.accessToken)
+  && validToken(value.refreshToken)
+  && typeof value.player?.id === 'string' && value.player.id.length > 0;
 
 const normalizeSession = value => {
   const source = value?.session || value || {};
@@ -145,7 +147,7 @@ export class PlayerAccount {
 
   saveSession(session) {
     const normalized = normalizeSession(session);
-    if (!validSession(normalized)) throw new Error('Invalid player session.');
+    if (!validSession(normalized)) throw new Error('Sign-in succeeded, but the player session could not be restored. Please try again.');
     const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
     this.session = { ...normalized, expiresAt };
     this.sessionExpired = false;

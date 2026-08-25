@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260825-67-account-overhaul';
+import { CONFIG } from './config.js?v=20260825-68-session-contract';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-67-account-overhaul';
+import { Game } from './game.js?v=20260825-68-session-contract';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-67-account-overhaul';
-import { buildAccountPresentation } from './account-presentation.js?v=20260825-67-account-overhaul';
+import { PlayerAccount } from './player-account.js?v=20260825-68-session-contract';
+import { buildAccountPresentation } from './account-presentation.js?v=20260825-68-session-contract';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);

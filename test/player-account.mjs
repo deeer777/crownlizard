@@ -46,11 +46,12 @@ assert.doesNotThrow(() => restrictedStorageAccount.saveSession({
 const normalizedSessionAccount = new PlayerAccount({ getItem: () => null, setItem() {} });
 normalizedSessionAccount.saveSession({ session: {
   access_token: 'normalized.header.payload.signature-access',
-  refresh_token: 'normalized-refresh-token-with-enough-entropy',
+  refresh_token: 'short-refresh',
   expires_in: 3600,
   user: { id: '123e4567-e89b-42d3-a456-426614174000', is_anonymous: false, email: 'pilot@example.com' },
 } });
 assert.equal(normalizedSessionAccount.getPlayer().email, 'pilot@example.com', 'the client normalizes nested Supabase-style sessions before validating them');
+assert.equal(normalizedSessionAccount.session.refreshToken, 'short-refresh', 'opaque Supabase refresh tokens are accepted without an invented minimum length');
 assert.equal(normalizedSessionAccount.getAccountState(), 'setup', 'a verified account without completed password setup has one explicit state');
 
 const missingExpiryStorage = {
@@ -163,9 +164,10 @@ let mockedAuthUser = { id: userId, is_anonymous: true, email: '' };
 globalThis.fetch = async (url, options = {}) => {
   calls.push({ url: String(url), options });
   if (String(url).endsWith('/api/player/account/login')) return Response.json({
+    contract: 'player-session-v1',
     session: {
       access_token: 'client-login.header.payload.signature-access',
-      refresh_token: 'client-login-refresh-token-with-enough-entropy',
+      refresh_token: 'live-refresh',
       expires_in: 3600,
       user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
     },
@@ -373,8 +375,10 @@ const loginResponse = await onRequest({
 });
 assert.equal(loginResponse.status, 200, 'a permanent player can restore a session on another device');
 const loginPayload = await loginResponse.json();
-assert.equal(loginPayload.player.anonymous, false, 'restored sessions are permanent identities');
+assert.equal(loginPayload.contract, 'player-session-v1', 'sign-in returns one versioned browser session contract');
+assert.equal(loginPayload.session.player.anonymous, false, 'restored sessions are permanent identities');
 assert.equal(loginPayload.session.player.id, userId, 'sign-in returns an explicit normalized session contract');
+assert.equal(Object.hasOwn(loginPayload, 'accessToken'), false, 'sign-in does not duplicate session credentials at the response root');
 assert.equal(loginPayload.wallet.balance, 420, 'sign-in returns the existing server-owned Vault atomically');
 const clientLoginStorage = { value: null, getItem() { return this.value; }, setItem(key, value) { if (key === 'cl:player-session:v1') this.value = value; }, removeItem() {} };
 const clientLoginAccount = new PlayerAccount(clientLoginStorage);

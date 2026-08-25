@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260825-67-account-overhaul';
+import { CONFIG } from './config.js?v=20260825-68-session-contract';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
