@@ -479,6 +479,10 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-panel h2 { margin: 10px 0 12px; }
 .vault-wallet { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 auto 15px; color: #708b84; font: 700 8px var(--font-pixel-ui); letter-spacing: .11em; }
 .vault-wallet strong { color: var(--gold); font: 400 15px var(--font-pixel-display); text-shadow: 2px 2px #5e3815; }
+.vault-sync-status { width: max-content; max-width: 100%; margin: -7px auto 14px; padding: 5px 9px; color: #819891; border: 1px solid #29443d; font: 700 7px var(--font-pixel-ui); letter-spacing: .08em; }
+.vault-sync-status[data-state="signed-in"] { color: var(--mint); border-color: #347a67; background: rgba(43,105,87,.14); }
+.vault-sync-status[data-state="setup"] { color: var(--gold); border-color: #735d29; }
+.vault-sync-status[data-state="expired"] { color: #ff8a96; border-color: #753a43; }
 .vault-body { display: grid; grid-template-columns: minmax(210px,.8fr) minmax(330px,1.35fr); gap: 24px; align-items: start; width: min(720px,100%); margin: 0 auto 8px; }
 .vault-crate-column { padding: 12px 13px; background: rgba(5,18,20,.72); border-top: 2px solid #365d54; border-bottom: 2px solid #101f1c; box-shadow: 4px 4px #010405; }
 .crown-crate { position: relative; display: grid; place-items: center; width: 168px; height: 142px; margin: -4px auto 14px; image-rendering: pixelated; }
@@ -785,6 +789,21 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .system-overlay { align-items: center; overflow-y: auto; padding: max(20px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom)); }
   .system-panel { padding: 20px 8px; }
   .system-panel h2 { margin-bottom: 22px; font-size: clamp(21px,7vw,28px); }
+  .account-panel { align-self: start; padding-block: 12px 18px; }
+  .account-panel h2 { margin-block: 10px 14px; }
+  .account-state { margin-bottom: 12px; padding-block: 11px 10px; }
+  .account-state b { font-size: 12px; }
+  .account-state p { font-size: 9px; line-height: 1.6; }
+  .account-tabs { margin-bottom: 12px; }
+  .account-tabs button { min-height: 48px; font-size: 9px; }
+  .account-form { gap: 10px; }
+  .account-form label { font-size: 9px; }
+  .account-form input { min-height: 52px; font-size: 12px; }
+  .account-form .system-action,
+  .account-form .system-link,
+  .account-panel > .system-link { min-height: 52px; font-size: 11px; }
+  .account-form-status,
+  .account-warning { font-size: 9px; line-height: 1.55; }
   .tutorial-steps { gap: 6px; }
   .tutorial-steps > div { grid-template-rows: 48px auto auto; gap: 5px; }
   .tutorial-steps i { font-size: 21px; }
@@ -808,7 +827,8 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .leaderboard-player-result { grid-template-columns: 42px 1fr auto auto; gap: 6px; padding-inline: 6px; }
   .vault-panel { align-self: start; padding: 10px 2px 18px; }
   .vault-panel h2 { margin-block: 7px 9px; }
-  .vault-wallet { margin-bottom: 11px; }
+  .vault-wallet { margin-bottom: 10px; font-size: 9px; }
+  .vault-sync-status { margin: -3px auto 12px; padding-block: 6px; font-size: 8px; }
   .vault-body { grid-template-columns: 1fr; gap: 14px; }
   .vault-crate-column { width: min(315px,100%); margin-inline: auto; padding-block: 9px; }
   .crown-crate { width: 172px; height: 142px; margin-block: -7px 15px; }
@@ -816,8 +836,8 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .vault-info-column { width: 100%; }
   .vault-crate-column > p { font-size: 8px; }
   .vault-sponsored-signal { padding-top: 8px; }
-  .vault-sponsored-signal > span { font-size: 8px; }
-  .vault-sponsored-signal .system-action { min-height: 46px; font-size: 8px; }
+  .vault-sponsored-signal > span { font-size: 9px; }
+  .vault-sponsored-signal .system-action { min-height: 48px; font-size: 9px; }
   .vault-section-title { font-size: 10px; }
   .vault-section-title b { font-size: 8px; }
   .vault-odds-toggle { min-height: 46px; padding-inline: 4px; }
@@ -825,17 +845,18 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .vault-odds div { display: flex; justify-content: space-between; align-items: center; min-height: 40px; padding: 8px 10px; font-size: 9px; }
   .vault-odds div:last-child { grid-column: 1 / -1; }
   .vault-odds b { font-size: 11px; }
-  .vault-categories { gap: 4px; }
-  .vault-categories button { min-height: 46px; font-size: 7px; }
+  .vault-categories { grid-template-columns: repeat(2,1fr); gap: 4px; }
+  .vault-categories button { min-height: 48px; font-size: 9px; }
+  .vault-categories small { font-size: 7px; }
   .vault-collection { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
   .vault-cosmetic { grid-template-rows: 86px auto; min-height: 137px; padding: 8px 7px 9px; }
   .vault-cosmetic img { width: 80px; height: 80px; }
   .vault-cosmetic b { font-size: 9px; }
   .vault-cosmetic small { font-size: 8px; }
-  .vault-status { font-size: 8px !important; }
-  .vault-guarantee { font-size: 8px; }
-  .vault-animation-toggle { min-height: 44px; font-size: 7px; }
-  .vault-fineprint { font-size: 8px; line-height: 1.6; }
+  .vault-status { font-size: 9px !important; }
+  .vault-guarantee { font-size: 9px; }
+  .vault-animation-toggle { min-height: 48px; font-size: 9px; }
+  .vault-fineprint { font-size: 9px; line-height: 1.6; }
   .reveal-panel { padding-top: 20px; }
   .crate-cinematic-stage { width: min(235px,72vw); height: min(235px,72vw); }
   .crate-opening-cinematic > p { font-size: 8px; }

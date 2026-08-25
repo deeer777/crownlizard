@@ -30,6 +30,15 @@ export const buildAccountPresentation = ({ state, mode = 'secure', email = '' })
             : loginMode
               ? 'SIGN IN TO RESTORE YOUR EXISTING CROWN VAULT.'
               : 'CREATE AN ACCOUNT TO PROTECT THIS VAULT ON OTHER DEVICES.',
+    vaultStatus: preview
+      ? 'LOCAL PREVIEW'
+      : signedIn
+        ? 'CLOUD VAULT · SYNCED'
+        : setup
+          ? 'CLOUD VAULT · FINISH SETUP'
+          : expired
+            ? 'CLOUD VAULT · SIGN IN REQUIRED'
+            : 'DEVICE VAULT · GUEST',
     showTabs: !signedIn && !setup,
     showForm: !signedIn,
     showEmail: !setup,

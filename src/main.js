@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260825-68-session-contract';
+import { CONFIG } from './config.js?v=20260825-69-mobile-account-vault';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-68-session-contract';
+import { Game } from './game.js?v=20260825-69-mobile-account-vault';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-68-session-contract';
-import { buildAccountPresentation } from './account-presentation.js?v=20260825-68-session-contract';
+import { PlayerAccount } from './player-account.js?v=20260825-69-mobile-account-vault';
+import { buildAccountPresentation } from './account-presentation.js?v=20260825-69-mobile-account-vault';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -27,7 +27,7 @@ const ui = {
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
-  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
+  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
@@ -145,8 +145,11 @@ const renderVaultOddsVisibility = () => {
 
 const renderVault = () => {
   const state = walletState();
+  const account = accountPresentation();
   const owned = Object.keys(state.inventory.cosmetics);
   ui.vaultBalance.textContent = `◆ ${state.balance.toLocaleString('en-US')}`;
+  ui.vaultSyncStatus.dataset.state = account.state;
+  ui.vaultSyncStatus.textContent = serverEconomy && !serverEconomyReady ? 'CLOUD VAULT · CONNECTING' : account.vaultStatus;
   ui.vaultOwned.textContent = `${owned.length} / ${COSMETICS.length}`;
   ui.vaultGuarantee.textContent = `${state.vault.sinceSovereign} / ${SOVEREIGN_GUARANTEE}`;
   ui.vaultGuaranteeFill.style.width = `${state.vault.sinceSovereign / SOVEREIGN_GUARANTEE * 100}%`;
