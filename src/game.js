@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
+import { CONFIG } from './config.js?v=20260826-76-balance-pass1-final';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -190,7 +190,7 @@ export class Game {
     this.spawnTimer = .8;
     this.formationTimer = 18;
     this.introducedThreats = new Set();
-    this.pickupTimer = 2.8;
+    this.pickupTimer = CONFIG.weaponProgression.initialDelay;
     this.pickupCount = 0;
     this.runStats = { wardens: 0, enemies: 0, crates: 0, bestCombo: 1 };
     this.shake = 0;
@@ -328,10 +328,10 @@ export class Game {
     } else if (key === 'laser') {
       stats.pierce = 1;
       stats.beamLength = 34;
-      if (level >= 2) { stats.interval = .155; stats.damage = 1; }
-      if (level >= 3) { stats.pierce = 3; stats.beamLength = 48; }
-      if (level >= 4) { stats.count = 2; stats.spread = .045; }
-      if (level >= 5) { stats.count = 3; stats.spread = .055; stats.interval = .125; stats.damage = 1.18; stats.pierce = 5; stats.beamLength = 64; }
+      if (level >= 2) { stats.interval = .185; stats.damage = .86; }
+      if (level >= 3) { stats.pierce = 2; stats.beamLength = 46; }
+      if (level >= 4) { stats.count = 2; stats.spread = .045; stats.interval = .18; stats.damage = .7; }
+      if (level >= 5) { stats.count = 2; stats.spread = .04; stats.interval = .165; stats.damage = .82; stats.pierce = 3; stats.beamLength = 60; }
     } else if (key === 'tesla') {
       stats.branches = 1;
       stats.chainRange = 245;
@@ -341,7 +341,7 @@ export class Game {
       if (level >= 4) { stats.count = 2; stats.chainRange = 315; }
       if (level >= 5) { stats.branches = 4; stats.chainRange = 365; stats.interval = .22; stats.damage = .9; stats.attachDuration = .36; }
     }
-    stats.interval *= this.modifiers.fireRate;
+    stats.interval = Math.max(stats.minimumInterval || .08, stats.interval * this.modifiers.fireRate);
     stats.damage *= this.modifiers.damage;
     return stats;
   }
@@ -589,7 +589,7 @@ export class Game {
         const unowned = available.filter(key => this.weaponLevels[key] === 0);
         const showcase = unowned.filter(key => key === 'laser' || key === 'tesla');
         const discoveryDrop = unowned.length > 0 && this.pickupCount < 4;
-        const favorCurrent = !discoveryDrop && this.pickupCount > 0 && available.includes(this.weapon) && Math.random() < .52;
+        const favorCurrent = !discoveryDrop && this.pickupCount > 0 && available.includes(this.weapon) && Math.random() < CONFIG.weaponProgression.favorCurrentChance;
         const pool = firstDrop && showcase.length ? showcase : discoveryDrop ? unowned : available;
         const weapon = favorCurrent ? this.weapon : pool[Math.floor(Math.random() * pool.length)];
         this.pickups.push({
@@ -605,9 +605,15 @@ export class Game {
         });
         this.pickupCount += 1;
         const remainingDiscoveries = unowned.length - 1;
-        this.pickupTimer = remainingDiscoveries > 0 && this.pickupCount < 4 ? random(8, 11) : random(16, 22);
+        const [delayMin, delayMax] = remainingDiscoveries > 0 && this.pickupCount < 4
+          ? CONFIG.weaponProgression.discoveryInterval
+          : CONFIG.weaponProgression.upgradeInterval;
+        this.pickupTimer = random(delayMin, delayMax);
         const weaponName = CONFIG.weapons[weapon].name;
-      } else this.pickupTimer = random(16, 22);
+      } else {
+        const [delayMin, delayMax] = CONFIG.weaponProgression.upgradeInterval;
+        this.pickupTimer = random(delayMin, delayMax);
+      }
     }
   }
 
@@ -730,7 +736,11 @@ export class Game {
     const eliteChance = type === 'boss' || learningNewThreat ? 0 : (zone === 3 ? .28 : .07 + Math.min(.12, this.stageIndex * .012));
     const eliteTypes = ['swift', 'armored', 'splitter', 'volatile'];
     const elite = options.elite !== undefined ? options.elite : Math.random() < eliteChance ? eliteTypes[Math.floor(Math.random() * eliteTypes.length)] : null;
-    let health = type === 'boss' ? base.health * this.modifiers.bossHealth : base.health * (1 + this.stageIndex * .055);
+    const completedCycles = Math.floor(this.stageIndex / CONFIG.stages.length);
+    const normalHealthScaling = 1
+      + this.stageIndex * CONFIG.enemyScaling.healthPerStage
+      + completedCycles * CONFIG.enemyScaling.healthPerCycle;
+    let health = type === 'boss' ? base.health * this.modifiers.bossHealth : base.health * normalHealthScaling;
     let speed = base.speed * (1 + Math.min(.65, this.stageIndex * .035));
     let value = base.value;
     if (elite === 'swift') speed *= 1.55;
@@ -1297,8 +1307,8 @@ export class Game {
       this.modifiers.maxHealthBonus += 1;
       this.player.health += 1;
     } else if (key === 'magnet') this.modifiers.pickupRange += 135;
-    else if (key === 'overclock') this.modifiers.fireRate *= .85;
-    else if (key === 'heavyCrown') { this.modifiers.damage *= 1.22; this.modifiers.movement *= .93; }
+    else if (key === 'overclock') this.modifiers.fireRate *= .88;
+    else if (key === 'heavyCrown') { this.modifiers.damage *= 1.18; this.modifiers.movement *= .93; }
     else if (key === 'velocity') this.modifiers.movement *= 1.12;
     else if (key === 'comboKeeper') this.modifiers.comboWindow *= 1.4;
     else if (key === 'royalFavor') this.modifiers.score *= 1.15;
@@ -1307,8 +1317,8 @@ export class Game {
       this.modifiers.maxHealthBonus -= 1;
       this.player.health = Math.max(1, Math.min(this.player.health, CONFIG.difficulties[this.difficulty].health + this.modifiers.maxHealthBonus));
     } else if (key === 'cursedOverdrive') {
-      this.modifiers.fireRate *= .54;
-      this.modifiers.enemyPressure *= 1.28;
+      this.modifiers.fireRate *= .68;
+      this.modifiers.enemyPressure *= 1.4;
     } else if (key === 'royalDebt') {
       this.modifiers.comboGain = 2;
       this.modifiers.bossHealth *= 1.65;

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
+import { CONFIG } from './config.js?v=20260826-76-balance-pass1-final';
 
 export class Music {
   constructor() {

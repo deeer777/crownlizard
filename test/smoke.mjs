@@ -30,7 +30,7 @@ assert.equal(game.player.health, 3, 'new runs start with three lives');
 
 game.start();
 game.player.invulnerable = 999;
-assert.ok(game.pickupTimer <= 3, 'the first weapon crate is scheduled almost immediately');
+assert.equal(game.pickupTimer, 8, 'the first weapon crate arrives early without interrupting the opening seconds');
 game.pickupTimer = 0;
 game.update(1 / 60);
 assert.equal(game.pickups.length, 1, 'weapon director spawns pickups');
@@ -41,6 +41,7 @@ assert.equal(previousWeaponLevel, 0, 'the first crate guarantees a previously un
 assert.equal(game.pickups[0].targetLevel, previousWeaponLevel + 1, 'crate advertises its exact target level');
 assert.equal(game.pickups[0].firstDrop, true, 'the first crate is marked for persistent on-screen guidance');
 assert.ok(game.pickups[0].y >= 140, 'the first crate appears below the HUD instead of outside the arena');
+assert.ok(game.pickupTimer >= 14 && game.pickupTimer <= 18, 'weapon discovery continues faster than later upgrades');
 game.pickups[0].x = game.player.x;
 game.pickups[0].y = game.player.y;
 game.update(1 / 60);
@@ -69,8 +70,8 @@ assert.deepEqual(
 );
 assert.deepEqual(
   { count: game.weaponStats('laser').count, pierce: game.weaponStats('laser').pierce, beamLength: game.weaponStats('laser').beamLength },
-  { count: 3, pierce: 5, beamLength: 64 },
-  'max Laser becomes a three-beam piercing prisma lance',
+  { count: 2, pierce: 3, beamLength: 60 },
+  'max Laser remains a focused piercing weapon instead of an all-purpose screen clear',
 );
 assert.deepEqual(
   { count: game.weaponStats('tesla').count, branches: game.weaponStats('tesla').branches, chainRange: game.weaponStats('tesla').chainRange },
@@ -110,7 +111,7 @@ assert.equal(riskGame.snapshot().maxHealth, 2, 'Glass Crown permanently removes 
 riskGame.awaitingPerk = true;
 riskGame.offeredPerks = ['cursedOverdrive'];
 riskGame.selectPerk('cursedOverdrive');
-assert.ok(riskGame.modifiers.fireRate < .6 && riskGame.modifiers.enemyPressure > 1.2, 'Cursed Overdrive trades fire rate for enemy pressure');
+assert.ok(riskGame.modifiers.fireRate < .7 && riskGame.modifiers.enemyPressure >= 1.4, 'Cursed Overdrive trades fire rate for substantially higher enemy pressure');
 riskGame.awaitingPerk = true;
 riskGame.offeredPerks = ['royalDebt'];
 riskGame.selectPerk('royalDebt');

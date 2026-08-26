@@ -1,15 +1,15 @@
-import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
+import { CONFIG } from './config.js?v=20260826-76-balance-pass1-final';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260826-75-pwa-mvp';
-import { Game } from './game.js?v=20260826-75-pwa-mvp';
+import { Music, SoundFx } from './audio.js?v=20260826-76-balance-pass1-final';
+import { Game } from './game.js?v=20260826-76-balance-pass1-final';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
 import { PlayerAccount } from './player-account.js?v=20260826-73-cinematic-endings';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
-import { PwaManager } from './pwa.js?v=20260826-75-pwa-mvp';
+import { PwaManager } from './pwa.js?v=20260826-76-balance-pass1-final';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -1631,6 +1631,11 @@ if (debugMode) {
       game.bossStage = game.stageIndex;
       game.spawnEnemy('boss');
       showToast('DEBUG · THE WARDEN', 'debug');
+    }
+    if ((event.code === 'KeyM' || event.key?.toLowerCase() === 'm') && game.active) {
+      game.weaponLevels[game.weapon] = 5;
+      game.weaponTimer = 0;
+      showToast(`DEBUG MAX · ${CONFIG.weapons[game.weapon].name} MK 5`, 'debug');
     }
     const weapon = debugWeapons[event.code];
     if (weapon && game.active) {
