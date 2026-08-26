@@ -1,15 +1,15 @@
-import { CONFIG } from './config.js?v=20260826-76-balance-pass1-final';
+import { CONFIG } from './config.js?v=20260827-78-late-game-balance';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260826-76-balance-pass1-final';
-import { Game } from './game.js?v=20260826-76-balance-pass1-final';
+import { Music, SoundFx } from './audio.js?v=20260827-78-late-game-balance';
+import { Game } from './game.js?v=20260827-78-late-game-balance';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
 import { PlayerAccount } from './player-account.js?v=20260826-73-cinematic-endings';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
-import { PwaManager } from './pwa.js?v=20260826-76-balance-pass1-final';
+import { PwaManager } from './pwa.js?v=20260827-78-late-game-balance';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -880,7 +880,7 @@ const game = new Game($('game'), input, {
     ui.perkSwipeHint.textContent = '◀ SWIPE · CHOOSE ONE PATH ▶';
     const sprite = `./assets/weapons/${weapon.name.toLowerCase()}-mount-v1.png`;
     ui.perkCards.innerHTML = choices.map(mastery => `
-      <button class="perk-card mastery-card" data-mastery="${mastery.key}" style="--perk-color:${mastery.color}">
+      <button class="perk-card mastery-card weapon-${weapon.name.toLowerCase()}" data-mastery="${mastery.key}" style="--perk-color:${mastery.color}">
         <small>FINAL FORM · 1 OF 2</small>
         <span class="perk-icon"><img src="${sprite}" alt="" decoding="async" draggable="false"></span>
         <b>${mastery.name}</b>
@@ -1592,6 +1592,7 @@ if (debugMode) {
   const debugEnemies = ['chaser', 'shooter', 'tank', 'weaver', 'skimmer'];
   const debugEnemyNames = { chaser: 'RIPPER', shooter: 'HEX MOTH', tank: 'IRON SCARAB', weaver: 'CROWN WEAVER', skimmer: 'VOID SKIMMER' };
   let debugEnemyIndex = 0;
+  let debugLateFormationIndex = 0;
   addEventListener('keydown', event => {
     if (event.code === 'KeyP' || event.key?.toLowerCase() === 'p') {
       event.preventDefault();
@@ -1607,6 +1608,21 @@ if (debugMode) {
     if (event.code === 'KeyZ' && game.active) {
       game.time = (game.stageIndex + 1) * CONFIG.stageDuration + .05;
       showToast('DEBUG · NEXT ZONE', 'debug');
+    }
+    if (event.code === 'KeyL' && game.active) {
+      const formations = ['armoredAdvance', 'crossfire', 'royalEscort'];
+      const minimumStage = debugLateFormationIndex >= 2 ? 8 : 4;
+      game.time = minimumStage * CONFIG.stageDuration + 58;
+      game.stageIndex = minimumStage;
+      game.lastStageIndex = minimumStage;
+      game.introducedThreats.add('weaver');
+      game.introducedThreats.add('skimmer');
+      game.enemies = [];
+      game.enemyBullets = [];
+      const formation = formations[debugLateFormationIndex++ % formations.length];
+      game.spawnFormation(formation);
+      game.events.stage?.(game.stageInfo());
+      showToast(`DEBUG LATE · ${formation.replace(/([A-Z])/g, ' $1').toUpperCase()}`, 'debug');
     }
     if (event.code === 'KeyG' && game.active) {
       game.hazards.push({ type: 'poison', x: game.player.x, y: game.player.y, radius: 44, age: 0, warning: .65, life: 5.15 });

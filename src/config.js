@@ -1,5 +1,5 @@
 export const CONFIG = Object.freeze({
-  version: Object.freeze({ release: '0.20.0', build: 77 }),
+  version: Object.freeze({ release: '0.21.0', build: 78 }),
   simulationHz: 60,
   player: {
     radius: 17,
@@ -68,6 +68,13 @@ export const CONFIG = Object.freeze({
   enemyScaling: {
     healthPerStage: .075,
     healthPerCycle: .12,
+    wardenHealthPerStage: .16,
+    wardenHealthPerCycle: .14,
+    firstCycleEnemyCap: 26,
+    enemiesPerCycle: 3,
+    maximumEnemyCap: 35,
+    eliteChancePerCycle: .035,
+    maximumEliteBonus: .14,
   },
   comboWindow: 2.3,
   stageDuration: 120,

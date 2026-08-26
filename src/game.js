@@ -352,7 +352,7 @@ export class Game {
       if (level >= 5) { stats.branches = 4; stats.chainRange = 365; stats.interval = .22; stats.damage = .9; stats.attachDuration = .36; }
     }
     const mastery = this.weaponMasteries[key];
-    if (mastery === 'royalBarrage') Object.assign(stats, { count: 4, spread: .065, interval: .115, damage: .9, pierce: 1, ricochet: 1 });
+    if (mastery === 'royalBarrage') Object.assign(stats, { count: 4, spread: .065, interval: .135, damage: .7, pierce: 1, ricochet: 1 });
     else if (mastery === 'crownrail') Object.assign(stats, { count: 1, spread: 0, interval: .34, damage: 4.6, pierce: 4, ricochet: 0, radius: 5 });
     else if (mastery === 'haloGuard') Object.assign(stats, { count: 7, rearCount: 7, spread: .2, interval: .31, damage: .52, pierce: 0, ricochet: 0 });
     else if (mastery === 'guillotineFan') Object.assign(stats, { count: 5, rearCount: 0, spread: .075, interval: .26, damage: 1.18, pierce: 2, ricochet: 0 });
@@ -386,6 +386,19 @@ export class Game {
       number,
       cycle: Math.floor(this.stageIndex / CONFIG.stages.length) + 1,
       progress: (this.time % CONFIG.stageDuration) / CONFIG.stageDuration,
+    };
+  }
+
+  threatProfile() {
+    const completedCycles = Math.floor(this.stageIndex / CONFIG.stages.length);
+    return {
+      completedCycles,
+      pressureCap: Math.min(5.2, 4.2 + completedCycles * .25),
+      enemyCap: Math.min(CONFIG.enemyScaling.maximumEnemyCap, CONFIG.enemyScaling.firstCycleEnemyCap + completedCycles * CONFIG.enemyScaling.enemiesPerCycle),
+      specialCap: Math.min(4, 2 + completedCycles),
+      eliteBonus: Math.min(CONFIG.enemyScaling.maximumEliteBonus, completedCycles * CONFIG.enemyScaling.eliteChancePerCycle),
+      formationDelayMin: Math.max(10.5, 15 - completedCycles * 1.25),
+      formationDelayMax: Math.max(14.5, 21 - completedCycles * 1.75),
     };
   }
 
@@ -545,18 +558,21 @@ export class Game {
     const difficulty = CONFIG.difficulties[this.difficulty];
     const stage = this.stageInfo();
     const stageProgress = stage.progress;
-    const pressure = Math.min(4.8, (.68 + this.stageIndex * .15 + stageProgress * .48) * difficulty.pressure * this.modifiers.enemyPressure);
+    const threat = this.threatProfile();
+    const pressure = Math.min(threat.pressureCap, (.68 + this.stageIndex * .15 + stageProgress * .48) * difficulty.pressure * this.modifiers.enemyPressure);
     const bossAlive = this.enemies.some(enemy => enemy.type === 'boss' && !enemy.dead);
+    const activeEnemyCount = this.enemies.filter(enemy => enemy.type !== 'boss' && !enemy.dead).length;
     const weaverUnlocked = this.stageIndex >= 4 || (this.stageIndex >= 1 && (this.stageIndex !== 1 || stageProgress >= .48));
     const skimmerUnlocked = this.stageIndex >= 4 || (this.stageIndex >= 2 && (this.stageIndex !== 2 || stageProgress >= .22));
 
-    if (!bossAlive && weaverUnlocked && !this.introducedThreats.has('weaver')) {
+    if (!bossAlive && activeEnemyCount <= threat.enemyCap - 2 && weaverUnlocked && !this.introducedThreats.has('weaver')) {
       this.introducedThreats.add('weaver');
       this.spawnFormation('weaverIntro');
       this.events.toast?.('NEW THREAT · CROWN WEAVER', 'threat');
       this.events.haptic?.([18, 30, 18]);
     }
-    if (!bossAlive && skimmerUnlocked && !this.introducedThreats.has('skimmer')) {
+    const enemyCountAfterIntroductions = () => this.enemies.filter(enemy => enemy.type !== 'boss' && !enemy.dead).length;
+    if (!bossAlive && enemyCountAfterIntroductions() <= threat.enemyCap - 2 && skimmerUnlocked && !this.introducedThreats.has('skimmer')) {
       this.introducedThreats.add('skimmer');
       this.spawnFormation('skimmerCross');
       this.events.toast?.('NEW THREAT · VOID SKIMMER', 'threat');
@@ -564,27 +580,31 @@ export class Game {
     }
 
     this.formationTimer -= dt;
-    if (!bossAlive && this.stageIndex >= 1 && stageProgress > .22 && stageProgress < .76 && this.formationTimer <= 0) {
-      const formations = skimmerUnlocked
+    if (!bossAlive && activeEnemyCount <= threat.enemyCap - 5 && this.stageIndex >= 1 && stageProgress > .22 && stageProgress < .76 && this.formationTimer <= 0) {
+      let formations = skimmerUnlocked
         ? ['ripperV', 'weaverEscort', 'skimmerCross']
         : weaverUnlocked ? ['ripperV', 'weaverEscort'] : ['ripperV'];
+      if (threat.completedCycles >= 1) formations = [...formations, 'armoredAdvance', 'crossfire'];
+      if (threat.completedCycles >= 2) formations.push('royalEscort');
       this.spawnFormation(formations[Math.floor(Math.random() * formations.length)]);
-      this.formationTimer = random(15, 21);
+      this.formationTimer = random(threat.formationDelayMin, threat.formationDelayMax);
       this.spawnTimer = Math.max(this.spawnTimer, 1.25);
     }
 
     this.spawnTimer -= dt;
-    if (!bossAlive && stageProgress < .85 && this.spawnTimer <= 0) {
+    if (!bossAlive && activeEnemyCount < threat.enemyCap && stageProgress < .85 && this.spawnTimer <= 0) {
       this.spawnTimer = random(.72, 1.16) / pressure;
       const roll = Math.random();
       const weaverCount = this.enemies.filter(enemy => enemy.type === 'weaver' && !enemy.dead).length;
       const skimmerCount = this.enemies.filter(enemy => enemy.type === 'skimmer' && !enemy.dead).length;
+      const specialChance = .145 + Math.min(.08, threat.completedCycles * .02);
+      const weaverChance = specialChance * .52;
       let spawnedSpecial = false;
-      if (weaverUnlocked && weaverCount < 2 && roll < .075) {
+      if (weaverUnlocked && weaverCount < threat.specialCap && roll < weaverChance) {
         this.spawnEnemy('weaver');
         spawnedSpecial = true;
       }
-      if (!spawnedSpecial && skimmerUnlocked && skimmerCount < 2 && roll >= .075 && roll < .145) {
+      if (!spawnedSpecial && skimmerUnlocked && skimmerCount < threat.specialCap && roll >= weaverChance && roll < specialChance) {
         this.spawnEnemy('skimmer');
         spawnedSpecial = true;
       }
@@ -601,6 +621,8 @@ export class Game {
         else if (weightedRoll < weights.chaser + weights.shooter) this.spawnEnemy('shooter');
         else this.spawnEnemy('tank');
       }
+    } else if (!bossAlive && activeEnemyCount >= threat.enemyCap && this.spawnTimer <= 0) {
+      this.spawnTimer = .2;
     }
     const stageTime = this.time % CONFIG.stageDuration;
     if (stageTime > CONFIG.stageDuration - 18 && this.bossStage !== this.stageIndex && !this.enemies.some(enemy => enemy.type === 'boss')) {
@@ -665,6 +687,22 @@ export class Game {
       const firstY = clamp(this.height * .28, 155, this.height - 190);
       this.spawnEnemy('skimmer', { side: 1, y: firstY, formation: true });
       if (this.stageIndex >= 3) this.spawnEnemy('skimmer', { side: -1, y: firstY + 92, introDelay: .38, formation: true });
+      return;
+    }
+    if (kind === 'armoredAdvance') {
+      for (const [offset, elite] of [[-74, null], [0, 'armored'], [74, null]]) this.spawnEnemy('tank', { x: clamp(center + offset, this.arenaLeft + 32, this.arenaRight - 32), y: -42 - Math.abs(offset) * .18, formation: true, elite });
+      return;
+    }
+    if (kind === 'crossfire') {
+      const crossingY = clamp(this.height * .3, 165, this.height - 200);
+      this.spawnEnemy('skimmer', { side: 1, y: crossingY, formation: true, elite: null });
+      this.spawnEnemy('skimmer', { side: -1, y: crossingY + 88, introDelay: .32, formation: true, elite: null });
+      this.spawnEnemy('shooter', { x: center, y: -58, formation: true });
+      return;
+    }
+    if (kind === 'royalEscort') {
+      this.spawnEnemy('weaver', { x: center, y: -76, formation: true, elite: null });
+      for (const offset of [-72, 72]) this.spawnEnemy('tank', { x: clamp(center + offset, this.arenaLeft + 32, this.arenaRight - 32), y: -34, formation: true, elite: 'armored' });
       return;
     }
     for (const [offset, depth] of [[-92, -8], [-46, -38], [0, -68], [46, -38], [92, -8]]) {
@@ -751,9 +789,12 @@ export class Game {
     const bossVariant = this.stageIndex % WARDEN_VARIANTS.length;
     const bossProfile = WARDEN_VARIANTS[bossVariant];
     if (type === 'boss') this.loadWardenSprite(bossVariant);
-    const scaling = 1 + this.stageIndex * .16;
+    const completedCycles = Math.floor(this.stageIndex / CONFIG.stages.length);
+    const wardenScaling = 1
+      + this.stageIndex * CONFIG.enemyScaling.wardenHealthPerStage
+      + completedCycles * CONFIG.enemyScaling.wardenHealthPerCycle;
     const base = type === 'boss'
-      ? { radius: 46, health: 64 * scaling, speed: 34, value: 2200 + this.stageIndex * 600, color: stage.palette.accent }
+      ? { radius: 46, health: 64 * wardenScaling, speed: 34, value: 2200 + this.stageIndex * 600, color: stage.palette.accent }
       : type === 'weaver'
       ? { radius: 23, health: 6.5, speed: 58, value: 380, color: '#62f7c6' }
       : type === 'skimmer'
@@ -765,10 +806,9 @@ export class Game {
         : { radius: 14, health: 1.4, speed: 95, value: 110, color: '#ff587b' };
     const zone = this.stageIndex % CONFIG.stages.length;
     const learningNewThreat = (type === 'weaver' || type === 'skimmer') && this.stageIndex < 4;
-    const eliteChance = type === 'boss' || learningNewThreat ? 0 : (zone === 3 ? .28 : .07 + Math.min(.12, this.stageIndex * .012));
+    const eliteChance = type === 'boss' || learningNewThreat ? 0 : (zone === 3 ? .28 : .07 + Math.min(.12, this.stageIndex * .012)) + this.threatProfile().eliteBonus;
     const eliteTypes = ['swift', 'armored', 'splitter', 'volatile'];
     const elite = options.elite !== undefined ? options.elite : Math.random() < eliteChance ? eliteTypes[Math.floor(Math.random() * eliteTypes.length)] : null;
-    const completedCycles = Math.floor(this.stageIndex / CONFIG.stages.length);
     const normalHealthScaling = 1
       + this.stageIndex * CONFIG.enemyScaling.healthPerStage
       + completedCycles * CONFIG.enemyScaling.healthPerCycle;
