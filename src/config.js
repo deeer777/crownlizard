@@ -1,5 +1,5 @@
 export const CONFIG = Object.freeze({
-  version: Object.freeze({ release: '0.19.0', build: 76 }),
+  version: Object.freeze({ release: '0.20.0', build: 77 }),
   simulationHz: 60,
   player: {
     radius: 17,
@@ -36,6 +36,28 @@ export const CONFIG = Object.freeze({
       name: 'TESLA', icon: 'ϟ', interval: .29, minimumInterval: .12, speed: 0, damage: .52, count: 1, spread: 0, color: '#b99cff', radius: 5,
       upgrades: ['ARC LATCH', 'DOUBLE BRANCH', 'HIGH VOLTAGE', 'TWIN COIL', 'STORM CROWN'],
     },
+  },
+  weaponMasteries: {
+    blaster: [
+      { key: 'royalBarrage', name: 'ROYAL BARRAGE', role: 'CROWD CONTROL', description: 'Four rapid rounds sweep lanes and ricochet through the swarm.', color: '#9dfbe0' },
+      { key: 'crownrail', name: 'CROWNRAIL', role: 'ELITE BREAKER', description: 'One colossal round punches through armor and entire enemy lines.', color: '#f4fff9' },
+    ],
+    spread: [
+      { key: 'haloGuard', name: 'HALO GUARD', role: 'FULL DEFENCE', description: 'Twin seven-shot fans guard both the bow and stern.', color: '#ffd36b' },
+      { key: 'guillotineFan', name: 'GUILLOTINE FAN', role: 'FORWARD BURST', description: 'A tight five-shot fan cuts deeply through targets ahead.', color: '#fff1a9' },
+    ],
+    pulse: [
+      { key: 'singularity', name: 'SINGULARITY', role: 'AREA DAMAGE', description: 'A slow royal core detonates into a screen-clearing gravity blast.', color: '#ff8ddb' },
+      { key: 'cometCores', name: 'COMET CORES', role: 'BOSS PRESSURE', description: 'Three compact cores strike often and rebound between targets.', color: '#ffc2eb' },
+    ],
+    laser: [
+      { key: 'sovereignLance', name: 'SOVEREIGN LANCE', role: 'FOCUS DAMAGE', description: 'One precise beam gains damage while locked to the same target.', color: '#63e8ff' },
+      { key: 'prismArray', name: 'PRISM ARRAY', role: 'MULTI TARGET', description: 'Three lighter beams refract once toward nearby enemies.', color: '#baf6ff' },
+    ],
+    tesla: [
+      { key: 'stormWeb', name: 'STORM WEB', role: 'CHAIN CONTROL', description: 'Twin arcs branch across a vast web of nearby enemies.', color: '#b99cff' },
+      { key: 'thunderAnchor', name: 'THUNDER ANCHOR', role: 'WARDEN HUNTER', description: 'One brutal arc deals 75% more damage to elites and Wardens.', color: '#e1d4ff' },
+    ],
   },
   weaponProgression: {
     initialDelay: 8,

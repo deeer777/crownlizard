@@ -197,6 +197,12 @@ export class Game {
     this.flash = 0;
     this.weapon = 'blaster';
     this.weaponLevels = { blaster: 1, spread: 0, pulse: 0, laser: 0, tesla: 0 };
+    this.weaponMasteries = { blaster: '', spread: '', pulse: '', laser: '', tesla: '' };
+    this.masteryQueue = [];
+    this.awaitingMastery = false;
+    this.offeredMasteries = [];
+    this.masteryWeapon = '';
+    this.laserFocus = { targetId: 0, expiresAt: 0, stacks: 0 };
     this.perkCounts = Object.fromEntries(CONFIG.perks.map(perk => [perk.key, 0]));
     this.modifiers = {
       dashCooldown: 1,
@@ -267,6 +273,7 @@ export class Game {
     const boss = this.enemies.find(enemy => enemy.type === 'boss' && !enemy.dead);
     const weapon = CONFIG.weapons[this.weapon];
     const weaponLevel = this.weaponLevels[this.weapon];
+    const weaponMastery = this.masteryDefinition(this.weapon);
     return {
       score: Math.floor(this.score),
       health: this.player.health,
@@ -278,7 +285,9 @@ export class Game {
       weaponIcon: weapon.icon,
       weaponColor: weapon.color,
       weaponLevel,
-      weaponUpgrade: weapon.upgrades[weaponLevel - 1],
+      weaponUpgrade: weaponMastery?.name || weapon.upgrades[weaponLevel - 1],
+      weaponMastery: weaponMastery?.name || '',
+      masteryReady: weaponLevel === 5 && !weaponMastery && this.masteryQueue.includes(this.weapon),
       difficulty: this.difficulty,
       stage: stage.number,
       stageName: stage.name,
@@ -303,6 +312,7 @@ export class Game {
       bestCombo: this.runStats.bestCombo,
       weapon: CONFIG.weapons[this.weapon].name,
       weaponLevel: this.weaponLevels[this.weapon],
+      weaponMastery: this.masteryDefinition(this.weapon)?.name || '',
       powers,
     };
   }
@@ -341,9 +351,31 @@ export class Game {
       if (level >= 4) { stats.count = 2; stats.chainRange = 315; }
       if (level >= 5) { stats.branches = 4; stats.chainRange = 365; stats.interval = .22; stats.damage = .9; stats.attachDuration = .36; }
     }
+    const mastery = this.weaponMasteries[key];
+    if (mastery === 'royalBarrage') Object.assign(stats, { count: 4, spread: .065, interval: .115, damage: .9, pierce: 1, ricochet: 1 });
+    else if (mastery === 'crownrail') Object.assign(stats, { count: 1, spread: 0, interval: .34, damage: 4.6, pierce: 4, ricochet: 0, radius: 5 });
+    else if (mastery === 'haloGuard') Object.assign(stats, { count: 7, rearCount: 7, spread: .2, interval: .31, damage: .52, pierce: 0, ricochet: 0 });
+    else if (mastery === 'guillotineFan') Object.assign(stats, { count: 5, rearCount: 0, spread: .075, interval: .26, damage: 1.18, pierce: 2, ricochet: 0 });
+    else if (mastery === 'singularity') Object.assign(stats, { count: 1, spread: 0, interval: .62, damage: 4, explosion: 135, ricochet: 0, radius: 10 });
+    else if (mastery === 'cometCores') Object.assign(stats, { count: 3, spread: .1, interval: .39, damage: 2.5, explosion: 36, ricochet: 1, radius: 7 });
+    else if (mastery === 'sovereignLance') Object.assign(stats, { count: 1, spread: 0, interval: .15, damage: 1.35, pierce: 4, ricochet: 0, beamLength: 74, focusRamp: .08, maxFocusStacks: 8 });
+    else if (mastery === 'prismArray') Object.assign(stats, { count: 3, spread: .055, interval: .17, damage: .52, pierce: 1, ricochet: 1, chainRange: 250, beamLength: 48 });
+    else if (mastery === 'stormWeb') Object.assign(stats, { count: 2, branches: 6, chainRange: 400, interval: .24, damage: .62, attachDuration: .42 });
+    else if (mastery === 'thunderAnchor') Object.assign(stats, { count: 1, branches: 0, chainRange: 0, interval: .18, damage: 1.25, attachDuration: .46, eliteMultiplier: 1.75 });
     stats.interval = Math.max(stats.minimumInterval || .08, stats.interval * this.modifiers.fireRate);
     stats.damage *= this.modifiers.damage;
     return stats;
+  }
+
+  masteryDefinition(weaponKey, masteryKey = this.weaponMasteries?.[weaponKey]) {
+    return CONFIG.weaponMasteries[weaponKey]?.find(mastery => mastery.key === masteryKey) || null;
+  }
+
+  queueWeaponMastery(weaponKey, announce = true) {
+    if (this.weaponLevels[weaponKey] < 5 || this.weaponMasteries[weaponKey] || this.masteryQueue.includes(weaponKey)) return false;
+    this.masteryQueue.push(weaponKey);
+    if (announce) this.events.toast?.(`MASTERY READY · ${CONFIG.weapons[weaponKey].name}`, 'weapon', CONFIG.weapons[weaponKey].color);
+    return true;
   }
 
   stageInfo() {
@@ -447,7 +479,7 @@ export class Game {
       this.active = false;
       this.events.gameover?.(cinematic.score, cinematic.summary);
     } else {
-      this.offerPerks();
+      this.offerWardenReward();
     }
   }
 
@@ -822,6 +854,8 @@ export class Game {
           explosion: weapon.explosion,
           chainRange: weapon.chainRange,
           beamLength: weapon.beamLength,
+          focusRamp: weapon.focusRamp,
+          maxFocusStacks: weapon.maxFocusStacks,
           hitIds: new Set(),
         life: 1.5,
       });
@@ -842,7 +876,8 @@ export class Game {
       if (hitIds.has(primary.id)) continue;
       hitIds.add(primary.id);
       this.teslaArcs.push({ fromPlayer: true, toId: primary.id, x1: this.player.x, y1: this.player.y - 24, x2: primary.x, y2: primary.y, life: weapon.attachDuration, maxLife: weapon.attachDuration });
-      this.damageEnemy(primary, weapon.damage, false, 'tesla');
+      const primaryDamage = weapon.damage * ((primary.elite || primary.type === 'boss') ? (weapon.eliteMultiplier || 1) : 1);
+      this.damageEnemy(primary, primaryDamage, false, 'tesla');
       let source = primary;
       for (let hop = 0; hop < weapon.branches; hop += 1) {
         let next = null;
@@ -1099,7 +1134,7 @@ export class Game {
       for (const enemy of this.enemies) {
         if (!enemy.dead && !bullet.hitIds.has(enemy.id) && circlesTouch(bullet, enemy)) {
           bullet.hitIds.add(enemy.id);
-          this.damageEnemy(enemy, bullet.damage, false, bullet.weapon);
+          this.damageEnemy(enemy, bullet.damage, false, bullet.weapon, { focusRamp: bullet.focusRamp, maxFocusStacks: bullet.maxFocusStacks });
           if (bullet.explosion > 0) {
             this.burst(enemy.x, enemy.y, bullet.color, 14, 180);
             for (const nearby of this.enemies) {
@@ -1146,11 +1181,18 @@ export class Game {
     this.enemyBullets = this.enemyBullets.filter(visible);
   }
 
-  damageEnemy(enemy, damage, dashed, impactType = null) {
+  damageEnemy(enemy, damage, dashed, impactType = null, hitOptions = {}) {
     if (enemy.type === 'boss' && enemy.invulnerable > 0) {
       enemy.hitTime = .08;
       if (impactType && WEAPON_ASSET_FILES[impactType]) this.addWeaponImpact(enemy.x, enemy.y, impactType, damage * .35);
       return;
+    }
+    if (hitOptions.focusRamp) {
+      if (this.laserFocus.targetId === enemy.id && this.time <= this.laserFocus.expiresAt) this.laserFocus.stacks = Math.min(hitOptions.maxFocusStacks || 8, this.laserFocus.stacks + 1);
+      else this.laserFocus.stacks = 0;
+      this.laserFocus.targetId = enemy.id;
+      this.laserFocus.expiresAt = this.time + .5;
+      damage *= 1 + this.laserFocus.stacks * hitOptions.focusRamp;
     }
     const protector = enemy.type === 'boss' || enemy.type === 'weaver'
       ? null
@@ -1264,7 +1306,8 @@ export class Game {
         this.burst(pickup.x, pickup.y, weapon.color, 20, 190);
         const level = this.weaponLevels[this.weapon];
         const prefix = previousLevel > 0 ? 'UPGRADED' : 'NEW WEAPON';
-        this.events.toast?.(`${prefix} · ${weapon.name} MK ${level}`, 'weapon', weapon.color);
+        const masteryReady = previousLevel === 4 && level === 5 && this.queueWeaponMastery(this.weapon, false);
+        this.events.toast?.(masteryReady ? `${weapon.name} MK 5 · MASTERY READY` : `${prefix} · ${weapon.name} MK ${level}`, 'weapon', weapon.color);
         this.events.haptic?.([18, 25, 30]);
         this.events.sfx?.('pickup');
       }
@@ -1636,6 +1679,55 @@ export class Game {
     }
     ctx.restore();
     ctx.globalAlpha = 1;
+  }
+
+  offerWardenReward() {
+    const weaponKey = this.masteryQueue.find(key => !this.weaponMasteries[key]);
+    if (weaponKey && this.offerMastery(weaponKey)) return;
+    this.offerPerks();
+  }
+
+  offerMastery(weaponKey) {
+    if (this.awaitingPerk || this.awaitingMastery || this.weaponLevels[weaponKey] < 5 || this.weaponMasteries[weaponKey]) return false;
+    const choices = CONFIG.weaponMasteries[weaponKey] || [];
+    if (choices.length !== 2 || typeof this.events.mastery !== 'function') {
+      this.events.toast?.('MASTERY INTERFACE MISSING · CROWN POWER OFFERED', 'critical');
+      return false;
+    }
+    this.masteryWeapon = weaponKey;
+    this.offeredMasteries = choices.map(choice => choice.key);
+    this.awaitingMastery = true;
+    this.shake = 0;
+    try {
+      this.events.mastery(CONFIG.weapons[weaponKey], choices);
+      this.active = false;
+      return true;
+    } catch (error) {
+      console.error('Could not open mastery selection', error);
+      this.awaitingMastery = false;
+      this.offeredMasteries = [];
+      this.masteryWeapon = '';
+      this.active = true;
+      return false;
+    }
+  }
+
+  selectMastery(key) {
+    if (!this.awaitingMastery || !this.offeredMasteries.includes(key)) return false;
+    const weaponKey = this.masteryWeapon;
+    const mastery = this.masteryDefinition(weaponKey, key);
+    if (!mastery || this.weaponMasteries[weaponKey]) return false;
+    this.weaponMasteries[weaponKey] = key;
+    this.masteryQueue = this.masteryQueue.filter(queued => queued !== weaponKey);
+    this.awaitingMastery = false;
+    this.offeredMasteries = [];
+    this.masteryWeapon = '';
+    this.active = true;
+    this.weaponTimer = 0;
+    this.events.masteryApplied?.(CONFIG.weapons[weaponKey], mastery);
+    this.events.haptic?.([24, 35, 70]);
+    this.events.sfx?.('perk');
+    return true;
   }
 
   drawPlayerDeath(ctx) {

@@ -23,7 +23,7 @@ const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.h
 const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
-  perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
+  perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
@@ -613,7 +613,7 @@ const renderRunSummary = summary => {
     <div class="summary-stat"><span>WARDENS</span><b>${summary.wardens}</b></div>
     <div class="summary-stat"><span>CRATES</span><b>${summary.crates}</b></div>
     <div class="summary-stat"><span>BEST COMBO</span><b>x${summary.bestCombo}</b></div>
-    <div class="summary-loadout"><span>FINAL WEAPON <b>${summary.weapon} MK ${summary.weaponLevel}</b></span><span>CROWN POWERS <b>${powers}</b></span><span>ENEMIES DEFEATED <b>${summary.enemies}</b></span></div>
+    <div class="summary-loadout"><span>FINAL WEAPON <b>${summary.weapon} MK ${summary.weaponLevel}${summary.weaponMastery ? ` · ${summary.weaponMastery}` : ''}</b></span><span>CROWN POWERS <b>${powers}</b></span><span>ENEMIES DEFEATED <b>${summary.enemies}</b></span></div>
   `;
 };
 
@@ -795,6 +795,8 @@ const game = new Game($('game'), input, {
     ui.weaponIcon.style.backgroundImage = `url("./assets/weapons/${state.weapon.toLowerCase()}-mount-v1.png")`;
     ui.weaponLevel.textContent = state.weaponLevel;
     ui.weaponUpgrade.textContent = state.weaponUpgrade;
+    ui.weaponHud.classList.toggle('mastered', Boolean(state.weaponMastery));
+    ui.weaponHud.classList.toggle('mastery-ready', Boolean(state.masteryReady));
     ui.weaponHud.querySelector('.weapon-rank').setAttribute('aria-label', `Weapon level ${state.weaponLevel} of 5`);
     ui.weaponHud.setAttribute('aria-label', `${state.weapon}, level ${state.weaponLevel} of 5, ${state.weaponUpgrade}`);
     [...ui.weaponPips.children].forEach((pip, index) => pip.classList.toggle('active', index < state.weaponLevel));
@@ -847,6 +849,11 @@ const game = new Game($('game'), input, {
     sfx.play('stage');
   },
   perk: choices => {
+    ui.perkOverlay.classList.remove('mastery-mode');
+    ui.perkEyebrow.textContent = 'WARDEN DEFEATED';
+    ui.perkTitle.textContent = 'CHOOSE A CROWN POWER';
+    ui.perkSubtitle.textContent = 'Your choice lasts for the rest of the run.';
+    ui.perkSwipeHint.textContent = '◀ SWIPE TO VIEW · TAP TO CHOOSE ▶';
     ui.perkCards.innerHTML = choices.map(perk => `
       <button class="perk-card${perk.cursed ? ' cursed' : ''}" data-perk="${perk.key}" style="--perk-color:${perk.color}">
         <small>${perk.cursed ? 'CURSED' : `LEVEL ${perk.stack}/${perk.maxStacks}`}</small>
@@ -864,6 +871,34 @@ const game = new Game($('game'), input, {
     ui.perkOverlay.classList.add('hidden');
     ui.dashButton.classList.remove('hidden');
     ui.pauseButton.classList.remove('hidden');
+  },
+  mastery: (weapon, choices) => {
+    ui.perkOverlay.classList.add('mastery-mode');
+    ui.perkEyebrow.textContent = `${weapon.name} · MK 5`;
+    ui.perkTitle.textContent = 'CHOOSE YOUR FINAL FORM';
+    ui.perkSubtitle.textContent = 'The paths are permanent and mutually exclusive for this run.';
+    ui.perkSwipeHint.textContent = '◀ SWIPE · CHOOSE ONE PATH ▶';
+    const sprite = `./assets/weapons/${weapon.name.toLowerCase()}-mount-v1.png`;
+    ui.perkCards.innerHTML = choices.map(mastery => `
+      <button class="perk-card mastery-card" data-mastery="${mastery.key}" style="--perk-color:${mastery.color}">
+        <small>FINAL FORM · 1 OF 2</small>
+        <span class="perk-icon"><img src="${sprite}" alt="" decoding="async" draggable="false"></span>
+        <b>${mastery.name}</b>
+        <strong>${mastery.role}</strong>
+        <p>${mastery.description}</p>
+      </button>
+    `).join('');
+    ui.perkCards.querySelectorAll('[data-mastery]').forEach(card => card.addEventListener('click', () => game.selectMastery(card.dataset.mastery), { once: true }));
+    ui.perkOverlay.classList.remove('hidden');
+    ui.dashButton.classList.add('hidden');
+    ui.pauseButton.classList.add('hidden');
+  },
+  masteryApplied: (weapon, mastery) => {
+    ui.perkOverlay.classList.add('hidden');
+    ui.perkOverlay.classList.remove('mastery-mode');
+    ui.dashButton.classList.remove('hidden');
+    ui.pauseButton.classList.remove('hidden');
+    showToast(`MASTERED · ${mastery.name}`, 'weapon', weapon.color);
   },
   haptic: pattern => { if (hapticsEnabled) navigator.vibrate?.(pattern); },
   sfx: type => sfx.play(type),
@@ -1563,10 +1598,10 @@ if (debugMode) {
       if (!game.active && ui.menu.classList.contains('hidden') === false) start();
       if (!ui.tutorialOverlay.classList.contains('hidden') || game.paused) return;
       const debugRunVisible = ui.menu.classList.contains('hidden') && ui.gameover.classList.contains('hidden') && game.player.health > 0;
-      if (game.awaitingPerk) ui.perkOverlay.classList.remove('hidden');
+      if (game.awaitingPerk || game.awaitingMastery) ui.perkOverlay.classList.remove('hidden');
       else if (debugRunVisible) {
         game.active = true;
-        game.offerPerks();
+        game.offerWardenReward();
       }
     }
     if (event.code === 'KeyZ' && game.active) {
@@ -1634,6 +1669,7 @@ if (debugMode) {
     }
     if ((event.code === 'KeyM' || event.key?.toLowerCase() === 'm') && game.active) {
       game.weaponLevels[game.weapon] = 5;
+      game.queueWeaponMastery(game.weapon);
       game.weaponTimer = 0;
       showToast(`DEBUG MAX · ${CONFIG.weapons[game.weapon].name} MK 5`, 'debug');
     }

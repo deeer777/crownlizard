@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260826-76-balance-pass1-final">
+  <link rel="stylesheet" href="./styles.css?v=20260827-77-weapon-mastery">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -295,10 +295,10 @@
 
   <section id="perkOverlay" class="overlay perk-overlay hidden" aria-modal="true" role="dialog">
     <div class="perk-panel">
-      <div class="eyebrow">WARDEN DEFEATED</div>
-      <h2>CHOOSE A CROWN POWER</h2>
-      <p>Your choice lasts for the rest of the run.</p>
-      <div class="perk-swipe-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</div>
+      <div id="perkEyebrow" class="eyebrow">WARDEN DEFEATED</div>
+      <h2 id="perkTitle">CHOOSE A CROWN POWER</h2>
+      <p id="perkSubtitle">Your choice lasts for the rest of the run.</p>
+      <div id="perkSwipeHint" class="perk-swipe-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</div>
       <div id="perkCards" class="perk-cards"></div>
     </div>
   </section>
@@ -308,6 +308,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260826-76-balance-pass1-final"></script>
+  <script type="module" src="./src/main.js?v=20260827-77-weapon-mastery"></script>
 </body>
 </html>
