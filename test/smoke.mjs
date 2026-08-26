@@ -134,6 +134,38 @@ const wreckLife = animationGame.deathAnimations[0].life;
 animationGame.updateEffects(.1);
 assert.ok(animationGame.deathAnimations[0].life < wreckLife, 'wreck animations advance through the shared effects update');
 
+let cinematicGameOver = null;
+const deathGame = new Game(canvas, input, {
+  ...events,
+  gameover: (score, summary) => { cinematicGameOver = { score, summary }; },
+});
+deathGame.start('arcade');
+deathGame.score = 4321.9;
+deathGame.player.health = 1;
+deathGame.player.invulnerable = 0;
+deathGame.hitPlayer(deathGame.player.x, deathGame.player.y - 1);
+assert.equal(deathGame.active, true, 'a lethal hit keeps the canvas alive for the closing cinematic');
+assert.equal(deathGame.cinematic?.type, 'death', 'a lethal hit begins the dedicated death sequence');
+assert.equal(cinematicGameOver, null, 'the result interface does not interrupt the death frame');
+for (let frame = 0; frame < 90; frame += 1) deathGame.update(1 / 60);
+assert.equal(deathGame.active, false, 'the run stops only after the death sequence completes');
+assert.equal(cinematicGameOver?.score, 4321, 'the closing sequence preserves the exact final score');
+assert.equal(cinematicGameOver?.summary.durationMs, 0, 'cinematic time is excluded from the server run summary');
+
+let cinematicPerks = [];
+const victoryGame = new Game(canvas, input, { ...events, perk: choices => { cinematicPerks = choices; } });
+victoryGame.start('arcade');
+victoryGame.spawnEnemy('boss');
+const cinematicWarden = victoryGame.enemies[0];
+cinematicWarden.intro = 0;
+cinematicWarden.invulnerable = 0;
+victoryGame.damageEnemy(cinematicWarden, cinematicWarden.health + 1, false, 'pulse');
+assert.equal(victoryGame.cinematic?.type, 'warden', 'defeating a Warden starts a victory beat');
+assert.equal(cinematicPerks.length, 0, 'Crown Power cards wait until the Warden wreck is readable');
+for (let frame = 0; frame < 100; frame += 1) victoryGame.update(1 / 60);
+assert.equal(cinematicPerks.length, 3, 'the Crown Power choice opens after the victory beat');
+assert.equal(victoryGame.awaitingPerk, true, 'the completed victory beat pauses safely on the perk choice');
+
 const threatToasts = [];
 const threatGame = new Game(canvas, input, { ...events, toast: message => threatToasts.push(message) });
 threatGame.start('arcade');

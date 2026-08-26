@@ -11,9 +11,9 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /main\.js\?v=20260826-72-account-leaderboard/, 'the current frontend ships behind a fresh browser cache key');
-assert.match(main, /player-account\.js\?v=20260826-72-account-leaderboard/, 'the account client cannot be served from an older browser cache');
-assert.match(main, /account-presentation\.js\?v=20260826-72-account-leaderboard/, 'the single account presentation model ships behind the same cache boundary');
+assert.match(index, /main\.js\?v=20260826-73-cinematic-endings/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(main, /player-account\.js\?v=20260826-73-cinematic-endings/, 'the account client cannot be served from an older browser cache');
+assert.match(main, /account-presentation\.js\?v=20260826-73-cinematic-endings/, 'the single account presentation model ships behind the same cache boundary');
 assert.doesNotMatch(index, /action="\/api\/player\/account\/login\/complete"/, 'manual sign-in cannot accidentally leave the in-game account screen');
 assert.match(main, /accountForm\.addEventListener\('submit',[\s\S]*event\.preventDefault\(\);[\s\S]*playerAccount\.login/, 'manual sign-in remains in the account UI and installs the verified session atomically');
 assert.match(main, /currentAccountState\(\) === 'signed-in'/, 'signed-in presentation is derived from the stored permanent session, not redirect copy');

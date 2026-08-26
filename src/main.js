@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260826-72-account-leaderboard';
+import { CONFIG } from './config.js?v=20260826-73-cinematic-endings';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260826-72-account-leaderboard';
+import { Game } from './game.js?v=20260826-73-cinematic-endings';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260826-72-account-leaderboard';
-import { buildAccountPresentation } from './account-presentation.js?v=20260826-72-account-leaderboard';
+import { PlayerAccount } from './player-account.js?v=20260826-73-cinematic-endings';
+import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -753,6 +753,13 @@ const game = new Game($('game'), input, {
     setTimeout(() => ui.combo.classList.remove('bump'), 130);
   },
   toast: showToast,
+  cinematic: type => {
+    input.clear();
+    hideToast();
+    ui.dashButton.classList.add('hidden');
+    ui.pauseButton.classList.add('hidden');
+    if (type === 'death') music.pause();
+  },
   gameover: (score, summary) => {
     hideToast();
     ui.finalScore.textContent = score.toLocaleString('en-US');
@@ -900,6 +907,19 @@ if (serverEconomy) {
 
 const engine = new Engine({ update: dt => game.update(dt), render: () => { if (game.active) game.render(); }, step: 1 / CONFIG.simulationHz });
 engine.start();
+
+const requestCinematicSkip = event => {
+  if (!game.skipCinematic()) return false;
+  event?.preventDefault?.();
+  input.clear();
+  return true;
+};
+
+$('game').addEventListener('pointerdown', requestCinematicSkip);
+addEventListener('keydown', event => {
+  if (!['Enter', 'Space', 'Escape'].includes(event.code)) return;
+  requestCinematicSkip(event);
+});
 
 const runVisible = () => ui.menu.classList.contains('hidden') && ui.gameover.classList.contains('hidden') && ui.tutorialOverlay.classList.contains('hidden') && game.player.health > 0;
 

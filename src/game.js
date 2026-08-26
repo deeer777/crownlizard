@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-72-account-leaderboard';
+import { CONFIG } from './config.js?v=20260826-73-cinematic-endings';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -212,6 +212,7 @@ export class Game {
       bossHealth: 1,
     };
     this.awaitingPerk = false;
+    this.cinematic = null;
     this.weaponTimer = 0;
     this.nextEntityId = 1;
     this.enemies = [];
@@ -359,6 +360,10 @@ export class Game {
   update(dt) {
     if (this.paused) return;
     if (!this.active) return;
+    if (this.cinematic) {
+      this.updateCinematic(dt);
+      return;
+    }
     this.updateStars(dt);
     this.flash = Math.max(0, this.flash - dt * 3.5);
     this.shake = Math.max(0, this.shake - dt * 18);
@@ -391,6 +396,65 @@ export class Game {
     this.updatePickups(dt);
     this.updateEffects(dt);
     this.events.hud?.(this.snapshot());
+  }
+
+  beginCinematic(type, payload = {}) {
+    if (this.cinematic) return false;
+    const duration = type === 'death' ? 1.25 : 1.35;
+    this.cinematic = {
+      type,
+      elapsed: 0,
+      duration,
+      skipAfter: .32,
+      burstTriggered: false,
+      ...payload,
+    };
+    this.events.cinematic?.(type);
+    return true;
+  }
+
+  updateCinematic(dt) {
+    const cinematic = this.cinematic;
+    if (!cinematic) return;
+    cinematic.elapsed = Math.min(cinematic.duration, cinematic.elapsed + dt);
+
+    // The first frames are a deliberate impact freeze. After that, only visual
+    // actors advance at quarter speed: no collisions, score, spawning or hazards.
+    const freeze = cinematic.type === 'death' ? .09 : .06;
+    if (cinematic.elapsed > freeze) {
+      const visualDt = dt * (this.reducedEffects ? .48 : .24);
+      this.updateStars(visualDt);
+      for (const bullet of [...this.bullets, ...this.enemyBullets]) {
+        bullet.x += bullet.vx * visualDt;
+        bullet.y += bullet.vy * visualDt;
+        bullet.life -= visualDt;
+      }
+      this.updateEffects(visualDt);
+      this.flash = Math.max(0, this.flash - dt * 2.2);
+      this.shake = Math.max(0, this.shake - dt * (this.reducedEffects ? 34 : 11));
+    }
+
+    if (!cinematic.burstTriggered && cinematic.elapsed >= (cinematic.type === 'death' ? .2 : .16)) {
+      cinematic.burstTriggered = true;
+      const color = cinematic.type === 'death' ? '#fff4d2' : '#ffd36b';
+      this.burst(cinematic.x, cinematic.y, color, cinematic.type === 'death' ? 44 : 34, 330);
+      if (cinematic.type === 'death') this.events.haptic?.([45, 35, 80]);
+    }
+
+    if (cinematic.elapsed < cinematic.duration) return;
+    this.cinematic = null;
+    if (cinematic.type === 'death') {
+      this.active = false;
+      this.events.gameover?.(cinematic.score, cinematic.summary);
+    } else {
+      this.offerPerks();
+    }
+  }
+
+  skipCinematic() {
+    if (!this.cinematic || this.cinematic.elapsed < this.cinematic.skipAfter) return false;
+    this.cinematic.elapsed = this.cinematic.duration;
+    return true;
   }
 
   updateStars(dt) {
@@ -1127,7 +1191,7 @@ export class Game {
       this.hazards = this.hazards.filter(hazard => hazard.type !== 'wardenBeam' && !hazard.bossHazard);
       this.events.haptic?.([35, 30, 35, 30, 80]);
       this.events.sfx?.('boss');
-      this.offerPerks();
+      this.beginCinematic('warden', { x: enemy.x, y: enemy.y, bossName: enemy.bossName });
     }
   }
 
@@ -1146,8 +1210,14 @@ export class Game {
     this.events.sfx?.('hit');
     this.burst(player.x, player.y, '#ffffff', 28, 300);
     if (player.health <= 0) {
-      this.active = false;
-      this.events.gameover?.(Math.floor(this.score), this.runSummary());
+      player.health = 0;
+      this.beginCinematic('death', {
+        x: player.x,
+        y: player.y,
+        aim: player.aim,
+        score: Math.floor(this.score),
+        summary: this.runSummary(),
+      });
     }
   }
 
@@ -1353,6 +1423,7 @@ export class Game {
     this.drawParticles(ctx);
     ctx.restore();
     this.drawBossPresentation(ctx);
+    this.drawCinematic(ctx);
     if (this.flash > 0) {
       ctx.fillStyle = `rgba(255, 70, 100, ${this.flash * (this.reducedEffects ? .04 : .15)})`;
       ctx.fillRect(0, 0, this.width, this.height);
@@ -1468,6 +1539,10 @@ export class Game {
 
   drawPlayer(ctx) {
     const player = this.player;
+    if (this.cinematic?.type === 'death') {
+      this.drawPlayerDeath(ctx);
+      return;
+    }
     if (player.invulnerable > 0 && Math.floor(player.invulnerable * 16) % 2 === 0) ctx.globalAlpha = .35;
     ctx.save();
     ctx.translate(player.x, player.y);
@@ -1553,8 +1628,64 @@ export class Game {
     ctx.globalAlpha = 1;
   }
 
+  drawPlayerDeath(ctx) {
+    const cinematic = this.cinematic;
+    const player = this.player;
+    if (!cinematic) return;
+    const progress = clamp(cinematic.elapsed / cinematic.duration, 0, 1);
+    const rupture = clamp((progress - .13) / .48, 0, 1);
+    const fade = 1 - Math.pow(clamp((progress - .5) / .5, 0, 1), 1.5);
+    const sprite = this.sprites.player;
+
+    ctx.save();
+    ctx.translate(player.x, player.y + rupture * 12);
+    ctx.rotate((cinematic.aim ?? player.aim) + Math.PI / 2 + rupture * .12);
+    ctx.globalAlpha = fade;
+    ctx.imageSmoothingEnabled = false;
+    if (sprite?.complete && sprite.naturalWidth) {
+      const playerHeight = 96;
+      const playerWidth = Math.min(96, Math.max(80, playerHeight * sprite.naturalWidth / sprite.naturalHeight));
+      const sourceWidth = sprite.naturalWidth / 2;
+      const sourceHeight = sprite.naturalHeight / 2;
+      const pieceWidth = playerWidth / 2;
+      const pieceHeight = playerHeight / 2;
+      for (let row = 0; row < 2; row += 1) {
+        for (let column = 0; column < 2; column += 1) {
+          const directionX = column ? 1 : -1;
+          const directionY = row ? 1 : -1;
+          ctx.save();
+          ctx.translate(directionX * rupture * (10 + row * 4), directionY * rupture * (8 + column * 4));
+          ctx.rotate(directionX * directionY * rupture * .22);
+          if (progress < .28) ctx.filter = `brightness(${1 + (1 - progress / .28) * 2.8}) saturate(${.45 + progress * 2})`;
+          ctx.drawImage(
+            sprite,
+            column * sourceWidth,
+            row * sourceHeight,
+            sourceWidth,
+            sourceHeight,
+            -playerWidth / 2 + column * pieceWidth,
+            -49 + row * pieceHeight,
+            pieceWidth,
+            pieceHeight,
+          );
+          ctx.restore();
+        }
+      }
+    } else {
+      ctx.fillStyle = '#dffff5';
+      const split = 8 + rupture * 18;
+      ctx.fillRect(-split - 18, -5, 24, 8);
+      ctx.fillRect(split - 6, -5, 24, 8);
+      ctx.fillStyle = '#ffd36b';
+      ctx.fillRect(-5, -30 - rupture * 12, 10, 12);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   drawEnemies(ctx) {
     for (const enemy of this.enemies) {
+      if (enemy.dead) continue;
       ctx.save(); ctx.translate(enemy.x, enemy.y);
       if (enemy.type === 'skimmer') {
         if (enemy.side < 0) ctx.scale(-1, 1);
@@ -1827,6 +1958,49 @@ export class Game {
     ctx.font = `400 ${this.arenaWidth < 500 ? 20 : 27}px "Press Start 2P", monospace`;
     ctx.fillStyle = '#fff4d2'; ctx.shadowBlur = 20; ctx.shadowColor = '#ff587b'; ctx.fillText(title, (this.arenaLeft + this.arenaRight) / 2, centerY - 10);
     ctx.shadowBlur = 0; ctx.font = '700 9px "Silkscreen", monospace'; ctx.letterSpacing = '2px'; ctx.fillStyle = '#ffd36b'; ctx.fillText(subtitle, (this.arenaLeft + this.arenaRight) / 2, centerY + 25);
+    ctx.restore();
+  }
+
+  drawCinematic(ctx) {
+    const cinematic = this.cinematic;
+    if (!cinematic) return;
+    const progress = clamp(cinematic.elapsed / cinematic.duration, 0, 1);
+    const titleIn = clamp((progress - .26) / .2, 0, 1);
+    const titleOut = 1 - clamp((progress - .84) / .16, 0, 1);
+    const alpha = Math.sin(titleIn * Math.PI / 2) * titleOut;
+    const death = cinematic.type === 'death';
+    const accent = death ? '#ff6f82' : '#ffd36b';
+    const title = death ? 'RUN OVER' : 'WARDEN DESTROYED';
+    const subtitle = death ? 'THE CROWN HAS FALLEN' : 'CROWN POWER ACQUIRED';
+    const centerY = Math.min(this.height * .44, 350);
+
+    ctx.save();
+    ctx.fillStyle = `rgba(2, 7, 12, ${(.08 + progress * .27) * (this.reducedEffects ? .65 : 1)})`;
+    ctx.fillRect(0, 0, this.width, this.height);
+    if (alpha > 0) {
+      ctx.globalAlpha = alpha;
+      const band = ctx.createLinearGradient(this.arenaLeft, 0, this.arenaRight, 0);
+      band.addColorStop(0, 'rgba(3,9,14,0)');
+      band.addColorStop(.16, 'rgba(3,9,14,.88)');
+      band.addColorStop(.84, 'rgba(3,9,14,.88)');
+      band.addColorStop(1, 'rgba(3,9,14,0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(this.arenaLeft, centerY - 62, this.arenaWidth, 124);
+      ctx.fillStyle = accent;
+      ctx.fillRect(this.arenaLeft + this.arenaWidth * .18, centerY - 64, this.arenaWidth * .64, 2);
+      ctx.fillRect(this.arenaLeft + this.arenaWidth * .3, centerY + 62, this.arenaWidth * .4, 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `400 ${this.arenaWidth < 500 ? 19 : 27}px "Press Start 2P", monospace`;
+      ctx.fillStyle = death ? '#fff1f3' : '#fff4d2';
+      ctx.shadowBlur = this.reducedEffects ? 0 : 18;
+      ctx.shadowColor = accent;
+      ctx.fillText(title, (this.arenaLeft + this.arenaRight) / 2, centerY - 10);
+      ctx.shadowBlur = 0;
+      ctx.font = `700 ${this.arenaWidth < 500 ? 9 : 11}px "Silkscreen", monospace`;
+      ctx.fillStyle = accent;
+      ctx.fillText(subtitle, (this.arenaLeft + this.arenaRight) / 2, centerY + 27);
+    }
     ctx.restore();
   }
 
