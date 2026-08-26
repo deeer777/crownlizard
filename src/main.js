@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260826-71-callsign-ui';
+import { CONFIG } from './config.js?v=20260826-72-account-leaderboard';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260826-71-callsign-ui';
+import { Game } from './game.js?v=20260826-72-account-leaderboard';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260826-71-callsign-ui';
-import { buildAccountPresentation } from './account-presentation.js?v=20260826-71-callsign-ui';
+import { PlayerAccount } from './player-account.js?v=20260826-72-account-leaderboard';
+import { buildAccountPresentation } from './account-presentation.js?v=20260826-72-account-leaderboard';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -40,7 +40,7 @@ const ui = {
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
-  scoreEntry: $('scoreEntry'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
+  scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
 };
 
@@ -468,7 +468,7 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
       row.setAttribute('aria-current', 'true');
     }
     const values = entry
-      ? [String(index + 1).padStart(2, '0'), entry.initials, Number(entry.score).toLocaleString('en-US'), String(entry.zone)]
+      ? [String(index + 1).padStart(2, '0'), entry.playerName || entry.initials, Number(entry.score).toLocaleString('en-US'), String(entry.zone)]
       : [String(index + 1).padStart(2, '0'), '---', '------', '-'];
     values.forEach((value, cellIndex) => {
       const cell = document.createElement('span');
@@ -491,7 +491,7 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
     const label = document.createElement('span');
     label.textContent = 'YOUR SCORE';
     const initials = document.createElement('strong');
-    initials.textContent = personal.entry.initials;
+    initials.textContent = personal.entry.playerName || personal.entry.initials;
     const score = document.createElement('em');
     score.textContent = Number(personal.entry.score).toLocaleString('en-US');
     ui.leaderboardPlayerResult.append(rank, label, initials, score);
@@ -542,9 +542,26 @@ const prepareScoreEntry = (score, summary) => {
   ui.submitScore.classList.add('hidden');
   ui.scoreSubmitStatus.textContent = '';
   ui.submitScore.disabled = false;
-  Promise.resolve(currentRunPromise).then(run => {
-    if ((!run && !debugMode) || pendingScore !== scoreTicket || scoreTicket.generation !== runGeneration) return;
-    scoreTicket.run = run;
+  Promise.resolve(currentRunPromise).then(async run => {
+    const scoreRun = run || (callsignPreviewMode ? { id: 'local-callsign-preview', walletBound: true, preview: true } : null);
+    if ((!scoreRun && !debugMode) || pendingScore !== scoreTicket || scoreTicket.generation !== runGeneration) return;
+    scoreTicket.run = scoreRun;
+    if (scoreRun?.walletBound && !playerProfile) await refreshPlayerProfile().catch(() => null);
+    if (pendingScore !== scoreTicket || scoreTicket.generation !== runGeneration) return;
+    const accountCallsign = scoreRun?.walletBound ? String(playerProfile?.displayName || '') : '';
+    if (scoreRun?.walletBound && !accountCallsign) {
+      ui.scoreIdentity.classList.add('hidden');
+      ui.guestInitials.classList.add('hidden');
+      ui.playerInitials.required = false;
+      ui.scoreEntry.classList.remove('hidden');
+      ui.scoreSubmitStatus.textContent = 'CHOOSE A CALLSIGN IN PLAYER ACCOUNT TO SUBMIT';
+      return;
+    }
+    scoreTicket.callsign = accountCallsign;
+    ui.scoreIdentity.classList.toggle('hidden', !accountCallsign);
+    ui.guestInitials.classList.toggle('hidden', Boolean(accountCallsign));
+    ui.playerInitials.required = !accountCallsign;
+    ui.scoreCallsign.textContent = accountCallsign || 'PLAYER';
     const savedInitials = normalizeInitials(localStorage.getItem('cl:initials') || '');
     ui.playerInitials.value = savedInitials.length === 3 ? savedInitials : '';
     renderInitialSlots(ui.playerInitials.value);
@@ -1234,8 +1251,17 @@ ui.playerInitials.addEventListener('focus', () => {
 ui.scoreEntry.addEventListener('submit', async event => {
   event.preventDefault();
   if (!pendingScore?.run) return;
-  const initials = normalizeInitials(ui.playerInitials.value);
-  if (initials.length !== 3) {
+  if (pendingScore.run.preview) {
+    ui.scoreSubmitStatus.textContent = 'LOCAL PREVIEW · LIVE SCORES USE YOUR ACCOUNT';
+    return;
+  }
+  const accountCallsign = pendingScore.run.walletBound ? String(playerProfile?.displayName || pendingScore.callsign || '') : '';
+  const initials = accountCallsign ? '' : normalizeInitials(ui.playerInitials.value);
+  if (pendingScore.run.walletBound && !accountCallsign) {
+    ui.scoreSubmitStatus.textContent = 'CALLSIGN REQUIRED · OPEN PLAYER ACCOUNT';
+    return;
+  }
+  if (!accountCallsign && initials.length !== 3) {
     ui.scoreSubmitStatus.textContent = 'ENTER EXACTLY 3 INITIALS';
     ui.playerInitials.focus();
     return;
@@ -1247,7 +1273,7 @@ ui.scoreEntry.addEventListener('submit', async event => {
     const accessToken = serverEconomy && serverEconomyReady ? await playerAccount.getAccessToken().catch(() => '') : '';
     const result = await leaderboard.submit({
       runId: pendingScore.run.id,
-      initials,
+      ...(accountCallsign ? {} : { initials }),
       score: pendingScore.score,
       difficulty: pendingScore.difficulty,
       durationMs: summary.durationMs,
@@ -1258,7 +1284,7 @@ ui.scoreEntry.addEventListener('submit', async event => {
       bestCombo: summary.bestCombo,
       gameVersion: `${CONFIG.version.release}-${CONFIG.version.build}`,
     }, accessToken);
-    localStorage.setItem('cl:initials', initials);
+    if (!accountCallsign) localStorage.setItem('cl:initials', initials);
     ui.scoreSubmitStatus.textContent = `SCORE ACCEPTED · RANK ${result.rank || '—'}`;
     ui.scoreEntry.classList.add('hidden');
     ui.submitScore.classList.add('hidden');

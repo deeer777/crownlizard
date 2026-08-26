@@ -13,7 +13,12 @@ create table if not exists public.leaderboard_runs (
 create table if not exists public.leaderboard_scores (
   id uuid primary key default gen_random_uuid(),
   run_id uuid not null unique references public.leaderboard_runs(id) on delete restrict,
-  initials text not null check (initials ~ '^[A-Z0-9]{3}$'),
+  initials text check (initials ~ '^[A-Z0-9]{3}$'),
+  user_id uuid references auth.users(id) on delete set null,
+  player_name text not null check (
+    char_length(player_name) between 3 and 10
+    and player_name ~ '^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$'
+  ),
   score integer not null check (score between 1 and 1000000000),
   difficulty text not null check (difficulty in ('chill', 'arcade', 'crowned')),
   duration_ms integer not null check (duration_ms between 3000 and 86400000),
@@ -44,6 +49,52 @@ alter table public.leaderboard_runs
   add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.leaderboard_runs
   add column if not exists economy_settled_at timestamptz;
+
+-- Build 72 keeps guest initials while binding permanent leaderboard entries to
+-- the account and a callsign snapshot. Current profile names are resolved by
+-- the edge API when the board is read.
+alter table public.leaderboard_scores
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table public.leaderboard_scores
+  add column if not exists player_name text;
+update public.leaderboard_scores
+   set player_name = initials
+ where player_name is null;
+create or replace function public.fill_legacy_leaderboard_player_name()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.player_name is null then new.player_name := new.initials; end if;
+  return new;
+end;
+$$;
+drop trigger if exists leaderboard_scores_legacy_name on public.leaderboard_scores;
+create trigger leaderboard_scores_legacy_name
+before insert on public.leaderboard_scores
+for each row execute function public.fill_legacy_leaderboard_player_name();
+alter table public.leaderboard_scores
+  alter column player_name set not null;
+alter table public.leaderboard_scores
+  alter column initials drop not null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'leaderboard_scores_player_name_check'
+       and conrelid = 'public.leaderboard_scores'::regclass
+  ) then
+    alter table public.leaderboard_scores
+      add constraint leaderboard_scores_player_name_check check (
+        char_length(player_name) between 3 and 10
+        and player_name ~ '^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$'
+      );
+  end if;
+end
+$$;
+create index if not exists leaderboard_scores_user_idx
+  on public.leaderboard_scores (user_id, created_at desc);
 
 create table if not exists public.player_wallets (
   user_id uuid primary key references auth.users(id) on delete cascade,

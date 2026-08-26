@@ -323,6 +323,11 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .score-entry { position: relative; display: grid; justify-items: center; gap: 10px; width: min(370px,100%); margin: 2px auto 19px; padding: 16px 15px 13px; background: rgba(5,18,20,.72); border-top: 2px solid #37564f; border-bottom: 2px solid #142723; box-shadow: inset 0 1px rgba(111,255,210,.08); }
 .score-entry label { display: grid; gap: 5px; color: var(--gold); font: 700 10px var(--font-pixel-ui); letter-spacing: .11em; }
 .score-entry label small { color: #718b84; font: 700 7px var(--font-pixel-ui); letter-spacing: .14em; }
+.guest-initials { display: grid; justify-items: center; gap: 10px; }
+.score-identity { display: grid; justify-items: center; gap: 7px; width: min(300px,100%); padding: 10px 8px 9px; border-block: 2px solid #315b50; background: rgba(4,16,15,.75); }
+.score-identity small,
+.score-identity span { color: #78928b; font: 700 7px var(--font-pixel-ui); letter-spacing: .14em; }
+.score-identity strong { max-width: 100%; overflow: hidden; color: var(--gold); font: 400 clamp(14px,4vw,19px)/1.45 var(--font-pixel-display); letter-spacing: .05em; text-overflow: ellipsis; text-shadow: 3px 3px #634111; white-space: nowrap; }
 .initials-control { position: relative; width: 174px; height: 56px; overflow: hidden; background: #02080b; border: 2px solid #54736b; box-shadow: 3px 3px #000; }
 .initials-slots { position: absolute; z-index: 1; inset: 0; display: grid; grid-template-columns: repeat(3,1fr); pointer-events: none; }
 .initials-slots span { display: grid; place-items: center; color: var(--ink); font: 400 24px var(--font-pixel-display); }
@@ -474,7 +479,7 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .leaderboard-list li { min-height: 40px; padding: 5px 10px; border-bottom: 1px solid #172923; color: #9db7b0; font: 400 11px var(--font-pixel-ui); text-align: right; font-variant-numeric: tabular-nums; }
 .leaderboard-list li:nth-child(-n+3) { color: var(--ink); }
 .leaderboard-list li:first-child { color: var(--gold); text-shadow: 1px 1px #6b4214; }
-.leaderboard-list li span:nth-child(2) { display: flex; align-items: center; gap: 7px; color: var(--mint); text-align: left; letter-spacing: .12em; }
+.leaderboard-list li span:nth-child(2) { display: flex; min-width: 0; align-items: center; gap: 7px; overflow: hidden; color: var(--mint); text-align: left; letter-spacing: .08em; text-overflow: ellipsis; white-space: nowrap; }
 .leaderboard-list li span small { padding: 3px 4px; color: #03100d; background: var(--mint); font: 700 6px var(--font-pixel-ui); letter-spacing: .04em; text-shadow: none; }
 .leaderboard-list li.leaderboard-empty { color: #405650; text-shadow: none; }
 .leaderboard-list li.leaderboard-empty span:nth-child(2) { color: #405650; }

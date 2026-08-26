@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { normalizeInitials } from '../src/leaderboard.js';
 import { onRequest, validateScorePayload } from '../functions/api/[[path]].js';
 
@@ -31,11 +32,64 @@ assert.match(validateScorePayload({ ...valid, score: 999_999_999 }, run, now).er
 assert.match(validateScorePayload({ ...valid, zone: 20 }, run, now).error, /statistics/, 'impossible zone progression is rejected');
 assert.match(validateScorePayload(valid, { ...run, used_at: new Date().toISOString() }, now).error, /already submitted/, 'a run can only be submitted once');
 
+const accountUserId = '123e4567-e89b-42d3-a456-426614174000';
+const accountRun = { ...run, user_id: accountUserId };
+const accountScore = validateScorePayload({ ...valid, initials: 'HAX' }, accountRun, now, { displayName: 'PILOT_ONE' });
+assert.equal(accountScore.value.playerName, 'PILOT_ONE', 'an account score always uses the verified profile callsign');
+assert.equal(accountScore.value.initials, null, 'legacy initials are never stored for account scores');
+assert.equal(accountScore.value.userId, accountUserId, 'the score retains its authenticated owner');
+assert.match(validateScorePayload(valid, accountRun, now, null).error, /callsign/, 'an account run cannot fall back to guest initials');
+
+const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const indexSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+assert.match(schema, /leaderboard_scores[\s\S]*user_id uuid references auth\.users/, 'leaderboard scores retain account ownership');
+assert.match(schema, /player_name text not null check/, 'leaderboard scores retain a validated callsign snapshot');
+assert.match(schema, /alter column initials drop not null/, 'account scores do not need legacy three-letter initials');
+assert.match(schema, /before insert on public\.leaderboard_scores[\s\S]*fill_legacy_leaderboard_player_name/, 'the migration remains compatible with the previous live worker during rollout');
+assert.match(indexSource, /id="scoreIdentity"[\s\S]*id="guestInitials"/, 'the result screen has separate account and guest identity presentations');
+assert.match(mainSource, /scoreRun\?\.walletBound \? String\(playerProfile\?\.displayName/, 'an authenticated run renders the loaded callsign');
+assert.match(mainSource, /\.{3}\(accountCallsign \? \{\} : \{ initials \}\)/, 'the browser omits legacy initials for account submissions');
+
 const unconfigured = await onRequest({
   request: new Request('https://crownlizard.com/api/scores?difficulty=arcade'),
   env: {},
   params: { path: ['scores'] },
 });
 assert.equal(unconfigured.status, 503, 'API fails closed while secrets are missing');
+
+const originalFetch = globalThis.fetch;
+const runId = '223e4567-e89b-42d3-a456-426614174000';
+const insertedId = '323e4567-e89b-42d3-a456-426614174000';
+let insertedScore = null;
+globalThis.fetch = async (url, options = {}) => {
+  const href = String(url);
+  if (href.endsWith('/auth/v1/user')) return Response.json({ id: accountUserId, is_anonymous: false, email: 'pilot@example.com' });
+  if (href.includes('/rest/v1/leaderboard_runs?') && options.method !== 'PATCH') return Response.json([{ id: runId, ...accountRun }]);
+  if (href.includes('/rest/v1/player_profiles?')) return Response.json([{ user_id: accountUserId, display_name: 'PILOT_ONE', rename_count: 0 }]);
+  if (href.endsWith('/rest/v1/leaderboard_scores') && options.method === 'POST') {
+    insertedScore = JSON.parse(options.body);
+    return Response.json([{ id: insertedId, ...insertedScore, created_at: new Date().toISOString() }]);
+  }
+  if (href.includes('/rest/v1/leaderboard_runs?') && options.method === 'PATCH') return Response.json([]);
+  if (href.includes('/rest/v1/leaderboard_scores?')) return Response.json([{ id: insertedId, ...insertedScore, created_at: new Date().toISOString() }]);
+  throw new Error(`Unexpected leaderboard fetch: ${href}`);
+};
+
+const accountSubmitResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/scores', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer account-access-token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...valid, runId, initials: 'HAX' }),
+  }),
+  env: { SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SECRET_KEY: 'server-secret', SUPABASE_PUBLISHABLE_KEY: 'browser-publishable', SCORE_HASH_SALT: 'leaderboard-salt' },
+  params: { path: ['scores'] },
+});
+assert.equal(accountSubmitResponse.status, 201, 'an authenticated callsign score is accepted');
+assert.equal(insertedScore.player_name, 'PILOT_ONE', 'the database receives the server-resolved callsign');
+assert.equal(insertedScore.user_id, accountUserId, 'the database receives the verified owner');
+assert.equal(insertedScore.initials, null, 'spoofed browser initials are discarded for an account run');
+assert.equal((await accountSubmitResponse.json()).entry.playerName, 'PILOT_ONE', 'the response renders the account callsign immediately');
+globalThis.fetch = originalFetch;
 
 console.log('Leaderboard validation test passed');

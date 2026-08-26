@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -613,8 +613,10 @@ const importLegacyWallet = async (request, config, env) => {
   return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous) }, wallet: await walletSnapshot(config, user.id) }, 201);
 };
 
-export const validateScorePayload = (body, run, now = Date.now()) => {
+export const validateScorePayload = (body, run, now = Date.now(), profile = null) => {
   const initials = String(body.initials || '').toUpperCase();
+  const accountName = String(profile?.displayName || '').toUpperCase();
+  const accountRun = Boolean(run.user_id);
   const score = normalizeInt(body.score, 1, 1_000_000_000);
   const durationMs = normalizeInt(body.durationMs, 3000, 86_400_000);
   const zone = normalizeInt(body.zone, 1, 999);
@@ -625,7 +627,8 @@ export const validateScorePayload = (body, run, now = Date.now()) => {
   const difficulty = String(body.difficulty || '');
   const gameVersion = String(body.gameVersion || '');
 
-  if (!/^[A-Z0-9]{3}$/.test(initials)) return { error: 'Enter exactly 3 initials using A-Z or 0-9.' };
+  if (accountRun && !/^[A-Z0-9][A-Z0-9_]{1,8}[A-Z0-9]$/.test(accountName)) return { error: 'Choose a callsign before submitting an account score.' };
+  if (!accountRun && !/^[A-Z0-9]{3}$/.test(initials)) return { error: 'Enter exactly 3 initials using A-Z or 0-9.' };
   if (!DIFFICULTIES.has(difficulty) || difficulty !== run.difficulty) return { error: 'Invalid difficulty.' };
   if (!GAME_VERSION_PATTERN.test(gameVersion) || gameVersion !== run.game_version) return { error: 'Game version mismatch.' };
   if ([score, durationMs, zone, wardens, enemies, crates, bestCombo].some(value => value === null)) return { error: 'Invalid score data.' };
@@ -639,18 +642,38 @@ export const validateScorePayload = (body, run, now = Date.now()) => {
   if (zone > expectedZone + 1 || wardens > zone || crates > durationSeconds / 4 + 8 || enemies > durationSeconds * 8 + 80) return { error: 'Run statistics could not be verified.' };
   if (score > plausibleScore) return { error: 'Score is outside the verified range.' };
 
-  return { value: { initials, score, durationMs, zone, wardens, enemies, crates, bestCombo, difficulty, gameVersion } };
+  return { value: { initials: accountRun ? null : initials, playerName: accountRun ? accountName : initials, userId: accountRun ? run.user_id : null, score, durationMs, zone, wardens, enemies, crates, bestCombo, difficulty, gameVersion } };
 };
 
 const listScores = async (config, difficulty, limit = 10) => {
   const query = new URLSearchParams({
-    select: 'id,initials,score,difficulty,zone,wardens,created_at',
+    select: 'id,initials,player_name,user_id,score,difficulty,zone,wardens,created_at',
     difficulty: `eq.${difficulty}`,
     is_hidden: 'eq.false',
     order: 'score.desc,created_at.asc',
     limit: String(limit),
   });
-  return supabaseFetch(config, `leaderboard_scores?${query}`);
+  const rows = await supabaseFetch(config, `leaderboard_scores?${query}`);
+  const userIds = [...new Set(rows.map(row => row.user_id).filter(Boolean))];
+  let currentNames = new Map();
+  if (userIds.length) {
+    const profileQuery = new URLSearchParams({ select: 'user_id,display_name', user_id: `in.(${userIds.join(',')})` });
+    const profiles = await supabaseFetch(config, `player_profiles?${profileQuery}`);
+    currentNames = new Map(profiles.map(profile => [profile.user_id, profile.display_name]));
+  }
+  return rows.map(row => {
+    const playerName = String(currentNames.get(row.user_id) || row.player_name || row.initials || '---');
+    return {
+      id: row.id,
+      playerName,
+      initials: playerName,
+      score: row.score,
+      difficulty: row.difficulty,
+      zone: row.zone,
+      wardens: row.wardens,
+      created_at: row.created_at,
+    };
+  });
 };
 
 const beginRun = async (request, config) => {
@@ -829,12 +852,15 @@ const submitScore = async (request, config) => {
   const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,created_at,used_at', id: `eq.${runId}`, limit: '1' });
   const runs = await supabaseFetch(config, `leaderboard_runs?${runQuery}`);
   if (!runs.length) return json({ error: 'Run not found.' }, 404);
+  let profile = null;
   if (runs[0].user_id) {
     const user = await authenticatePlayer(request, config);
     if (!user) return json({ error: 'Player session required.' }, 401);
     if (user.id !== runs[0].user_id) return json({ error: 'Run does not belong to this player.' }, 403);
+    profile = await playerProfileSnapshot(config, user.id);
+    if (!profile) return json({ error: 'Choose a callsign before submitting this score.', code: 'PROFILE_REQUIRED' }, 409);
   }
-  const validation = validateScorePayload(body, runs[0]);
+  const validation = validateScorePayload(body, runs[0], Date.now(), profile);
   if (validation.error) return json({ error: validation.error }, 422);
   const value = validation.value;
 
@@ -844,6 +870,8 @@ const submitScore = async (request, config) => {
     body: JSON.stringify({
       run_id: runId,
       initials: value.initials,
+      user_id: value.userId,
+      player_name: value.playerName,
       score: value.score,
       difficulty: value.difficulty,
       duration_ms: value.durationMs,
@@ -864,7 +892,8 @@ const submitScore = async (request, config) => {
   });
   const scores = await listScores(config, value.difficulty, 100);
   const rank = scores.findIndex(entry => entry.id === inserted[0].id) + 1;
-  return json({ entry: inserted[0], rank: rank || null, scores: scores.slice(0, 10) }, 201);
+  const entry = scores.find(score => score.id === inserted[0].id) || { ...inserted[0], playerName: value.playerName, initials: value.playerName };
+  return json({ entry, rank: rank || null, scores: scores.slice(0, 10) }, 201);
 };
 
 export const onRequest = async context => {

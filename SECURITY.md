@@ -40,3 +40,4 @@ Player passwords are accepted only by the account route and forwarded to Supabas
 - A future rename costs exactly 500 shards and has a seven-day cooldown. Profile update, wallet debit and append-only ledger entry occur in one locked transaction.
 - Rename requests use a caller-generated UUID as an idempotency key. Retrying the same request cannot charge twice.
 - Callsigns and cosmetic progression are funded only by gameplay shards and verified rewarded ads. No real-money purchase path is part of the design.
+- Authenticated leaderboard submissions derive the displayed callsign from the run owner's server profile. Client-supplied initials or names are discarded for account-bound runs; guest initials remain a separate legacy path.

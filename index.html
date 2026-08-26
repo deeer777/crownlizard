@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260826-71-callsign-ui">
+  <link rel="stylesheet" href="./styles.css?v=20260826-72-account-leaderboard">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -86,10 +86,13 @@
       <div id="sponsoredReward" class="sponsored-reward hidden" aria-live="polite"></div>
       <p id="recordMessage">The next run starts stronger.</p>
       <form id="scoreEntry" class="score-entry hidden">
-        <label for="playerInitials">ENTER YOUR INITIALS<small>GLOBAL LEADERBOARD</small></label>
-        <div class="initials-control">
-          <div id="initialsSlots" class="initials-slots" aria-hidden="true"><span>–</span><span>–</span><span>–</span></div>
-          <input id="playerInitials" name="initials" type="text" maxlength="3" minlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="---" aria-label="Three character player initials" aria-describedby="scoreSubmitStatus">
+        <div id="scoreIdentity" class="score-identity hidden"><small>SUBMITTING AS</small><strong id="scoreCallsign">PLAYER</strong><span>VERIFIED CROWN ACCOUNT</span></div>
+        <div id="guestInitials" class="guest-initials">
+          <label for="playerInitials">ENTER YOUR INITIALS<small>GLOBAL LEADERBOARD · GUEST</small></label>
+          <div class="initials-control">
+            <div id="initialsSlots" class="initials-slots" aria-hidden="true"><span>–</span><span>–</span><span>–</span></div>
+            <input id="playerInitials" name="initials" type="text" maxlength="3" minlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="---" aria-label="Three character player initials" aria-describedby="scoreSubmitStatus">
+          </div>
         </div>
         <span id="scoreSubmitStatus" role="status"></span>
       </form>
@@ -284,6 +287,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260826-71-callsign-ui"></script>
+  <script type="module" src="./src/main.js?v=20260826-72-account-leaderboard"></script>
 </body>
 </html>
