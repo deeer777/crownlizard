@@ -1,22 +1,71 @@
-import { CONFIG } from './config.js?v=20260820-18';
+import { CONFIG } from './config.js?v=20260826-74-menu-focus';
 
 export class Music {
   constructor() {
     this.enabled = localStorage.getItem('cl:music') !== 'off';
     this.index = 0;
-    this.player = new Audio();
-    this.player.volume = CONFIG.audio.volume;
-    this.player.preload = 'none';
-    this.player.addEventListener('ended', () => this.next());
+    this.mode = 'menu';
+    this.fadeGeneration = 0;
+    this.menuPlayer = new Audio(CONFIG.audio.menuTrack);
+    this.gamePlayer = new Audio();
+    this.menuPlayer.loop = true;
+    this.menuPlayer.preload = 'metadata';
+    this.gamePlayer.preload = 'none';
+    this.menuPlayer.volume = CONFIG.audio.menuVolume;
+    this.gamePlayer.volume = CONFIG.audio.volume;
+    this.gamePlayer.addEventListener('ended', () => this.next());
   }
 
   play() {
     if (!this.enabled) return;
-    if (!this.player.src) this.player.src = CONFIG.audio.tracks[this.index];
-    this.player.play().catch(() => {});
+    this.activePlayer().play().catch(() => {});
   }
 
-  pause() { this.player.pause(); }
+  activePlayer() { return this.mode === 'menu' ? this.menuPlayer : this.gamePlayer; }
+
+  playMenu() { this.switchTo('menu'); }
+
+  playGame() { this.switchTo('game'); }
+
+  switchTo(mode) {
+    if (!this.enabled) { this.mode = mode; return; }
+    if (mode === this.mode) { this.play(); return; }
+    const outgoing = this.activePlayer();
+    this.mode = mode;
+    const incoming = this.activePlayer();
+    if (mode === 'game' && !incoming.src) incoming.src = CONFIG.audio.gameTracks[this.index];
+    this.crossfade(outgoing, incoming, mode === 'menu' ? CONFIG.audio.menuVolume : CONFIG.audio.volume);
+  }
+
+  crossfade(outgoing, incoming, targetVolume) {
+    const generation = ++this.fadeGeneration;
+    const outgoingVolume = outgoing.volume;
+    let frame = 0;
+    const totalFrames = 26;
+    incoming.volume = 0;
+    incoming.play().catch(() => { incoming.volume = targetVolume; });
+    const step = () => {
+      if (generation !== this.fadeGeneration) return;
+      frame += 1;
+      const progress = Math.min(1, frame / totalFrames);
+      outgoing.volume = outgoingVolume * (1 - progress);
+      incoming.volume = targetVolume * progress;
+      if (progress < 1) requestAnimationFrame(step);
+      else {
+        outgoing.pause();
+        outgoing.volume = outgoing === this.menuPlayer ? CONFIG.audio.menuVolume : CONFIG.audio.volume;
+      }
+    };
+    requestAnimationFrame(step);
+  }
+
+  pause() {
+    this.fadeGeneration += 1;
+    this.menuPlayer.pause();
+    this.gamePlayer.pause();
+    this.menuPlayer.volume = CONFIG.audio.menuVolume;
+    this.gamePlayer.volume = CONFIG.audio.volume;
+  }
 
   setEnabled(enabled) {
     this.enabled = Boolean(enabled);
@@ -26,9 +75,9 @@ export class Music {
   }
 
   next() {
-    this.index = (this.index + 1) % CONFIG.audio.tracks.length;
-    this.player.src = CONFIG.audio.tracks[this.index];
-    this.play();
+    this.index = (this.index + 1) % CONFIG.audio.gameTracks.length;
+    this.gamePlayer.src = CONFIG.audio.gameTracks[this.index];
+    if (this.mode === 'game') this.play();
   }
 
   toggle() {

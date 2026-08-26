@@ -1,5 +1,5 @@
 export const CONFIG = Object.freeze({
-  version: Object.freeze({ release: '0.17.3', build: 73 }),
+  version: Object.freeze({ release: '0.17.4', build: 74 }),
   simulationHz: 60,
   player: {
     radius: 17,
@@ -85,6 +85,8 @@ export const CONFIG = Object.freeze({
   ],
   audio: {
     volume: .32,
-    tracks: ['./audio/moonshine.mp3', './audio/pixeldreams.mp3', './audio/yoga.mp3'],
+    menuVolume: .24,
+    menuTrack: './audio/menu-theme.mp3',
+    gameTracks: ['./audio/moonshine.mp3', './audio/pixeldreams.mp3', './audio/yoga.mp3'],
   },
 });

@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260826-73-cinematic-endings">
+  <link rel="stylesheet" href="./styles.css?v=20260826-74-menu-focus">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -32,8 +32,11 @@
 
   <main id="menu" class="overlay">
     <section class="panel hero-panel">
-      <div class="arcade-status"><span>★ HIGH SCORE</span><b id="menuBest">000000</b><span id="menuShards">◆ 0 SHARDS</span></div>
-      <div class="eyebrow">ENDLESS PIXEL SURVIVAL</div>
+      <div id="menuStatus" class="arcade-status" data-account-state="guest">
+        <span class="status-player"><small>PLAYER</small><b id="menuPlayer">GUEST</b></span>
+        <span class="status-score"><small>★ HIGH SCORE</small><b id="menuBest">000000</b></span>
+        <span id="menuShards" class="status-shards">◆ 0 SHARDS</span>
+      </div>
       <div class="logo-lockup">
         <span class="logo-crest" aria-hidden="true"><i></i></span>
         <h1 aria-label="Crown Lizard"><span class="logo-crown-word" data-text="CROWN" aria-hidden="true">CROWN</span><span class="logo-lizard-word" data-text="LIZARD" aria-hidden="true">LIZARD</span></h1>
@@ -43,33 +46,17 @@
         <i class="logo-spark" aria-hidden="true"></i>
       </div>
       <div class="menu-scene" aria-hidden="true">
-        <i class="scene-orbit orbit-one"></i>
-        <i class="scene-orbit orbit-two"></i>
-        <img class="scene-enemy scene-enemy-left" src="./assets/runtime/sprites/ripper-v1.png" alt="">
-        <img class="scene-enemy scene-enemy-right" src="./assets/runtime/sprites/hex-moth-v1.png" alt="">
-        <span class="scene-shot shot-left"></span>
-        <span class="scene-shot shot-right"></span>
         <img class="scene-player" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="">
       </div>
       <p class="tagline">DASH · SURVIVE · CLAIM THE HIGH SCORE</p>
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
+        <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></button>
         <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
         <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
       </div>
-      <div class="menu-nav-hint">↑ ↓ SELECT · ENTER CONFIRM</div>
-      <div class="menu-label"><span>SELECT DIFFICULTY</span></div>
-      <div class="difficulty" role="group" aria-label="Difficulty">
-        <button data-difficulty="chill"><b>CHILL</b><small>4 lives · relaxed</small></button>
-        <button data-difficulty="arcade" class="selected"><b>ARCADE</b><small>3 lives · classic</small></button>
-        <button data-difficulty="crowned"><b>CROWNED</b><small>2 lives · x1.6 score</small></button>
-      </div>
-      <div class="controls">
-        <div><kbd>WASD</kbd><span>Move</span></div>
-        <div><kbd>SPACE</kbd><span>Dash</span></div>
-        <div><kbd>AUTO</kbd><span>Fire</span></div>
-      </div>
+      <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
       <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version"></span><strong id="best">0</strong></div>
       <button id="sound" class="icon-button" aria-label="Toggle music">♪</button>
     </section>
@@ -287,6 +274,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260826-73-cinematic-endings"></script>
+  <script type="module" src="./src/main.js?v=20260826-74-menu-focus"></script>
 </body>
 </html>

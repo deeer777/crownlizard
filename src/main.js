@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js?v=20260826-73-cinematic-endings';
+import { CONFIG } from './config.js?v=20260826-74-menu-focus';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260826-73-cinematic-endings';
+import { Music, SoundFx } from './audio.js?v=20260826-74-menu-focus';
+import { Game } from './game.js?v=20260826-74-menu-focus';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
@@ -24,7 +24,7 @@ const ui = {
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
-  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
@@ -38,7 +38,7 @@ const ui = {
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
-  stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'), difficultyButtons: [...document.querySelectorAll('[data-difficulty]')],
+  stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'),
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
@@ -51,10 +51,14 @@ let best = Number(localStorage.getItem(bestKey(selectedDifficulty)) || 0);
 ui.best.textContent = best.toLocaleString('en-US');
 ui.menuBest.textContent = String(best).padStart(6, '0');
 ui.gameVersion.textContent = `VER ${CONFIG.version.release} · BUILD ${CONFIG.version.build}`;
-ui.difficultyButtons.forEach(button => button.classList.toggle('selected', button.dataset.difficulty === selectedDifficulty));
+ui.menuModeValue.textContent = CONFIG.difficulties[selectedDifficulty].name;
 
 const music = new Music();
 const sfx = new SoundFx();
+music.playMenu();
+const unlockMenuMusic = () => music.playMenu();
+addEventListener('pointerdown', unlockMenuMusic, { once: true, capture: true });
+addEventListener('keydown', unlockMenuMusic, { once: true, capture: true });
 let hapticsEnabled = localStorage.getItem('cl:haptics') !== 'off';
 let reducedEffects = localStorage.getItem('cl:reduced-effects') === 'on';
 let vaultAnimationEnabled = localStorage.getItem('cl:vault-animation') !== 'off';
@@ -95,6 +99,13 @@ const accountPresentation = () => buildAccountPresentation({
   callsign: playerProfile?.displayName,
   profileStatus,
 });
+const renderMenuIdentity = () => {
+  const account = accountPresentation();
+  const labels = { guest: 'GUEST', preview: 'PREVIEW', setup: 'SET PASSWORD', expired: 'SIGN IN' };
+  ui.menuPlayer.textContent = playerProfile?.displayName || labels[account.state] || account.badge;
+  ui.menuStatus.dataset.accountState = account.state;
+};
+renderMenuIdentity();
 const rewardedAd = new SimulatedRewardedAdAdapter();
 let serverWallet = null;
 let serverEconomyReady = false;
@@ -132,16 +143,20 @@ const refreshPlayerProfile = async () => {
   if (currentAccountState() !== 'signed-in') {
     playerProfile = null;
     profileStatus = 'ready';
+    renderMenuIdentity();
     return null;
   }
   profileStatus = 'loading';
+  renderMenuIdentity();
   try {
     const payload = await playerAccount.getProfile();
     playerProfile = payload.profile || null;
     profileStatus = 'ready';
+    renderMenuIdentity();
     return playerProfile;
   } catch (error) {
     profileStatus = 'error';
+    renderMenuIdentity();
     throw error;
   }
 };
@@ -368,7 +383,7 @@ const closeVault = () => {
   ui.cosmeticDetail.classList.add('hidden');
   ui.vaultOverlay.classList.add('hidden');
   renderShardBalance();
-  selectMenuChoice(2, true);
+  selectMenuChoice(3, true);
 };
 let toastTimer = 0;
 let toastPriority = -1;
@@ -414,6 +429,7 @@ const renderSettings = () => {
   ui.sound.classList.toggle('off', !music.enabled);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
   ui.accountBadge.textContent = accountPresentation().badge;
+  renderMenuIdentity();
 };
 
 const selectMenuChoice = (index, focus = false) => {
@@ -532,7 +548,7 @@ const openLeaderboard = (origin = 'menu', difficulty = selectedDifficulty, resul
 
 const closeLeaderboard = () => {
   ui.leaderboardOverlay.classList.add('hidden');
-  if (leaderboardReturn === 'menu') selectMenuChoice(1, true);
+  if (leaderboardReturn === 'menu') selectMenuChoice(2, true);
 };
 
 const prepareScoreEntry = (score, summary) => {
@@ -609,6 +625,28 @@ const renderShardReward = result => {
     <div class="shard-balance">NEW BALANCE <b>${balance.toLocaleString('en-US')}</b></div>
   `;
 };
+
+const difficultyOrder = Object.keys(CONFIG.difficulties);
+const renderMenuMode = () => {
+  const difficulty = CONFIG.difficulties[selectedDifficulty];
+  ui.menuModeValue.textContent = difficulty.name;
+  ui.menuMode.setAttribute('aria-label', `Game mode ${difficulty.name}. ${difficulty.health} lives. ${difficulty.score} times score.`);
+};
+const setDifficulty = difficulty => {
+  if (!CONFIG.difficulties[difficulty]) return;
+  selectedDifficulty = difficulty;
+  localStorage.setItem('crownlizard:difficulty', selectedDifficulty);
+  best = Number(localStorage.getItem(bestKey(selectedDifficulty)) || 0);
+  ui.best.textContent = best.toLocaleString('en-US');
+  ui.menuBest.textContent = String(best).padStart(6, '0');
+  renderMenuMode();
+  loadLeaderboard(selectedDifficulty, true);
+};
+const cycleDifficulty = direction => {
+  const currentIndex = difficultyOrder.indexOf(selectedDifficulty);
+  setDifficulty(difficultyOrder[(currentIndex + direction + difficultyOrder.length) % difficultyOrder.length]);
+};
+renderMenuMode();
 
 const renderSponsoredOffer = offer => {
   currentSponsoredOffer = offer;
@@ -929,7 +967,7 @@ const resumeRun = () => {
   ui.pauseOverlay.classList.add('hidden');
   ui.pauseButton.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
-  music.play();
+  music.playGame();
 };
 
 const pauseRun = automatic => {
@@ -963,7 +1001,7 @@ const returnToMenu = () => {
   ui.best.textContent = best.toLocaleString('en-US');
   ui.menuBest.textContent = String(best).padStart(6, '0');
   loadLeaderboard(selectedDifficulty, true);
-  music.play();
+  music.playMenu();
 };
 
 const openSettings = origin => {
@@ -1085,7 +1123,7 @@ const start = async () => {
   ui.watchAd.classList.add('hidden');
   ui.sponsoredReward.className = 'sponsored-reward hidden';
   game.reducedEffects = reducedEffects;
-  music.play();
+  music.playGame();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
   if (needsTutorial) openTutorial();
   ui.play.disabled = false;
@@ -1101,6 +1139,7 @@ ui.resume.addEventListener('click', resumeRun);
 ui.pauseButton.addEventListener('click', () => pauseRun(false));
 ui.tutorialDone.addEventListener('click', finishTutorial);
 ui.menuSettings.addEventListener('click', () => openSettings('menu'));
+ui.menuMode.addEventListener('click', () => { cycleDifficulty(1); sfx.play('confirm'); });
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.menuVault.addEventListener('click', openVault);
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
@@ -1343,15 +1382,6 @@ ui.settingButtons.forEach(button => button.addEventListener('click', () => {
   }
   renderSettings();
 }));
-ui.difficultyButtons.forEach(button => button.addEventListener('click', () => {
-  selectedDifficulty = button.dataset.difficulty;
-  localStorage.setItem('crownlizard:difficulty', selectedDifficulty);
-  ui.difficultyButtons.forEach(item => item.classList.toggle('selected', item === button));
-  best = Number(localStorage.getItem(bestKey(selectedDifficulty)) || 0);
-  ui.best.textContent = best.toLocaleString('en-US');
-  ui.menuBest.textContent = String(best).padStart(6, '0');
-  loadLeaderboard(selectedDifficulty, true);
-}));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { input.clear(); pauseRun(true); }
 });
@@ -1397,6 +1427,11 @@ addEventListener('keydown', event => {
     event.preventDefault();
     input.clear();
     selectMenuChoice(selectedMenuChoice - 1, true);
+    sfx.play('confirm');
+  } else if ((event.code === 'ArrowLeft' || event.code === 'KeyA' || event.code === 'ArrowRight' || event.code === 'KeyD') && ui.menuChoices[selectedMenuChoice] === ui.menuMode) {
+    event.preventDefault();
+    input.clear();
+    cycleDifficulty(event.code === 'ArrowLeft' || event.code === 'KeyA' ? -1 : 1);
     sfx.play('confirm');
   } else if (event.code === 'Enter' || event.code === 'Space') {
     event.preventDefault();
