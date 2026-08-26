@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260825-69-mobile-account-vault';
+import { CONFIG } from './config.js?v=20260825-70-callsign-foundation';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

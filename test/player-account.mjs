@@ -133,6 +133,10 @@ for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', '
   assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`), `${table} has RLS enabled`);
   assert.match(schema, new RegExp(`revoke all on table public\\.${table} from anon, authenticated`), `${table} denies direct browser access`);
 }
+for (const table of ['player_profiles', 'blocked_callsign_terms']) {
+  assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`), `${table} has RLS enabled`);
+  assert.match(schema, new RegExp(`revoke all on table public\\.${table} from public, anon, authenticated`), `${table} denies every browser role direct access`);
+}
 assert.match(schema, /revoke all on function public\.import_legacy_wallet[\s\S]*from public, anon, authenticated/, 'legacy import is service-role only');
 assert.match(schema, /for update;[\s\S]*economy_settled_at/, 'run settlement locks the run before marking it settled');
 assert.match(schema, /unique \(user_id, external_id\)/, 'the transaction ledger rejects duplicate run payouts');
@@ -142,6 +146,11 @@ assert.match(schema, /wallet\.balance < 150/, 'the database enforces the crate p
 assert.match(schema, /wallet\.since_sovereign >= 199/, 'the database enforces Sovereign pity under the wallet lock');
 assert.match(schema, /-150 \+ salvage/, 'duplicate salvage and crate cost settle in one transaction');
 assert.match(schema, /revoke all on function public\.open_crown_crate[\s\S]*from public, anon, authenticated/, 'crate opening is service-role only');
+assert.match(schema, /create or replace function public\.claim_player_callsign[\s\S]*exception when unique_violation/, 'initial callsign ownership is claimed atomically');
+assert.match(schema, /revoke all on function public\.claim_player_callsign[\s\S]*from public, anon, authenticated/, 'callsign claiming is service-role only');
+assert.match(schema, /create or replace function public\.rename_player_callsign[\s\S]*for update;[\s\S]*balance = balance - 500/, 'callsign rename locks and debits the authoritative wallet');
+assert.match(schema, /external_id = 'rename:' \|\| p_request_id::text/, 'callsign rename retries are idempotent');
+assert.match(schema, /revoke all on function public\.rename_player_callsign[\s\S]*from public, anon, authenticated/, 'callsign renaming is service-role only');
 assert.match(schema, /create or replace function public\.equip_player_ship[\s\S]*join public\.cosmetic_catalog/, 'equip verifies ownership against the server catalog');
 assert.match(schema, /revoke all on function public\.equip_player_ship[\s\S]*from public, anon, authenticated/, 'equip is service-role only');
 for (let index = 0; index < 32; index += 1) assert.ok(secureServerInt(10_000) >= 0 && secureServerInt(10_000) < 10_000, 'server crate rolls stay inside the published odds range');

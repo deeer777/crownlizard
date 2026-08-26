@@ -109,6 +109,14 @@ Before enabling Build 55 in production, configure Supabase Auth:
 
 Passwords are never written to the game database or logs. The Cloudflare account endpoints validate size and format, forward credentials only to Supabase Auth and return a generic error for failed sign-in attempts.
 
+### Player callsigns — Pass 1
+
+Build 70 adds the server-authoritative foundation for persistent player names. A signed-in permanent account may claim one free, unique callsign of 3–10 characters. Callsigns are normalized to uppercase, may contain `A–Z`, `0–9` and `_`, must contain at least one letter and are checked against reserved and moderated terms. Guests cannot reserve names.
+
+The browser can only request a name. Cloudflare derives the player from the verified bearer session and Supabase performs the unique claim atomically. `player_profiles` and the moderation list have RLS enabled and no direct browser access. The API exposes `GET /api/player/profile` and `POST /api/player/profile/callsign`; the callsign picker and leaderboard presentation are intentionally the next UI pass.
+
+The schema also prepares future renames without using real money: `PUT /api/player/profile/callsign` calls one atomic database operation that charges exactly 500 server-owned shards, enforces a seven-day cooldown and writes an idempotent economy transaction. The client cannot choose the price, bypass the cooldown or debit another player.
+
 Server-side shard settlement är också förberedd. En Auth-verifierad run binds till spelarens `user_id` när den startar. Vid Game Over räknar Cloudflare om belöningen, jämför rapporterad tid med serverns starttid och avvisar orimliga zon-, Warden- och fiendevärden. Databasfunktionen `settle_run_reward` låser run-raden och uppdaterar run, wallet och transaktionslogg atomiskt. Kombinationen av row lock, `economy_settled_at` och ett unikt `(user_id, external_id)` gör replay idempotent.
 
 Atomic server crates används via `/api/vault/open` på live. Klienten skickar endast ett beständigt UUID som idempotency key. Cloudflare skapar två unbiased Web Crypto-rolls; `open_crown_crate` låser wallet och bestämmer kostnad, aktuell pity, tier, katalogskin, duplicate salvage, inventory, nytt saldo och transaktion i samma databasoperation. Klientfält som påstår tier eller saldo ignoreras. Samma UUID returnerar den lagrade öppningen utan ny debitering. Duplicate salvage krediteras atomiskt direkt men presenteras fortfarande i revealen.

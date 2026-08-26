@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260825-69-mobile-account-vault';
+import { CONFIG } from './config.js?v=20260825-70-callsign-foundation';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-69-mobile-account-vault';
+import { Game } from './game.js?v=20260825-70-callsign-foundation';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-69-mobile-account-vault';
-import { buildAccountPresentation } from './account-presentation.js?v=20260825-69-mobile-account-vault';
+import { PlayerAccount } from './player-account.js?v=20260825-70-callsign-foundation';
+import { buildAccountPresentation } from './account-presentation.js?v=20260825-70-callsign-foundation';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);

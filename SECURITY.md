@@ -6,6 +6,7 @@
 - Crown Vault uses the authenticated server wallet outside localhost. `localStorage` contains the Supabase session, retry IDs and the untouched legacy backup, but cannot mutate the live wallet.
 - Cosmetics do not affect hitboxes, damage, lives, score multipliers, or leaderboard rank.
 - The rewarded-ad adapter is simulated and must not be connected to paid inventory without server-side provider verification.
+- Player callsigns are owned by the authenticated Supabase user. The browser cannot choose a user ID, write a profile directly or read the moderation list.
 
 ## Fixed in Build 45
 
@@ -30,3 +31,12 @@ Until the updated schema and Cloudflare variables are applied, the cutover inten
 Anonymous player creation is rate-limited per hashed IP. Before public account activation, Supabase Anonymous Sign-Ins must be enabled and `SUPABASE_PUBLISHABLE_KEY` configured in Cloudflare. The optional legacy import is fail-closed unless `ECONOMY_MIGRATION_DEADLINE` is a valid future timestamp.
 
 Player passwords are accepted only by the account route and forwarded to Supabase Auth over HTTPS. They are never stored in public tables, written to the economy ledger or included in application logs. Failed login responses are deliberately generic to reduce account enumeration, and password creation requires a verified non-anonymous Auth identity.
+
+## Player callsign boundary (Build 70)
+
+- The first callsign is free and claimed through a service-role-only database function with a per-user transaction lock and a unique normalized-name constraint.
+- Validation and normalization are repeated at the Cloudflare and database boundaries. The database remains authoritative if the API is bypassed or an older client is used.
+- `player_profiles` and `blocked_callsign_terms` have RLS enabled and grant no direct access to `public`, `anon` or `authenticated`.
+- A future rename costs exactly 500 shards and has a seven-day cooldown. Profile update, wallet debit and append-only ledger entry occur in one locked transaction.
+- Rename requests use a caller-generated UUID as an idempotency key. Retrying the same request cannot charge twice.
+- Callsigns and cosmetic progression are funded only by gameplay shards and verified rewarded ads. No real-money purchase path is part of the design.

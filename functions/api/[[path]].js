@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -10,6 +10,10 @@ const COSMETIC_IDS = new Set([
 ]);
 const LEGACY_BALANCE_CAP = 50_000;
 const AUTH_BOOTSTRAP_LIMIT = 60;
+const CALLSIGN_RENAME_COST = 500;
+const CALLSIGN_RENAME_COOLDOWN_DAYS = 7;
+const RESERVED_CALLSIGNS = new Set(['ADMIN', 'CROWNLIZARD', 'CROWN_LIZARD', 'DEVELOPER', 'GUEST', 'MOD', 'MODERATOR', 'STAFF', 'SUPPORT', 'SYSTEM']);
+const BLOCKED_CALLSIGN_TERMS = ['FUCK', 'SHIT', 'BITCH', 'CUNT', 'NIGGER', 'NAZI'];
 const SHARD_RULES = Object.freeze({
   minimumDurationSeconds: 30,
   minimumEnemies: 5,
@@ -122,6 +126,29 @@ const hashIp = async (request, salt) => {
 const normalizeInt = (value, min, max) => {
   const number = Number(value);
   return Number.isInteger(number) && number >= min && number <= max ? number : null;
+};
+
+export const normalizeCallsign = value => String(value || '').trim().toUpperCase();
+
+const callsignModerationKey = value => normalizeCallsign(value)
+  .replaceAll('0', 'O')
+  .replaceAll('1', 'I')
+  .replaceAll('3', 'E')
+  .replaceAll('4', 'A')
+  .replaceAll('5', 'S')
+  .replaceAll('7', 'T');
+
+export const validateCallsign = value => {
+  const callsign = normalizeCallsign(value);
+  if (callsign.length < 3 || callsign.length > 10) return { error: 'Use 3–10 characters.', code: 'INVALID_CALLSIGN' };
+  if (!/^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$/.test(callsign) || !/[A-Z]/.test(callsign)) {
+    return { error: 'Use A–Z, 0–9 or _ without _ at the ends.', code: 'INVALID_CALLSIGN' };
+  }
+  const moderationKey = callsignModerationKey(callsign);
+  if (RESERVED_CALLSIGNS.has(moderationKey) || BLOCKED_CALLSIGN_TERMS.some(term => moderationKey.includes(term))) {
+    return { error: 'That callsign is unavailable.', code: 'CALLSIGN_BLOCKED' };
+  }
+  return { value: callsign };
 };
 
 export const calculateServerShardReward = summary => {
@@ -705,6 +732,94 @@ const equipPlayerShip = async (request, config) => {
   return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous) }, wallet: await walletSnapshot(config, user.id) });
 };
 
+const profileRules = () => ({
+  minimumLength: 3,
+  maximumLength: 10,
+  allowedCharacters: 'A-Z 0-9 _',
+  renameCost: CALLSIGN_RENAME_COST,
+  renameCooldownDays: CALLSIGN_RENAME_COOLDOWN_DAYS,
+});
+
+const playerProfileSnapshot = async (config, userId) => {
+  const query = new URLSearchParams({
+    select: 'user_id,display_name,rename_count,last_renamed_at,created_at,updated_at',
+    user_id: `eq.${userId}`,
+    limit: '1',
+  });
+  const rows = await supabaseFetch(config, `player_profiles?${query}`);
+  if (!rows.length) return null;
+  const row = rows[0];
+  return {
+    userId: String(row.user_id || ''),
+    displayName: String(row.display_name || ''),
+    renameCount: Number(row.rename_count) || 0,
+    lastRenamedAt: row.last_renamed_at || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+};
+
+const getPlayerProfile = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  const permanent = !Boolean(user.is_anonymous);
+  return json({
+    eligible: permanent,
+    profile: permanent ? await playerProfileSnapshot(config, user.id) : null,
+    rules: profileRules(),
+  });
+};
+
+const profileErrorResponse = result => {
+  const code = String(result?.error || '');
+  if (code === 'ACCOUNT_REQUIRED') return json({ error: 'Create an account before choosing a callsign.', code }, 403);
+  if (code === 'INVALID_REQUEST') return json({ error: 'Invalid callsign request.', code }, 400);
+  if (code === 'CALLSIGN_TAKEN') return json({ error: 'That callsign is already taken.', code }, 409);
+  if (code === 'CALLSIGN_ALREADY_SET') return json({ error: 'This account already has a callsign.', code }, 409);
+  if (code === 'PROFILE_REQUIRED') return json({ error: 'Choose your first callsign before renaming it.', code }, 409);
+  if (code === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards.', code, balance: result.balance, cost: CALLSIGN_RENAME_COST }, 409);
+  if (code === 'RENAME_COOLDOWN') return json({ error: 'Callsign changes are limited to once every 7 days.', code, availableAt: result.availableAt }, 429);
+  if (code === 'CALLSIGN_BLOCKED') return json({ error: 'That callsign is unavailable.', code }, 422);
+  if (code === 'INVALID_CALLSIGN') return json({ error: 'Invalid callsign.', code }, 422);
+  return code ? json({ error: 'Callsign service temporarily unavailable.', code: 'PROFILE_OPERATION_FAILED' }, 503) : null;
+};
+
+const claimPlayerCallsign = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  if (user.is_anonymous) return json({ error: 'Create an account before choosing a callsign.', code: 'ACCOUNT_REQUIRED' }, 403);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid callsign request.' }, 400); }
+  const validation = validateCallsign(body.callsign);
+  if (validation.error) return json({ error: validation.error, code: validation.code }, 422);
+  const result = await supabaseFetch(config, 'rpc/claim_player_callsign', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_display_name: validation.value }),
+  });
+  const failure = profileErrorResponse(result);
+  if (failure) return failure;
+  return json({ ...result, rules: profileRules() }, result.created ? 201 : 200);
+};
+
+const renamePlayerCallsign = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  if (user.is_anonymous) return json({ error: 'Create an account before changing a callsign.', code: 'ACCOUNT_REQUIRED' }, 403);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid callsign request.' }, 400); }
+  const requestId = String(body.requestId || '');
+  const validation = validateCallsign(body.callsign);
+  if (!UUID_PATTERN.test(requestId)) return json({ error: 'Invalid rename request.' }, 400);
+  if (validation.error) return json({ error: validation.error, code: validation.code }, 422);
+  const result = await supabaseFetch(config, 'rpc/rename_player_callsign', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_display_name: validation.value, p_request_id: requestId }),
+  });
+  const failure = profileErrorResponse(result);
+  if (failure) return failure;
+  return json({ ...result, rules: profileRules() }, result.duplicateRequest || result.duplicateName ? 200 : 201);
+};
+
 const submitScore = async (request, config) => {
   let body;
   try { body = await readJson(request); } catch (error) { return json({ error: error.message === 'PAYLOAD_TOO_LARGE' ? 'Request too large.' : 'Invalid JSON.' }, 400); }
@@ -775,6 +890,9 @@ export const onRequest = async context => {
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
     if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerShip(request, config);
+    if (path === 'player/profile' && request.method === 'GET') return await getPlayerProfile(request, config);
+    if (path === 'player/profile/callsign' && request.method === 'POST') return await claimPlayerCallsign(request, config);
+    if (path === 'player/profile/callsign' && request.method === 'PUT') return await renamePlayerCallsign(request, config);
     if (path === 'runs' && request.method === 'POST') return await beginRun(request, config);
     if (path === 'scores' && request.method === 'GET') {
       const url = new URL(request.url);

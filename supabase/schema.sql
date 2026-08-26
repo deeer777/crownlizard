@@ -463,3 +463,260 @@ $$;
 
 revoke all on function public.equip_player_ship(uuid, text) from public, anon, authenticated;
 grant execute on function public.equip_player_ship(uuid, text) to service_role;
+
+-- Public player identity. Callsigns are uppercase arcade names and are globally
+-- unique without exposing profile writes to browsers.
+create table if not exists public.blocked_callsign_terms (
+  term text primary key check (term ~ '^[A-Z0-9_]{2,20}$'),
+  match_type text not null check (match_type in ('exact', 'contains'))
+);
+
+insert into public.blocked_callsign_terms (term, match_type) values
+  ('ADMIN', 'exact'),
+  ('CROWNLIZARD', 'exact'),
+  ('CROWN_LIZARD', 'exact'),
+  ('DEVELOPER', 'exact'),
+  ('GUEST', 'exact'),
+  ('MOD', 'exact'),
+  ('MODERATOR', 'exact'),
+  ('STAFF', 'exact'),
+  ('SUPPORT', 'exact'),
+  ('SYSTEM', 'exact'),
+  ('FUCK', 'contains'),
+  ('SHIT', 'contains'),
+  ('BITCH', 'contains'),
+  ('CUNT', 'contains'),
+  ('NIGGER', 'contains'),
+  ('NAZI', 'contains')
+on conflict (term) do update set match_type = excluded.match_type;
+
+create table if not exists public.player_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  normalized_name text not null unique,
+  rename_count integer not null default 0 check (rename_count between 0 and 1000000),
+  last_renamed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint player_profiles_display_name_check check (
+    display_name = normalized_name
+    and char_length(display_name) between 3 and 10
+    and display_name ~ '^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$'
+    and display_name ~ '[A-Z]'
+  )
+);
+
+alter table public.blocked_callsign_terms enable row level security;
+alter table public.player_profiles enable row level security;
+revoke all on table public.blocked_callsign_terms from public, anon, authenticated;
+revoke all on table public.player_profiles from public, anon, authenticated;
+
+-- Returns an error code rather than raising for expected name conflicts so the
+-- edge API can map the result without exposing database details.
+create or replace function public.claim_player_callsign(
+  p_user_id uuid,
+  p_display_name text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  callsign text := upper(btrim(coalesce(p_display_name, '')));
+  moderation_key text;
+  existing public.player_profiles%rowtype;
+  profile public.player_profiles%rowtype;
+begin
+  if p_user_id is null then return jsonb_build_object('error', 'ACCOUNT_REQUIRED'); end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user_id::text, 0));
+
+  if char_length(callsign) < 3 or char_length(callsign) > 10
+     or callsign !~ '^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$'
+     or callsign !~ '[A-Z]' then
+    return jsonb_build_object('error', 'INVALID_CALLSIGN');
+  end if;
+
+  moderation_key := translate(callsign, '013457', 'OIEAST');
+  if exists (
+    select 1 from public.blocked_callsign_terms blocked
+     where (blocked.match_type = 'exact' and moderation_key = blocked.term)
+        or (blocked.match_type = 'contains' and strpos(moderation_key, blocked.term) > 0)
+  ) then
+    return jsonb_build_object('error', 'CALLSIGN_BLOCKED');
+  end if;
+
+  select * into existing
+    from public.player_profiles
+   where user_id = p_user_id;
+  if found then
+    if existing.normalized_name = callsign then
+      return jsonb_build_object(
+        'created', false,
+        'profile', jsonb_build_object(
+          'userId', existing.user_id,
+          'displayName', existing.display_name,
+          'renameCount', existing.rename_count,
+          'lastRenamedAt', existing.last_renamed_at,
+          'createdAt', existing.created_at,
+          'updatedAt', existing.updated_at
+        )
+      );
+    end if;
+    return jsonb_build_object('error', 'CALLSIGN_ALREADY_SET');
+  end if;
+
+  begin
+    insert into public.player_profiles (user_id, display_name, normalized_name)
+    values (p_user_id, callsign, callsign)
+    returning * into profile;
+  exception when unique_violation then
+    return jsonb_build_object('error', 'CALLSIGN_TAKEN');
+  end;
+
+  return jsonb_build_object(
+    'created', true,
+    'profile', jsonb_build_object(
+      'userId', profile.user_id,
+      'displayName', profile.display_name,
+      'renameCount', profile.rename_count,
+      'lastRenamedAt', profile.last_renamed_at,
+      'createdAt', profile.created_at,
+      'updatedAt', profile.updated_at
+    )
+  );
+end;
+$$;
+
+revoke all on function public.claim_player_callsign(uuid, text) from public, anon, authenticated;
+grant execute on function public.claim_player_callsign(uuid, text) to service_role;
+
+-- Future shop action: one rename costs 500 shards, is idempotent by request ID,
+-- and is limited to one successful rename per seven days.
+create or replace function public.rename_player_callsign(
+  p_user_id uuid,
+  p_display_name text,
+  p_request_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  callsign text := upper(btrim(coalesce(p_display_name, '')));
+  moderation_key text;
+  profile public.player_profiles%rowtype;
+  wallet public.player_wallets%rowtype;
+  existing_tx public.economy_transactions%rowtype;
+  resulting_balance integer;
+  renamed_at timestamptz;
+  outcome jsonb;
+begin
+  if p_user_id is null then return jsonb_build_object('error', 'ACCOUNT_REQUIRED'); end if;
+  if p_request_id is null then return jsonb_build_object('error', 'INVALID_REQUEST'); end if;
+
+  if char_length(callsign) < 3 or char_length(callsign) > 10
+     or callsign !~ '^[A-Z0-9][A-Z0-9_]*[A-Z0-9]$'
+     or callsign !~ '[A-Z]' then
+    return jsonb_build_object('error', 'INVALID_CALLSIGN');
+  end if;
+
+  moderation_key := translate(callsign, '013457', 'OIEAST');
+  if exists (
+    select 1 from public.blocked_callsign_terms blocked
+     where (blocked.match_type = 'exact' and moderation_key = blocked.term)
+        or (blocked.match_type = 'contains' and strpos(moderation_key, blocked.term) > 0)
+  ) then
+    return jsonb_build_object('error', 'CALLSIGN_BLOCKED');
+  end if;
+
+  insert into public.player_wallets (user_id)
+  values (p_user_id)
+  on conflict (user_id) do nothing;
+
+  select * into wallet
+    from public.player_wallets
+   where user_id = p_user_id
+   for update;
+
+  select * into existing_tx
+    from public.economy_transactions
+   where user_id = p_user_id and external_id = 'rename:' || p_request_id::text;
+  if found then
+    return jsonb_build_object(
+      'duplicateRequest', true,
+      'balance', existing_tx.balance_after,
+      'profile', existing_tx.metadata->'profile'
+    );
+  end if;
+
+  select * into profile
+    from public.player_profiles
+   where user_id = p_user_id
+   for update;
+  if not found then return jsonb_build_object('error', 'PROFILE_REQUIRED'); end if;
+  if profile.normalized_name = callsign then
+    return jsonb_build_object(
+      'duplicateName', true,
+      'balance', wallet.balance,
+      'profile', jsonb_build_object(
+        'userId', profile.user_id,
+        'displayName', profile.display_name,
+        'renameCount', profile.rename_count,
+        'lastRenamedAt', profile.last_renamed_at,
+        'createdAt', profile.created_at,
+        'updatedAt', profile.updated_at
+      )
+    );
+  end if;
+  if profile.last_renamed_at is not null and profile.last_renamed_at > now() - interval '7 days' then
+    return jsonb_build_object('error', 'RENAME_COOLDOWN', 'availableAt', profile.last_renamed_at + interval '7 days');
+  end if;
+  if wallet.balance < 500 then
+    return jsonb_build_object('error', 'NOT_ENOUGH_SHARDS', 'balance', wallet.balance, 'cost', 500);
+  end if;
+
+  renamed_at := now();
+  begin
+    update public.player_profiles
+       set display_name = callsign,
+           normalized_name = callsign,
+           rename_count = rename_count + 1,
+           last_renamed_at = renamed_at,
+           updated_at = renamed_at
+     where user_id = p_user_id
+     returning * into profile;
+  exception when unique_violation then
+    return jsonb_build_object('error', 'CALLSIGN_TAKEN');
+  end;
+
+  update public.player_wallets
+     set balance = balance - 500,
+         updated_at = renamed_at
+   where user_id = p_user_id
+   returning balance into resulting_balance;
+
+  outcome := jsonb_build_object(
+    'userId', profile.user_id,
+    'displayName', profile.display_name,
+    'renameCount', profile.rename_count,
+    'lastRenamedAt', profile.last_renamed_at,
+    'createdAt', profile.created_at,
+    'updatedAt', profile.updated_at
+  );
+
+  insert into public.economy_transactions (user_id, external_id, kind, amount, balance_after, metadata)
+  values (
+    p_user_id,
+    'rename:' || p_request_id::text,
+    'callsign_rename',
+    -500,
+    resulting_balance,
+    jsonb_build_object('cost', 500, 'profile', outcome)
+  );
+
+  return jsonb_build_object('duplicateRequest', false, 'balance', resulting_balance, 'cost', 500, 'profile', outcome);
+end;
+$$;
+
+revoke all on function public.rename_player_callsign(uuid, text, uuid) from public, anon, authenticated;
+grant execute on function public.rename_player_callsign(uuid, text, uuid) to service_role;
