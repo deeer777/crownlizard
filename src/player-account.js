@@ -237,6 +237,17 @@ export class PlayerAccount {
     return payload;
   }
 
+  getProfile() {
+    return this.authorizedRequest('/api/player/profile');
+  }
+
+  claimCallsign(callsign) {
+    return this.authorizedRequest('/api/player/profile/callsign', {
+      method: 'POST',
+      body: JSON.stringify({ callsign }),
+    });
+  }
+
   async bootstrapWallet() {
     if (this.session) return this.getWallet();
     const payload = await requestJson('/api/player/bootstrap', { method: 'POST', body: '{}' });

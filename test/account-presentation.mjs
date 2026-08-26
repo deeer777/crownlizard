@@ -28,13 +28,25 @@ assert.equal(expired.identity, 'SIGN IN REQUIRED');
 assert.match(expired.description, /YOUR VAULT IS SAFE/);
 assert.equal(expired.vaultStatus, 'CLOUD VAULT · SIGN IN REQUIRED');
 
-const signedIn = buildAccountPresentation({ state: 'signed-in', mode: 'secure', email: 'pilot@example.com' });
-assert.equal(signedIn.badge, 'SIGNED IN');
-assert.equal(signedIn.identity, 'SIGNED IN');
+const needsCallsign = buildAccountPresentation({ state: 'signed-in', mode: 'secure', email: 'pilot@example.com', profileStatus: 'ready' });
+assert.equal(needsCallsign.title, 'CHOOSE YOUR CALLSIGN');
+assert.equal(needsCallsign.badge, 'SET CALLSIGN');
+assert.equal(needsCallsign.identity, 'PLAYER ID REQUIRED');
+assert.equal(needsCallsign.showCallsign, true, 'a permanent account without a profile receives one focused next step');
+assert.equal(needsCallsign.showForm, false, 'login controls never remain visible behind the callsign step');
+
+const profileOffline = buildAccountPresentation({ state: 'signed-in', mode: 'secure', email: 'pilot@example.com', profileStatus: 'error' });
+assert.equal(profileOffline.badge, 'ID OFFLINE');
+assert.equal(profileOffline.showCallsign, false, 'a profile outage is never mistaken for a missing callsign');
+
+const signedIn = buildAccountPresentation({ state: 'signed-in', mode: 'secure', email: 'pilot@example.com', callsign: 'PILOT_ONE', profileStatus: 'ready' });
+assert.equal(signedIn.badge, 'PILOT_ONE');
+assert.equal(signedIn.identity, 'PILOT_ONE');
 assert.match(signedIn.description, /PILOT@EXAMPLE\.COM · VAULT SYNCED/);
 assert.equal(signedIn.showTabs, false);
 assert.equal(signedIn.showForm, false);
 assert.equal(signedIn.showRecovery, false, 'signed-in players never see verification or recovery controls');
+assert.equal(signedIn.showCallsign, false);
 assert.equal(signedIn.vaultStatus, 'CLOUD VAULT · SYNCED');
 
 console.log('Account presentation state test passed');

@@ -441,6 +441,19 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .account-form input:focus { border-color: var(--gold); }
 .account-form .system-action { width: 100%; min-height: 48px; margin: 0 auto; }
 .account-form .account-recovery { margin-top: -2px; }
+.callsign-form { display: grid; gap: 12px; width: min(390px,100%); margin: 0 auto; }
+.callsign-preview { position: relative; display: grid; place-items: center; min-height: 82px; padding: 13px 10px 11px; overflow: hidden; background: #020a09; border-block: 2px solid #315b50; box-shadow: inset 0 0 0 1px rgba(111,255,210,.06); }
+.callsign-preview::before,
+.callsign-preview::after { content: ''; position: absolute; top: 50%; width: 28px; height: 2px; background: var(--gold); box-shadow: 0 -7px #6b5423,0 7px #6b5423; }
+.callsign-preview::before { left: 12px; }
+.callsign-preview::after { right: 12px; }
+.callsign-preview small { color: #78928b; font: 700 7px var(--font-pixel-ui); letter-spacing: .18em; }
+.callsign-preview strong { max-width: calc(100% - 78px); overflow: hidden; color: var(--gold); font: 400 clamp(13px,4vw,18px)/1.5 var(--font-pixel-display); letter-spacing: .06em; text-overflow: ellipsis; text-shadow: 3px 3px #634111; white-space: nowrap; }
+.callsign-form label { display: grid; gap: 7px; color: #8ca39d; font: 700 8px var(--font-pixel-ui); letter-spacing: .1em; text-align: left; }
+.callsign-form input { width: 100%; min-height: 52px; padding: 9px 11px; color: var(--gold); background: #020a09; border: 2px solid #31544a; border-radius: 0; outline: 0; font: 400 13px var(--font-pixel-display); letter-spacing: .08em; text-align: center; text-transform: uppercase; box-shadow: inset 3px 3px #010403; }
+.callsign-form input:focus { border-color: var(--gold); box-shadow: inset 3px 3px #010403,0 0 0 2px rgba(255,211,107,.12); }
+.callsign-form p { margin: -4px 0 0; color: #718982; font: 700 7px/1.55 var(--font-pixel-ui); letter-spacing: .06em; }
+.callsign-form .system-action { width: 100%; min-height: 52px; margin: 0 auto; }
 .account-form-status { min-height: 25px; width: min(390px,100%); margin: 8px auto 0; color: #88a19a; font: 700 7px/1.6 var(--font-pixel-ui); letter-spacing: .04em; }
 .account-form-status.error { color: #ff8a96; }
 .account-form-status.success { color: var(--mint); }
@@ -797,10 +810,17 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .account-tabs { margin-bottom: 12px; }
   .account-tabs button { min-height: 48px; font-size: 9px; }
   .account-form { gap: 10px; }
+  .callsign-form { gap: 10px; }
   .account-form label { font-size: 9px; }
+  .callsign-form label { font-size: 9px; }
   .account-form input { min-height: 52px; font-size: 12px; }
+  .callsign-form input { min-height: 56px; font-size: clamp(12px,4vw,15px); }
+  .callsign-preview { min-height: 88px; }
+  .callsign-preview small,
+  .callsign-form p { font-size: 8px; }
   .account-form .system-action,
   .account-form .system-link,
+  .callsign-form .system-action,
   .account-panel > .system-link { min-height: 52px; font-size: 11px; }
   .account-form-status,
   .account-warning { font-size: 9px; line-height: 1.55; }

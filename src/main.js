@@ -1,13 +1,13 @@
-import { CONFIG } from './config.js?v=20260825-70-callsign-foundation';
+import { CONFIG } from './config.js?v=20260826-71-callsign-ui';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
 import { Music, SoundFx } from './audio.js?v=20260824-43';
-import { Game } from './game.js?v=20260825-70-callsign-foundation';
+import { Game } from './game.js?v=20260826-71-callsign-ui';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260825-70-callsign-foundation';
-import { buildAccountPresentation } from './account-presentation.js?v=20260825-70-callsign-foundation';
+import { PlayerAccount } from './player-account.js?v=20260826-71-callsign-ui';
+import { buildAccountPresentation } from './account-presentation.js?v=20260826-71-callsign-ui';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 
 const $ = id => document.getElementById(id);
@@ -17,6 +17,7 @@ const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
 const crateSpriteUrl = state => `./assets/runtime/sprites/crown-crate-${state}-v1.png`;
 const debugParams = new URLSearchParams(location.search);
 const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+const callsignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('callsign');
 const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
@@ -24,7 +25,7 @@ const ui = {
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
-  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'),
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
@@ -84,8 +85,16 @@ try {
   }
 } catch {}
 const playerAccount = new PlayerAccount();
-const currentAccountState = () => localPreview ? 'preview' : playerAccount.getAccountState();
-const accountPresentation = () => buildAccountPresentation({ state: currentAccountState(), mode: accountMode, email: playerAccount.getPlayer()?.email });
+const currentAccountState = () => callsignPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
+let playerProfile = null;
+let profileStatus = localPreview ? 'ready' : 'loading';
+const accountPresentation = () => buildAccountPresentation({
+  state: currentAccountState(),
+  mode: accountMode,
+  email: playerAccount.getPlayer()?.email,
+  callsign: playerProfile?.displayName,
+  profileStatus,
+});
 const rewardedAd = new SimulatedRewardedAdAdapter();
 let serverWallet = null;
 let serverEconomyReady = false;
@@ -119,6 +128,23 @@ const acceptServerWallet = payload => {
   return serverWallet;
 };
 const refreshServerWallet = async () => acceptServerWallet(await playerAccount.getWallet());
+const refreshPlayerProfile = async () => {
+  if (currentAccountState() !== 'signed-in') {
+    playerProfile = null;
+    profileStatus = 'ready';
+    return null;
+  }
+  profileStatus = 'loading';
+  try {
+    const payload = await playerAccount.getProfile();
+    playerProfile = payload.profile || null;
+    profileStatus = 'ready';
+    return playerProfile;
+  } catch (error) {
+    profileStatus = 'error';
+    throw error;
+  }
+};
 const renderShardBalance = () => {
   if (serverEconomy && !serverEconomyReady) {
     ui.menuShards.textContent = '◆ CONNECTING...';
@@ -779,6 +805,7 @@ const bootstrapServerEconomy = async () => {
   await authRedirectReady;
   const snapshot = await playerAccount.bootstrapWallet();
   acceptServerWallet(snapshot);
+  await refreshPlayerProfile().catch(() => null);
   renderShardBalance();
   renderVault();
   applyEquippedShip();
@@ -826,6 +853,10 @@ if (serverEconomy) {
       if (redirect?.error) setAccountStatus(redirect.error.toUpperCase(), 'error');
       else if (redirect?.signIn) setAccountStatus('ENTER YOUR PASSWORD TO SIGN IN', '');
       else if (currentAccountState() === 'setup') setAccountStatus('EMAIL VERIFIED · CREATE YOUR PASSWORD', 'success');
+      else if (currentAccountState() === 'signed-in' && accountPresentation().showCallsign) {
+        setAccountStatus('ACCOUNT SECURED · CHOOSE YOUR CALLSIGN', 'success');
+        ui.callsignInput.focus({ preventScroll: true });
+      } else if (currentAccountState() === 'signed-in' && profileStatus === 'error') setAccountStatus('SIGNED IN · PLAYER ID TEMPORARILY OFFLINE', 'error');
       else if (currentAccountState() === 'signed-in') setAccountStatus('SIGNED IN · VAULT RESTORED', 'success');
       else setAccountStatus('EMAIL VERIFIED · SIGN IN TO FINISH SETUP', 'error');
     }).catch(error => {
@@ -833,6 +864,13 @@ if (serverEconomy) {
       setAccountStatus(String(error?.message || 'EMAIL VERIFICATION FAILED').toUpperCase(), 'error');
     });
   }
+  void connection.then(() => {
+    if (shouldPresentAccount || !accountPresentation().showCallsign) return;
+    openSettings('menu');
+    openAccount('secure');
+    setAccountStatus('CHOOSE YOUR PLAYER ID TO FINISH', 'success');
+    ui.callsignInput.focus({ preventScroll: true });
+  });
   if (redirect?.sessionReturn) {
     void connection.then(() => {
       if (currentAccountState() === 'signed-in') return;
@@ -912,10 +950,12 @@ const renderAccount = () => {
   const presentation = accountPresentation();
   const passwordSetup = presentation.state === 'setup';
   ui.accountStatePanel.dataset.state = presentation.state;
+  ui.accountTitle.textContent = presentation.title;
   ui.accountIdentity.textContent = presentation.identity;
   ui.accountDescription.textContent = presentation.description;
   ui.accountTabs.classList.toggle('hidden', !presentation.showTabs);
   ui.accountForm.classList.toggle('hidden', !presentation.showForm);
+  ui.callsignForm.classList.toggle('hidden', !presentation.showCallsign);
   ui.accountEmailField.classList.toggle('hidden', !presentation.showEmail);
   ui.accountPasswordField.classList.toggle('hidden', !presentation.showPassword);
   ui.accountWarning.classList.toggle('hidden', !presentation.showWarning);
@@ -928,6 +968,7 @@ const renderAccount = () => {
   ui.accountPassword.required = passwordSetup || accountMode === 'login';
   ui.accountPassword.autocomplete = passwordSetup ? 'new-password' : 'current-password';
   ui.accountSubmit.disabled = accountBusy || localPreview;
+  ui.callsignSubmit.disabled = accountBusy || (localPreview && !callsignPreviewMode);
   ui.accountRecovery.disabled = accountBusy || localPreview;
   ui.accountSubmit.innerHTML = `<i>♛</i> ${presentation.action}`;
   renderSettings();
@@ -939,7 +980,7 @@ const openAccount = (mode = 'secure') => {
   ui.settingsOverlay.classList.add('hidden');
   ui.accountOverlay.classList.remove('hidden');
   renderAccount();
-  const target = currentAccountState() === 'setup' ? ui.accountPassword : currentAccountState() === 'signed-in' ? null : ui.accountEmail;
+  const target = accountPresentation().showCallsign ? ui.callsignInput : currentAccountState() === 'setup' ? ui.accountPassword : currentAccountState() === 'signed-in' ? null : ui.accountEmail;
   if (target && !target.closest('.hidden')) target.focus({ preventScroll: true });
 };
 
@@ -1052,23 +1093,59 @@ ui.accountForm.addEventListener('submit', async event => {
     const passwordSetup = currentAccountState() === 'setup';
     if (passwordSetup) {
       await playerAccount.setPassword(ui.accountPassword.value);
+      await refreshPlayerProfile().catch(() => null);
       ui.accountPassword.value = '';
-      setAccountStatus('ACCOUNT SECURED · PASSWORD SAVED', 'success');
+      setAccountStatus(profileStatus === 'error' ? 'ACCOUNT SECURED · PLAYER ID TEMPORARILY OFFLINE' : accountPresentation().showCallsign ? 'ACCOUNT SECURED · CHOOSE YOUR CALLSIGN' : 'ACCOUNT SECURED · PASSWORD SAVED', profileStatus === 'error' ? 'error' : 'success');
     } else if (accountMode === 'login') {
       const snapshot = await playerAccount.login(ui.accountEmail.value, ui.accountPassword.value);
       acceptServerWallet(snapshot);
       serverEconomyReady = true;
+      await refreshPlayerProfile().catch(() => null);
       ui.accountPassword.value = '';
       renderShardBalance();
       renderVault();
       applyEquippedShip();
-      setAccountStatus('SIGNED IN · VAULT RESTORED', 'success');
+      setAccountStatus(profileStatus === 'error' ? 'SIGNED IN · PLAYER ID TEMPORARILY OFFLINE' : accountPresentation().showCallsign ? 'SIGNED IN · CHOOSE YOUR CALLSIGN' : 'SIGNED IN · VAULT RESTORED', profileStatus === 'error' ? 'error' : 'success');
     } else {
       const result = await playerAccount.linkEmail(ui.accountEmail.value);
       setAccountStatus(`VERIFY LINK SENT TO ${result.email}`, 'success');
     }
   } catch (error) {
     setAccountStatus(String(error.message || 'ACCOUNT SERVICE UNAVAILABLE').toUpperCase(), 'error');
+  } finally {
+    accountBusy = false;
+    renderAccount();
+    if (accountPresentation().showCallsign) queueMicrotask(() => ui.callsignInput.focus({ preventScroll: true }));
+  }
+});
+const normalizeClientCallsign = value => String(value || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 10);
+ui.callsignInput.addEventListener('input', () => {
+  const callsign = normalizeClientCallsign(ui.callsignInput.value);
+  if (ui.callsignInput.value !== callsign) ui.callsignInput.value = callsign;
+  ui.callsignPreview.textContent = callsign || 'PLAYER_1';
+});
+ui.callsignForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (accountBusy || (localPreview && !callsignPreviewMode) || !accountPresentation().showCallsign) return;
+  const callsign = normalizeClientCallsign(ui.callsignInput.value);
+  if (callsign.length < 3 || !/[A-Z]/.test(callsign) || callsign.startsWith('_') || callsign.endsWith('_')) {
+    setAccountStatus('USE 3–10 CHARACTERS · INCLUDE A LETTER · NO _ AT THE ENDS', 'error');
+    ui.callsignInput.focus({ preventScroll: true });
+    return;
+  }
+  accountBusy = true;
+  setAccountStatus('CHECKING CALLSIGN...');
+  renderAccount();
+  try {
+    const result = callsignPreviewMode ? { profile: { displayName: callsign } } : await playerAccount.claimCallsign(callsign);
+    playerProfile = result.profile || null;
+    profileStatus = 'ready';
+    ui.callsignInput.value = '';
+    ui.callsignPreview.textContent = 'PLAYER_1';
+    setAccountStatus(`CALLSIGN SECURED · WELCOME ${playerProfile?.displayName || callsign}`, 'success');
+    sfx.play('confirm');
+  } catch (error) {
+    setAccountStatus(String(error.message || 'CALLSIGN SERVICE UNAVAILABLE').toUpperCase(), 'error');
   } finally {
     accountBusy = false;
     renderAccount();

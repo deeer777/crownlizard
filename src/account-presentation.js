@@ -6,7 +6,7 @@ export const ACCOUNT_STATES = Object.freeze({
   SIGNED_IN: 'signed-in',
 });
 
-export const buildAccountPresentation = ({ state, mode = 'secure', email = '' }) => {
+export const buildAccountPresentation = ({ state, mode = 'secure', email = '', callsign = '', profileStatus = 'ready' }) => {
   const normalizedState = Object.values(ACCOUNT_STATES).includes(state) ? state : ACCOUNT_STATES.GUEST;
   const loginMode = mode === 'login';
   const signedIn = normalizedState === ACCOUNT_STATES.SIGNED_IN;
@@ -14,15 +14,26 @@ export const buildAccountPresentation = ({ state, mode = 'secure', email = '' })
   const expired = normalizedState === ACCOUNT_STATES.EXPIRED;
   const preview = normalizedState === ACCOUNT_STATES.PREVIEW;
   const playerEmail = String(email || '').trim().toUpperCase();
+  const playerCallsign = String(callsign || '').trim().toUpperCase();
+  const profilePending = signedIn && profileStatus === 'loading';
+  const profileFailed = signedIn && profileStatus === 'error';
+  const needsCallsign = signedIn && profileStatus === 'ready' && !playerCallsign;
 
   return {
     state: normalizedState,
-    badge: preview ? 'LIVE ONLY' : signedIn ? 'SIGNED IN' : setup ? 'SET PASSWORD' : expired ? 'SIGN IN' : 'GUEST',
-    identity: preview ? 'LIVE FEATURE' : signedIn ? 'SIGNED IN' : setup ? 'EMAIL VERIFIED' : expired ? 'SIGN IN REQUIRED' : 'GUEST PLAYER',
+    title: needsCallsign ? 'CHOOSE YOUR CALLSIGN' : 'CROWN ACCOUNT',
+    badge: preview ? 'LIVE ONLY' : signedIn ? playerCallsign || (profilePending ? 'SYNCING ID' : profileFailed ? 'ID OFFLINE' : 'SET CALLSIGN') : setup ? 'SET PASSWORD' : expired ? 'SIGN IN' : 'GUEST',
+    identity: preview ? 'LIVE FEATURE' : signedIn ? playerCallsign || (profilePending ? 'SYNCING PLAYER ID' : profileFailed ? 'PLAYER ID OFFLINE' : 'PLAYER ID REQUIRED') : setup ? 'EMAIL VERIFIED' : expired ? 'SIGN IN REQUIRED' : 'GUEST PLAYER',
     description: preview
       ? 'PLAYER ACCOUNTS ARE AVAILABLE ON CROWNLIZARD.COM.'
       : signedIn
-        ? `${playerEmail || 'CROWN PLAYER'} · VAULT SYNCED ACROSS DEVICES.`
+        ? needsCallsign
+          ? 'CHOOSE ONE UNIQUE NAME FOR YOUR ACCOUNT AND FUTURE HIGH SCORES.'
+          : profilePending
+            ? 'RESTORING YOUR PLAYER ID...'
+            : profileFailed
+              ? `${playerEmail || 'CROWN PLAYER'} · VAULT SYNCED. PLAYER ID UNAVAILABLE.`
+              : `${playerEmail || 'CROWN PLAYER'} · VAULT SYNCED ACROSS DEVICES.`
         : setup
           ? `${playerEmail || 'EMAIL VERIFIED'} · CREATE A PASSWORD TO FINISH.`
           : expired
@@ -45,6 +56,7 @@ export const buildAccountPresentation = ({ state, mode = 'secure', email = '' })
     showPassword: setup || loginMode,
     showWarning: !signedIn && !setup && loginMode,
     showRecovery: !signedIn && !setup && loginMode,
+    showCallsign: needsCallsign,
     action: setup ? 'CREATE PASSWORD' : loginMode ? 'SIGN IN' : 'SEND VERIFY LINK',
   };
 };

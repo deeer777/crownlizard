@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { normalizeCallsign, onRequest, validateCallsign } from '../functions/api/[[path]].js';
+import { PlayerAccount } from '../src/player-account.js';
+
+const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+
+assert.match(index, /id="callsignForm"[\s\S]*id="callsignInput"[\s\S]*CLAIM CALLSIGN/, 'the account overlay contains one dedicated callsign step');
+assert.match(main, /currentAccountState\(\) !== 'signed-in'[\s\S]*playerAccount\.getProfile\(\)/, 'profiles load only for permanent signed-in accounts');
+assert.match(main, /playerAccount\.claimCallsign\(callsign\)[\s\S]*CALLSIGN SECURED/, 'the callsign form uses the authenticated client and confirms ownership');
+assert.match(styles, /\.callsign-form input \{[\s\S]*min-height: 52px/, 'the arcade callsign input keeps a mobile-safe touch target');
 
 assert.equal(normalizeCallsign('  pilot_one  '), 'PILOT_ONE', 'callsigns are normalized once at the server boundary');
 assert.equal(validateCallsign('R2D2').value, 'R2D2', 'letters and numbers are valid');
@@ -9,6 +20,19 @@ assert.equal(validateCallsign('ACE_').code, 'INVALID_CALLSIGN', 'callsigns canno
 assert.equal(validateCallsign('1234').code, 'INVALID_CALLSIGN', 'a public identity must contain at least one letter');
 assert.equal(validateCallsign('ADMIN').code, 'CALLSIGN_BLOCKED', 'reserved authority names cannot be claimed');
 assert.equal(validateCallsign('N1GGER').code, 'CALLSIGN_BLOCKED', 'common numeric substitutions cannot bypass moderation');
+
+const clientCalls = [];
+const profileClient = Object.create(PlayerAccount.prototype);
+profileClient.authorizedRequest = async (url, options = {}) => {
+  clientCalls.push({ url, options });
+  return url.endsWith('/callsign') ? { profile: { displayName: 'PILOT_ONE' } } : { profile: null };
+};
+assert.deepEqual(await profileClient.getProfile(), { profile: null }, 'the account client can load the authenticated profile');
+assert.deepEqual(await profileClient.claimCallsign('PILOT_ONE'), { profile: { displayName: 'PILOT_ONE' } }, 'the account client can claim a callsign');
+assert.deepEqual(clientCalls, [
+  { url: '/api/player/profile', options: {} },
+  { url: '/api/player/profile/callsign', options: { method: 'POST', body: JSON.stringify({ callsign: 'PILOT_ONE' }) } },
+], 'the client sends no user ID, price or wallet data');
 
 const originalFetch = globalThis.fetch;
 const calls = [];

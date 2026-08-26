@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#071017">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260825-69-mobile-account-vault">
+  <link rel="stylesheet" href="./styles.css?v=20260826-71-callsign-ui">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -172,6 +172,12 @@
         <button id="accountSubmit" class="system-action" type="submit"><i>♛</i> SEND VERIFY LINK</button>
         <button id="accountRecovery" class="system-link account-recovery hidden" type="button">FORGOT PASSWORD?</button>
       </form>
+      <form id="callsignForm" class="callsign-form hidden">
+        <div class="callsign-preview" aria-hidden="true"><small>ARCADE ID</small><strong id="callsignPreview">PLAYER_1</strong></div>
+        <label>CALLSIGN<input id="callsignInput" name="callsign" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" minlength="3" maxlength="10" pattern="[A-Za-z0-9][A-Za-z0-9_]*[A-Za-z0-9]" required></label>
+        <p>3–10 CHARACTERS · A–Z · 0–9 · _</p>
+        <button id="callsignSubmit" class="system-action" type="submit"><i>♛</i> CLAIM CALLSIGN</button>
+      </form>
       <p id="accountFormStatus" class="account-form-status" role="status"></p>
       <p id="accountWarning" class="account-warning hidden">SIGNING IN LOADS THAT ACCOUNT'S VAULT. GUEST PROGRESS IS NOT MERGED.</p>
       <button id="closeAccount" class="system-link" type="button">BACK TO SETTINGS</button>
@@ -278,6 +284,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260825-70-callsign-foundation"></script>
+  <script type="module" src="./src/main.js?v=20260826-71-callsign-ui"></script>
 </body>
 </html>
