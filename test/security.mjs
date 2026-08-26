@@ -11,7 +11,7 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /main\.js\?v=20260826-74-menu-focus/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(index, /main\.js\?v=20260826-75-pwa-mvp/, 'the current frontend ships behind a fresh browser cache key');
 assert.match(main, /player-account\.js\?v=20260826-73-cinematic-endings/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /account-presentation\.js\?v=20260826-73-cinematic-endings/, 'the single account presentation model ships behind the same cache boundary');
 assert.match(index, /id="menuPlayer">GUEST/, 'the title screen reserves a clear arcade player identity slot');
@@ -29,6 +29,7 @@ assert.match(styles, /\.account-tabs button \{ min-height: 48px; font-size: 9px;
 assert.match(styles, /\.vault-categories \{ grid-template-columns: repeat\(2,1fr\); gap: 4px; \}/, 'mobile Vault categories remain scalable and readable');
 assert.match(serverApi, /'0\.15\.1-56'/, 'the released frontend version can register server-owned runs');
 assert.match(serverApi, /'0\.17\.4-74'/, 'Build 74 can register server-owned runs');
+assert.match(serverApi, /'0\.18\.0-75'/, 'Build 75 can register server-owned runs');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
 assert.match(main, /cl:wallet-session-reset:v51/, 'one stale anonymous wallet session is discarded for the clean cutover');

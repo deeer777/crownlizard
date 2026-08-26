@@ -138,6 +138,7 @@ body {
 .arcade-status[data-account-state="signed-in"] .status-player b { color: var(--mint); }
 .arcade-status[data-account-state="setup"] .status-player b,
 .arcade-status[data-account-state="expired"] .status-player b { color: var(--gold); }
+.network-status { width: max-content; max-width: 100%; margin: -1px auto 8px; padding: 5px 8px 4px; color: #ff9a78; border-block: 1px solid #693b32; font: 700 6px var(--font-pixel-ui); letter-spacing: .1em; }
 
 .eyebrow { color: var(--mint); font-size: 11px; font-weight: 900; letter-spacing: .28em; }
 h1 { margin: 14px 0 10px; font-size: clamp(58px, 13vw, 98px); line-height: .78; letter-spacing: -.075em; }
@@ -407,6 +408,23 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .setting-list button b { color: var(--mint); font: inherit; }
 .setting-list button[aria-pressed="false"] b { color: #65736f; }
 .setting-list button:hover span { color: var(--gold); }
+.setting-list #installApp,
+.setting-list #updateApp { color: var(--ink); }
+.setting-list #installApp b { color: var(--gold); }
+.setting-list #updateApp b { color: #fff0a8; text-shadow: 0 0 6px rgba(255,211,107,.45); animation: menu-cursor .8s steps(2,end) infinite; }
+
+.pwa-panel { width: min(470px,100%); }
+.pwa-panel h2 { margin-bottom: 20px; }
+.pwa-icon-preview { display: block; width: 112px; height: 112px; margin: 14px auto 4px; object-fit: cover; image-rendering: pixelated; border: 3px solid #1e4a40; box-shadow: 5px 6px #010405, 0 0 18px rgba(111,255,210,.16); }
+.pwa-install-steps { display: grid; gap: 5px; width: min(370px,100%); margin: 0 auto 20px; text-align: left; }
+.pwa-install-steps p { display: grid; grid-template-columns: 34px 1fr; align-items: center; min-height: 42px; margin: 0; padding: 5px 3px; color: #8da59f; border-bottom: 1px solid #20332f; font: 700 7px/1.55 var(--font-pixel-ui); letter-spacing: .05em; }
+.pwa-install-steps b { color: var(--gold); font: 400 12px var(--font-pixel-display); text-align: center; }
+.pwa-update-copy { width: min(370px,100%); margin: 0 auto 20px; color: #8da59f; font: 700 8px/1.7 var(--font-pixel-ui); letter-spacing: .05em; }
+
+@media (display-mode: standalone) {
+  #menu { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  .system-overlay { padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+}
 
 .account-overlay { overflow-y: auto; }
 .account-panel { width: min(470px,100%); padding-block: 22px; }

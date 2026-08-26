@@ -1,14 +1,15 @@
-import { CONFIG } from './config.js?v=20260826-74-menu-focus';
+import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260826-74-menu-focus';
-import { Game } from './game.js?v=20260826-74-menu-focus';
+import { Music, SoundFx } from './audio.js?v=20260826-75-pwa-mvp';
+import { Game } from './game.js?v=20260826-75-pwa-mvp';
 import { ShardWallet } from './economy.js?v=20260824-45-security';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
 import { PlayerAccount } from './player-account.js?v=20260826-73-cinematic-endings';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
+import { PwaManager } from './pwa.js?v=20260826-75-pwa-mvp';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -18,12 +19,13 @@ const crateSpriteUrl = state => `./assets/runtime/sprites/crown-crate-${state}-v
 const debugParams = new URLSearchParams(location.search);
 const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 const callsignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('callsign');
+const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
 const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
-  settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'),
+  settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
@@ -42,6 +44,7 @@ const ui = {
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
+  networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
 };
 
 let selectedDifficulty = localStorage.getItem('crownlizard:difficulty') || 'arcade';
@@ -67,6 +70,10 @@ const tutorialKey = 'cl:tutorial:v1';
 const tutorialForced = new URLSearchParams(location.search).has('tutorial');
 let tutorialForcedUsed = false;
 let settingsReturn = 'menu';
+let pwaManager = null;
+let pwaUpdateReady = false;
+let pwaUpdateDeferred = false;
+let pwaOverlayReturn = 'menu';
 let accountMode = 'secure';
 let accountBusy = false;
 let leaderboardReturn = 'menu';
@@ -168,6 +175,14 @@ const renderShardBalance = () => {
   ui.menuShards.textContent = `◆ ${walletState().balance.toLocaleString('en-US')} SHARDS`;
 };
 renderShardBalance();
+const renderNetworkStatus = () => {
+  const offline = navigator.onLine === false;
+  ui.networkStatus.classList.toggle('hidden', !offline);
+  document.documentElement.classList.toggle('offline', offline);
+};
+addEventListener('online', renderNetworkStatus);
+addEventListener('offline', renderNetworkStatus);
+renderNetworkStatus();
 let crateOpening = false;
 let vaultOddsExpanded = false;
 let selectedCosmeticDetailId = '';
@@ -429,6 +444,8 @@ const renderSettings = () => {
   ui.sound.classList.toggle('off', !music.enabled);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
   ui.accountBadge.textContent = accountPresentation().badge;
+  ui.installApp.classList.toggle('hidden', !pwaManager?.installAvailable);
+  ui.updateApp.classList.toggle('hidden', !pwaUpdateReady);
   renderMenuIdentity();
 };
 
@@ -1002,6 +1019,7 @@ const returnToMenu = () => {
   ui.menuBest.textContent = String(best).padStart(6, '0');
   loadLeaderboard(selectedDifficulty, true);
   music.playMenu();
+  queueMicrotask(() => presentPwaUpdate('menu'));
 };
 
 const openSettings = origin => {
@@ -1014,6 +1032,32 @@ const openSettings = origin => {
 const closeSettings = () => {
   ui.settingsOverlay.classList.add('hidden');
   if (settingsReturn === 'pause' && game.paused) ui.pauseOverlay.classList.remove('hidden');
+};
+
+const openPwaInstallHelp = () => {
+  ui.settingsOverlay.classList.add('hidden');
+  ui.pwaInstallOverlay.classList.remove('hidden');
+  ui.closePwaInstall.focus({ preventScroll: true });
+};
+
+const closePwaInstallHelp = () => {
+  ui.pwaInstallOverlay.classList.add('hidden');
+  ui.settingsOverlay.classList.remove('hidden');
+  ui.installApp.focus({ preventScroll: true });
+};
+
+const presentPwaUpdate = (origin = 'menu') => {
+  if (!pwaUpdateReady || (origin === 'menu' && pwaUpdateDeferred) || game.active) return;
+  pwaOverlayReturn = origin;
+  ui.settingsOverlay.classList.add('hidden');
+  ui.pwaUpdateOverlay.classList.remove('hidden');
+  ui.applyPwaUpdate.focus({ preventScroll: true });
+};
+
+const deferPwaUpdate = () => {
+  pwaUpdateDeferred = true;
+  ui.pwaUpdateOverlay.classList.add('hidden');
+  if (pwaOverlayReturn === 'settings') ui.settingsOverlay.classList.remove('hidden');
 };
 
 const setAccountStatus = (message = '', kind = '') => {
@@ -1091,6 +1135,10 @@ const finishTutorial = () => {
 let startingRun = false;
 const start = async () => {
   if (startingRun) return;
+  if (serverEconomy && navigator.onLine === false) {
+    showToast('ONLINE CONNECTION REQUIRED · RANKED RUN NOT STARTED', 'critical');
+    return;
+  }
   startingRun = true;
   ui.play.disabled = true;
   ui.retry.disabled = true;
@@ -1144,6 +1192,23 @@ ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selec
 ui.menuVault.addEventListener('click', openVault);
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
+ui.installApp.addEventListener('click', async () => {
+  const result = await pwaManager?.install();
+  if (result === 'instructions') openPwaInstallHelp();
+  renderSettings();
+});
+ui.updateApp.addEventListener('click', () => { pwaUpdateDeferred = false; presentPwaUpdate('settings'); });
+ui.closePwaInstall.addEventListener('click', closePwaInstallHelp);
+ui.laterPwaUpdate.addEventListener('click', deferPwaUpdate);
+ui.applyPwaUpdate.addEventListener('click', async () => {
+  ui.applyPwaUpdate.disabled = true;
+  ui.applyPwaUpdate.innerHTML = '<i>♛</i> UPDATING...';
+  const started = await pwaManager?.applyUpdate();
+  if (!started) {
+    ui.applyPwaUpdate.disabled = false;
+    ui.applyPwaUpdate.innerHTML = '<i>♛</i> TRY AGAIN';
+  }
+});
 ui.openAccount.addEventListener('click', () => openAccount());
 ui.closeAccount.addEventListener('click', closeAccount);
 ui.accountSecureTab.addEventListener('click', () => {
@@ -1390,7 +1455,9 @@ addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
   if (!ui.crateOpeningCinematic.classList.contains('hidden')) return;
-  if (!ui.rewardedAdOverlay.classList.contains('hidden')) rewardedAd.cancel();
+  if (!ui.pwaUpdateOverlay.classList.contains('hidden')) deferPwaUpdate();
+  else if (!ui.pwaInstallOverlay.classList.contains('hidden')) closePwaInstallHelp();
+  else if (!ui.rewardedAdOverlay.classList.contains('hidden')) rewardedAd.cancel();
   else if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
@@ -1440,6 +1507,21 @@ addEventListener('keydown', event => {
   }
 });
 
+pwaManager = new PwaManager({
+  preview: pwaPreviewMode,
+  onInstallChange: renderSettings,
+  onUpdateReady: () => {
+    pwaUpdateReady = true;
+    renderSettings();
+    if (!game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
+  },
+});
+pwaManager.register();
+renderSettings();
+if (pwaPreviewMode && debugParams.has('update')) {
+  pwaUpdateReady = true;
+  queueMicrotask(() => { renderSettings(); presentPwaUpdate('menu'); });
+}
 loadLeaderboard(selectedDifficulty, true);
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.

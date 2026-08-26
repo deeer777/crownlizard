@@ -7,9 +7,16 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071017">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Crown Lizard">
   <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260826-74-menu-focus">
+  <link rel="stylesheet" href="./styles.css?v=20260826-75-pwa-mvp">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -37,6 +44,7 @@
         <span class="status-score"><small>★ HIGH SCORE</small><b id="menuBest">000000</b></span>
         <span id="menuShards" class="status-shards">◆ 0 SHARDS</span>
       </div>
+      <div id="networkStatus" class="network-status hidden" role="status">OFFLINE · RANKED RUNS LOCKED</div>
       <div class="logo-lockup">
         <span class="logo-crest" aria-hidden="true"><i></i></span>
         <h1 aria-label="Crown Lizard"><span class="logo-crown-word" data-text="CROWN" aria-hidden="true">CROWN</span><span class="logo-lizard-word" data-text="LIZARD" aria-hidden="true">LIZARD</span></h1>
@@ -138,9 +146,35 @@
         <button data-setting="haptics"><span>VIBRATION</span><b>ON</b></button>
         <button data-setting="dashSide"><span>DASH SIDE</span><b>RIGHT</b></button>
         <button data-setting="reduced"><span>REDUCED EFFECTS</span><b>OFF</b></button>
+        <button id="installApp" class="hidden" type="button"><span>INSTALL APP</span><b>READY</b></button>
+        <button id="updateApp" class="hidden" type="button"><span>UPDATE APP</span><b>READY</b></button>
       </div>
       <button id="resetTutorial" class="system-link">SHOW TUTORIAL AGAIN</button>
       <button id="closeSettings" class="system-action"><i>♛</i> BACK</button>
+    </div>
+  </section>
+
+  <section id="pwaInstallOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="pwaInstallTitle">
+    <div class="system-panel pwa-panel">
+      <div class="eyebrow">HOME SCREEN</div>
+      <img class="pwa-icon-preview" src="./assets/icons/icon-192.png" alt="">
+      <h2 id="pwaInstallTitle">INSTALL CROWN LIZARD</h2>
+      <div class="pwa-install-steps">
+        <p><b>1</b><span>OPEN THE BROWSER SHARE MENU</span></p>
+        <p><b>2</b><span>CHOOSE ADD TO HOME SCREEN</span></p>
+        <p><b>3</b><span>LAUNCH FROM THE CROWN ICON</span></p>
+      </div>
+      <button id="closePwaInstall" class="system-action" type="button"><i>♛</i> GOT IT</button>
+    </div>
+  </section>
+
+  <section id="pwaUpdateOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="pwaUpdateTitle">
+    <div class="system-panel pwa-panel">
+      <div class="eyebrow">SYSTEM UPDATE</div>
+      <h2 id="pwaUpdateTitle">NEW BUILD READY</h2>
+      <p class="pwa-update-copy">YOUR RUN IS SAFE. UPDATE NOW TO LOAD THE LATEST ARCADE BUILD.</p>
+      <button id="applyPwaUpdate" class="system-action" type="button"><i>♛</i> UPDATE NOW</button>
+      <button id="laterPwaUpdate" class="system-link" type="button">LATER</button>
     </div>
   </section>
 
@@ -274,6 +308,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260826-74-menu-focus"></script>
+  <script type="module" src="./src/main.js?v=20260826-75-pwa-mvp"></script>
 </body>
 </html>

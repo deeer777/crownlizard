@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-74-menu-focus';
+import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

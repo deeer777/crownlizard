@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-74-menu-focus';
+import { CONFIG } from './config.js?v=20260826-75-pwa-mvp';
 
 export class Music {
   constructor() {
