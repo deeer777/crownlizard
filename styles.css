@@ -548,6 +548,8 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .leaderboard-player-result strong { color: var(--mint); font: 700 10px var(--font-pixel-ui); letter-spacing: .12em; }
 .leaderboard-player-result em { color: var(--ink); font: 400 10px var(--font-pixel-display); font-style: normal; }
 .leaderboard-status { min-height: 14px; margin: 11px 0 6px; color: #7f9892; font: 700 8px var(--font-pixel-ui); letter-spacing: .07em; }
+.personal-best-chase { width: min(360px,100%); margin: 8px auto 2px; padding: 8px 10px; color: var(--mint); border-top: 1px solid #1d4138; border-bottom: 1px solid #1d4138; font: 700 8px/1.5 var(--font-pixel-ui); letter-spacing: .07em; text-align: center; }
+.personal-best-chase.record { color: var(--gold); border-color: #8d6321; text-shadow: 0 0 6px rgba(255,211,107,.35); }
 @keyframes leaderboard-flash { 50% { color: var(--gold); background: rgba(255,211,107,.12); } }
 
 .vault-overlay { overflow-y: auto; background: rgba(0,3,5,.96); }
@@ -607,6 +609,11 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-odds b { color: var(--ink); font: 700 9px var(--font-pixel-ui); }
 .collection-title { margin-bottom: 5px; }
 .collection-title b { color: var(--gold); font-size: 8px; }
+.random-favorite-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 34px; margin: 0 0 7px; padding: 5px 7px; color: #839d96; background: rgba(4,14,14,.72); border: 1px solid #1b3732; font: 700 7px var(--font-pixel-ui); letter-spacing: .06em; cursor: pointer; }
+.random-favorite-toggle b { color: #627a74; font: inherit; }
+.random-favorite-toggle[aria-checked="true"] { color: var(--gold); border-color: #7a5820; }
+.random-favorite-toggle[aria-checked="true"] b { color: var(--gold); }
+.random-favorite-toggle:disabled { opacity: .55; cursor: default; }
 .vault-categories { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; margin-bottom: 7px; }
 .vault-categories button { min-width: 0; min-height: 38px; padding: 6px 2px; color: #4f6862; background: rgba(4,14,15,.64); border: 0; border-bottom: 2px solid #1b302b; font: 700 7px var(--font-pixel-ui); cursor: pointer; }
 .vault-categories button.selected { color: var(--gold); border-color: var(--gold); }
@@ -629,6 +636,7 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-cosmetic.equipped::after { content: '♛'; position: absolute; right: 5px; top: 5px; color: var(--gold); font: 700 9px var(--font-pixel-ui); text-shadow: 1px 1px #2b1a08; }
 .vault-cosmetic.new::before { content: 'NEW'; position: absolute; z-index: 3; left: 4px; top: 4px; padding: 4px 5px 3px; color: #04100d; background: var(--gold); font: 700 6px var(--font-pixel-ui); letter-spacing: .06em; box-shadow: 2px 2px #5f3712; animation: new-label-pulse 1.2s steps(2,end) infinite; }
 .vault-cosmetic.equipped small { color: var(--gold); }
+.vault-cosmetic .favorite-mark { position: absolute; z-index: 2; right: 5px; bottom: 5px; color: var(--gold); font: 400 10px var(--font-pixel-ui); font-style: normal; text-shadow: 1px 1px #281907; }
 .vault-fineprint { margin: 9px 0 1px; color: #607a73; font: 700 7px var(--font-pixel-ui); letter-spacing: .08em; }
 .vault-store { width: min(720px,100%); margin: 0 auto 8px; }
 .store-header { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 12px; margin-bottom: 9px; padding: 10px 12px; color: #6f8d85; background: rgba(4,15,16,.8); border-block: 2px solid #2c5148; text-align: left; }
@@ -855,6 +863,7 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
 .cosmetic-detail-panel > p { margin: 10px 0 7px; color: #718982; font: 700 7px var(--font-pixel-ui); letter-spacing: .07em; }
 .cosmetic-detail-panel .system-action { min-height: 48px; font-size: 9px; }
 .cosmetic-detail-panel .cosmetic-equip { color: var(--gold); }
+.cosmetic-detail-panel .cosmetic-favorite { color: #ffe399; }
 .cosmetic-detail-panel .cosmetic-equip:disabled { color: var(--mint); cursor: default; }
 .cosmetic-detail-panel .cosmetic-equip:disabled i { animation: none; }
 @keyframes crate-shake { 20% { transform: translate(-5px,2px) rotate(-2deg); } 45% { transform: translate(5px,-3px) rotate(2deg); filter: brightness(1.4); } 70% { transform: translate(-3px,-5px); } 90% { transform: translate(3px,0); } }
@@ -1356,6 +1365,8 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .leaderboard-list li span small { font-size: 9px; }
   .leaderboard-player-result span,
   .leaderboard-status { font-size: 10px; }
+  .personal-best-chase { padding-block: 9px; font-size: 10px; }
+  .random-favorite-toggle { min-height: 44px; font-size: 9px; }
 
   .setting-list button { min-height: 52px; font-size: 11px; }
   .tutorial-steps b { font-size: 10px; }

@@ -1,18 +1,19 @@
-import { CONFIG } from './config.js?v=20260828-86-shards-stack';
+import { CONFIG } from './config.js?v=20260828-87-retention-polish2';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
-import { Music, SoundFx } from './audio.js?v=20260828-86-shards-stack';
-import { Game } from './game.js?v=20260828-86-shards-stack';
+import { Music, SoundFx } from './audio.js?v=20260828-87-retention-polish2';
+import { Game } from './game.js?v=20260828-87-retention-polish2';
 import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260828-86-shards-stack';
+import { PlayerAccount } from './player-account.js?v=20260828-87-retention-polish2';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
-import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-86-shards-stack';
-import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-86-shards-stack';
-import { BossNetwork } from './boss-network.js?v=20260828-86-shards-stack';
+import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-87-retention-polish2';
+import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-87-retention-polish2';
+import { BossNetwork } from './boss-network.js?v=20260828-87-retention-polish2';
+import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-87-retention-polish2';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -40,7 +41,7 @@ const ui = {
   assaultHud: $('assaultHud'), assaultTime: $('assaultTime'), assaultPhaseLabel: $('assaultPhaseLabel'), assaultPhaseName: $('assaultPhaseName'), assaultPhaseRole: $('assaultPhaseRole'), assaultDamage: $('assaultDamage'), assaultGlobalHp: $('assaultGlobalHp'), assaultResultEyebrow: $('assaultResultEyebrow'), assaultDamageLabel: $('assaultDamageLabel'), assaultResultTitle: $('assaultResultTitle'), assaultFinalDamage: $('assaultFinalDamage'), assaultFinalTime: $('assaultFinalTime'), assaultFinalTargets: $('assaultFinalTargets'), assaultFinalRank: $('assaultFinalRank'), assaultFinalMultiplier: $('assaultFinalMultiplier'), assaultFinalGlobalHp: $('assaultFinalGlobalHp'), assaultFinalEventRank: $('assaultFinalEventRank'), assaultMilestone: $('assaultMilestone'), assaultMilestoneLabel: $('assaultMilestoneLabel'), assaultMilestoneFill: $('assaultMilestoneFill'), assaultResultMessage: $('assaultResultMessage'), assaultRetry: $('assaultRetry'), assaultArmory: $('assaultArmory'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
-  cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
+  cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), favoriteCosmetic: $('favoriteCosmetic'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'), randomFavoriteToggle: $('randomFavoriteToggle'),
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
   resultChoices: [...document.querySelectorAll('[data-result-choice]')],
   gameVersion: $('gameVersion'), menuShards: $('menuShards'), sponsoredReward: $('sponsoredReward'), watchAd: $('watchAd'),
@@ -48,7 +49,7 @@ const ui = {
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
   dashFill: $('dashFill'), dashButton: $('dashButton'), dashChargePips: [...document.querySelectorAll('#dashCharge b')], pauseButton: $('pauseButton'), joystick: $('joystick'), sound: $('sound'), toast: $('toast'),
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'),
-  recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
+  recordMessage: $('recordMessage'), personalBestChase: $('personalBestChase'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
   networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), pwaUpdateVersion: $('pwaUpdateVersion'), pwaReleaseTitle: $('pwaReleaseTitle'), pwaReleaseNotes: $('pwaReleaseNotes'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
@@ -70,6 +71,12 @@ const unlockMenuMusic = () => music.playMenu();
 addEventListener('pointerdown', unlockMenuMusic, { once: true, capture: true });
 addEventListener('keydown', unlockMenuMusic, { once: true, capture: true });
 let hapticsEnabled = localStorage.getItem('cl:haptics') !== 'off';
+const hapticsSupported = typeof navigator.vibrate === 'function';
+const triggerHaptic = pattern => {
+  if (!hapticsEnabled || !hapticsSupported) return false;
+  navigator.vibrate(pattern);
+  return true;
+};
 let reducedEffects = localStorage.getItem('cl:reduced-effects') === 'on';
 let vaultAnimationEnabled = localStorage.getItem('cl:vault-animation') !== 'off';
 let dashSide = localStorage.getItem('cl:dash-side') === 'left' ? 'left' : 'right';
@@ -109,6 +116,7 @@ const focusGameInput = () => {
 };
 gameCanvas.addEventListener('pointerenter', focusGameInput);
 const shardWallet = new ShardWallet();
+const cosmeticPreferences = new CosmeticPreferences();
 try {
   const walletResetKey = 'cl:wallet-session-reset:v51';
   if (localStorage.getItem(walletResetKey) !== 'done') {
@@ -311,7 +319,7 @@ const claimBossReward = async rewardKey => {
     } else if (payload.wallet) acceptServerWallet(payload);
     renderShardBalance();
     sfx.play('confirm');
-    if (hapticsEnabled) navigator.vibrate?.([20, 25, 45]);
+    triggerHaptic([20, 25, 45]);
     bossRewardMessage = `${payload.claim?.badgeName ? `${payload.claim.badgeName} BADGE · ` : ''}+${payload.claim?.shards || 0} SHARDS CLAIMED`;
   } catch (error) {
     bossRewardMessage = String(error?.message || 'REWARD CLAIM FAILED').toUpperCase();
@@ -471,7 +479,7 @@ async function selectArmoryBlueprint(blueprintId) {
     if (!localPreview) await playerAccount.selectArmoryBlueprint(blueprintId);
     armory.progression.selectedBlueprintId = blueprintId;
     sfx.play('confirm');
-    if (hapticsEnabled) navigator.vibrate?.(18);
+    triggerHaptic(18);
     armorySelecting = '';
     renderArmory();
     setArmoryStatus(`${armory.blueprints.find(item => item.id === blueprintId)?.name || 'BLUEPRINT'} EQUIPPED`, false);
@@ -554,6 +562,7 @@ const startBossAssault = async () => {
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
   document.documentElement.classList.add('assault-active');
+  applyRunShip();
   game.startAssault({
     blueprintId: blueprint.id,
     weaponKey: loadout.weaponKey,
@@ -760,6 +769,8 @@ const loadCrownStore = async () => {
 
 const renderVault = () => {
   const state = walletState();
+  const preferences = cosmeticPreferences.getState();
+  const favoriteIds = new Set(preferences.favorites);
   const account = accountPresentation();
   const owned = Object.keys(state.inventory.cosmetics);
   ui.vaultBalance.textContent = `◆ ${state.balance.toLocaleString('en-US')}`;
@@ -784,12 +795,13 @@ const renderVault = () => {
     const storeExclusive = STORE_PRODUCTS.some(product => product.cosmeticId === cosmetic.id);
     const acquisition = state.inventory.cosmetics[cosmetic.id];
     const isNew = acquisition?.source === 'shop' && !acquisition.seenAt;
+    const favorite = acquired && favoriteIds.has(cosmetic.id);
     const tier = RARITY_BY_KEY[cosmetic.rarity];
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `vault-cosmetic ${acquired ? 'owned' : 'locked'}${equipped ? ' equipped' : ''}${storeExclusive ? ' store-exclusive' : ''}${isNew ? ' new' : ''}`;
     card.dataset.cosmeticId = cosmetic.id;
-    card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}${isNew ? ', new' : ''}`);
+    card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}${favorite ? ', favorite' : ''}${isNew ? ', new' : ''}`);
     card.style.setProperty('--tier-color', tier.color);
     const image = document.createElement('img');
     image.src = cosmeticSpriteUrl(cosmetic);
@@ -801,9 +813,19 @@ const renderVault = () => {
     rarity.textContent = equipped ? 'EQUIPPED' : !acquired && storeExclusive ? 'CROWN STORE' : tier.name;
     copy.append(name, rarity);
     card.append(image, copy);
+    if (favorite) {
+      const marker = document.createElement('em');
+      marker.className = 'favorite-mark';
+      marker.textContent = '★';
+      marker.setAttribute('aria-hidden', 'true');
+      card.append(marker);
+    }
     card.addEventListener('click', () => showCosmeticDetail(cosmetic.id, 'collection'));
     return card;
   }));
+  ui.randomFavoriteToggle.setAttribute('aria-checked', String(preferences.randomFavorite));
+  ui.randomFavoriteToggle.querySelector('b').textContent = preferences.randomFavorite ? 'ON' : 'OFF';
+  ui.randomFavoriteToggle.disabled = !preferences.favorites.some(id => id === 'ship_default' || Boolean(state.inventory.cosmetics[id]));
   const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
   ui.openCrate.disabled = crateOpening || (serverEconomy && !serverEconomyReady) || Boolean(state.vault.pendingReward) || missing > 0;
   ui.openCrate.innerHTML = missing
@@ -865,6 +887,7 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
   const state = walletState();
   const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
   const equipped = state.inventory.equipped.ship === cosmetic.id;
+  const favorite = cosmeticPreferences.getState().favorites.includes(cosmetic.id);
   const storeProduct = storeProductForCosmetic(cosmetic.id);
   const storeExclusive = Boolean(storeProduct);
   selectedCosmeticDetailId = cosmetic.id;
@@ -881,6 +904,9 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
     ? (equipped ? 'ACTIVE SHIP CHASSIS' : 'READY FOR YOUR NEXT RUN')
     : storeExclusive ? 'STORE EXCLUSIVE · NEVER DROPS FROM CRATES' : 'AVAILABLE IN CROWN CRATES';
   ui.equipCosmetic.classList.toggle('hidden', !acquired && !storeExclusive);
+  ui.favoriteCosmetic.classList.toggle('hidden', !acquired);
+  ui.favoriteCosmetic.setAttribute('aria-pressed', String(favorite));
+  ui.favoriteCosmetic.innerHTML = favorite ? '<i>★</i> REMOVE FAVORITE' : '<i>☆</i> ADD FAVORITE';
   if (!acquired && storeProduct) {
     const missing = Math.max(0, storeProduct.price - state.balance);
     ui.equipCosmetic.disabled = Boolean(storeBusySku) || missing > 0 || (serverEconomy && !serverEconomyReady);
@@ -893,7 +919,7 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
   }
   ui.closeCosmeticDetail.innerHTML = origin === 'store' ? '<i>♛</i> BACK TO STORE' : '<i>♛</i> BACK TO COLLECTION';
   ui.cosmeticDetail.classList.remove('hidden');
-  (acquired || storeExclusive ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
+  (acquired ? ui.favoriteCosmetic : storeExclusive ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
   if (origin === 'collection') acknowledgeNewCosmetic(cosmetic.id);
 };
 
@@ -967,9 +993,9 @@ const showCrateReveal = outcome => {
   ui.crateReveal.classList.remove('hidden');
   void ui.crateReveal.offsetWidth;
   sfx.play(`vault-${tier.key}`);
-  if (hapticsEnabled && navigator.vibrate) {
+  if (hapticsEnabled && hapticsSupported) {
     const patterns = { rare: [28], royal: [35, 35, 45], mythic: [45, 30, 70], sovereign: [45, 35, 45, 35, 100] };
-    if (patterns[tier.key]) navigator.vibrate(patterns[tier.key]);
+    if (patterns[tier.key]) triggerHaptic(patterns[tier.key]);
   }
   ui.revealContinue.focus({ preventScroll: true });
 };
@@ -1148,7 +1174,14 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
     score.textContent = Number(personal.entry.score).toLocaleString('en-US');
     ui.leaderboardPlayerResult.append(rank, label, initials, score);
   }
-  ui.leaderboardStatus.textContent = scores.length ? 'TOP 10 · ALL-TIME' : 'NO SCORES YET · CLAIM THE CROWN';
+  const personalRank = Number(personal?.rank) || 0;
+  const nextEntry = personalRank > 1 && personalRank <= 11 ? scores[personalRank - 2] : null;
+  const gap = nextEntry && personal?.entry ? Math.max(0, Number(nextEntry.score) - Number(personal.entry.score) + 1) : 0;
+  ui.leaderboardStatus.textContent = personalRank === 1
+    ? 'YOU HOLD THE CROWN · DEFEND #1'
+    : gap > 0
+      ? `${gap.toLocaleString('en-US')} POINTS TO RANK #${personalRank - 1}`
+      : scores.length ? 'TOP 10 · ALL-TIME' : 'NO SCORES YET · CLAIM THE CROWN';
 };
 
 const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = false) => {
@@ -1207,6 +1240,12 @@ const prepareScoreEntry = (score, summary) => {
       ui.playerInitials.required = false;
       ui.scoreEntry.classList.remove('hidden');
       ui.scoreSubmitStatus.textContent = 'CHOOSE A CALLSIGN IN PLAYER ACCOUNT TO SUBMIT';
+      return;
+    }
+    if (button.dataset.setting === 'haptics' && !hapticsSupported) {
+      button.disabled = true;
+      button.setAttribute('aria-pressed', 'false');
+      button.querySelector('b').textContent = 'UNAVAILABLE';
       return;
     }
     scoreTicket.callsign = accountCallsign;
@@ -1448,10 +1487,15 @@ const game = new Game($('game'), input, {
   gameover: (score, summary) => {
     hideToast();
     ui.finalScore.textContent = score.toLocaleString('en-US');
-    const record = score > best;
+    const previousBest = best;
+    const record = score > previousBest;
     if (record) { best = score; localStorage.setItem(bestKey(game.difficulty), String(best)); }
-    ui.resultTitle.textContent = record ? 'NEW HIGH SCORE' : 'THE CROWN FELL';
-    ui.recordMessage.textContent = record ? `New local record: ${best.toLocaleString('en-US')} points!` : `Local best: ${best.toLocaleString('en-US')}`;
+    ui.resultTitle.textContent = record ? 'NEW PERSONAL BEST' : 'THE CROWN FELL';
+    ui.personalBestChase.classList.toggle('record', record);
+    ui.personalBestChase.textContent = record
+      ? previousBest > 0 ? `+${(score - previousBest).toLocaleString('en-US')} OVER YOUR PREVIOUS BEST` : 'FIRST PERSONAL BEST SECURED'
+      : `${Math.max(0, previousBest - score).toLocaleString('en-US')} POINTS TO YOUR PERSONAL BEST`;
+    ui.recordMessage.textContent = `PERSONAL BEST · ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
     if (localPreview) {
@@ -1533,7 +1577,7 @@ const game = new Game($('game'), input, {
     ui.pauseButton.classList.remove('hidden');
     showToast(`MASTERED · ${mastery.name}`, 'weapon', weapon.color);
   },
-  haptic: pattern => { if (hapticsEnabled) navigator.vibrate?.(pattern); },
+  haptic: triggerHaptic,
   sfx: type => sfx.play(type),
 });
 
@@ -1541,6 +1585,14 @@ const applyEquippedShip = () => {
   const equippedId = walletState().inventory.equipped.ship;
   const cosmetic = COSMETIC_BY_ID[equippedId] || COSMETIC_BY_ID.ship_default;
   game.setPlayerSkin(cosmetic.sprite);
+};
+
+const applyRunShip = () => {
+  const state = walletState();
+  const selectedId = cosmeticPreferences.chooseShip(Object.keys(state.inventory.cosmetics), state.inventory.equipped.ship);
+  const cosmetic = COSMETIC_BY_ID[selectedId] || COSMETIC_BY_ID.ship_default;
+  game.setPlayerSkin(cosmetic.sprite);
+  return cosmetic;
 };
 
 const authRedirectReady = playerAccount.redirectResult?.pending
@@ -1853,6 +1905,7 @@ const start = async () => {
   ui.hud.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
   ui.pauseButton.classList.remove('hidden');
+  applyRunShip();
   game.start(selectedDifficulty);
   economyRunId = createEconomyRunId();
   pendingScore = null;
@@ -2077,7 +2130,7 @@ ui.storeRenameForm.addEventListener('submit', async event => {
     renderMenuIdentity();
     renderVault();
     sfx.play('perk');
-    if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
+    triggerHaptic([35, 25, 55]);
   } catch (error) {
     const messages = {
       CALLSIGN_TAKEN: 'THAT CALLSIGN IS ALREADY TAKEN',
@@ -2089,6 +2142,25 @@ ui.storeRenameForm.addEventListener('submit', async event => {
     storeBusySku = '';
     ui.storeRenameSubmit.disabled = false;
     renderVault();
+  }
+});
+ui.randomFavoriteToggle.addEventListener('click', () => {
+  try {
+    cosmeticPreferences.toggleRandom(Object.keys(walletState().inventory.cosmetics));
+    triggerHaptic(18);
+    renderVault();
+  } catch {
+    ui.vaultStatus.textContent = 'MARK AT LEAST ONE OWNED SHIP AS FAVORITE';
+  }
+});
+ui.favoriteCosmetic.addEventListener('click', () => {
+  try {
+    const state = cosmeticPreferences.toggleFavorite(selectedCosmeticDetailId, Object.keys(walletState().inventory.cosmetics));
+    triggerHaptic(state.favorites.includes(selectedCosmeticDetailId) ? [18, 24, 30] : 18);
+    renderVault();
+    showCosmeticDetail(selectedCosmeticDetailId, selectedCosmeticOrigin);
+  } catch {
+    ui.cosmeticDetailHint.textContent = 'ONLY OWNED SHIPS CAN BE FAVORITES';
   }
 });
 ui.equipCosmetic.addEventListener('click', async () => {
@@ -2108,7 +2180,7 @@ ui.equipCosmetic.addEventListener('click', async () => {
       storeMessage = `${storeProduct.name} ACQUIRED · READY TO EQUIP`;
       ui.storeStatus.textContent = storeMessage;
       sfx.play('vault-royal');
-      if (hapticsEnabled) navigator.vibrate?.([35, 30, 70]);
+      triggerHaptic([35, 30, 70]);
     } else if (localPreview) shardWallet.equipCosmetic(selectedCosmeticDetailId);
     else acceptServerWallet(await playerAccount.equipCosmetic(selectedCosmeticDetailId));
     applyEquippedShip();
@@ -2117,7 +2189,7 @@ ui.equipCosmetic.addEventListener('click', async () => {
     else showCosmeticDetail(selectedCosmeticDetailId, selectedCosmeticOrigin);
     if (acquired) {
       sfx.play('perk');
-      if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
+      triggerHaptic([35, 25, 55]);
     }
   } catch (error) {
     ui.cosmeticDetailHint.textContent = error?.code === 'NOT_ENOUGH_SHARDS'
@@ -2224,9 +2296,10 @@ ui.settingButtons.forEach(button => button.addEventListener('click', () => {
     if (game.paused) music.pause();
   } else if (key === 'sfx') sfx.toggle();
   else if (key === 'haptics') {
+    if (!hapticsSupported) return;
     hapticsEnabled = !hapticsEnabled;
     localStorage.setItem('cl:haptics', hapticsEnabled ? 'on' : 'off');
-    if (hapticsEnabled) navigator.vibrate?.(20);
+    triggerHaptic(20);
   } else if (key === 'dashSide') {
     dashSide = dashSide === 'right' ? 'left' : 'right';
     localStorage.setItem('cl:dash-side', dashSide);

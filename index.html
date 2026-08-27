@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260828-86-shards-stack">
+  <link rel="stylesheet" href="./styles.css?v=20260828-87-retention-polish2">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -82,6 +82,7 @@
       <div class="eyebrow">RUN OVER</div>
       <h2 id="resultTitle">THE CROWN FELL</h2>
       <div class="final-score"><span>SCORE</span><strong id="finalScore">0</strong></div>
+      <div id="personalBestChase" class="personal-best-chase" aria-live="polite"></div>
       <div class="run-meta" id="runMeta">ZONE 1 · ARCADE</div>
       <div class="run-summary" id="runSummary"></div>
       <div id="shardReward" class="shard-reward" aria-live="polite"></div>
@@ -291,6 +292,7 @@
           <button id="vaultOddsToggle" class="vault-section-title vault-odds-toggle" type="button" aria-expanded="false" aria-controls="vaultOdds"><span>DROP ODDS</span><b>VIEW · ▼</b></button>
           <div id="vaultOdds" class="vault-odds hidden"></div>
           <div class="vault-section-title collection-title"><span>SHIP COLLECTION</span><b id="vaultOwned">0 / 10</b></div>
+          <button id="randomFavoriteToggle" class="random-favorite-toggle" type="button" role="switch" aria-checked="false"><span>RANDOM FAVORITE EACH RUN</span><b>OFF</b></button>
           <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
             <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship">SHIPS</button>
             <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
@@ -411,6 +413,7 @@
         <h3 id="cosmeticDetailName">VERDANT SCOUT</h3>
         <strong id="cosmeticDetailStatus">LOCKED</strong>
         <p id="cosmeticDetailHint">AVAILABLE IN CROWN CRATES</p>
+        <button id="favoriteCosmetic" class="system-action cosmetic-favorite hidden" type="button"><i>★</i> ADD FAVORITE</button>
         <button id="equipCosmetic" class="system-action cosmetic-equip hidden" type="button"><i>♛</i> EQUIP</button>
         <button id="closeCosmeticDetail" class="system-action" type="button"><i>♛</i> BACK TO COLLECTION</button>
       </div>
@@ -431,6 +434,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260828-86-shards-stack"></script>
+  <script type="module" src="./src/main.js?v=20260828-87-retention-polish2"></script>
 </body>
 </html>

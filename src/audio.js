@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-86-shards-stack';
+import { CONFIG } from './config.js?v=20260828-87-retention-polish2';
 
 export class Music {
   constructor() {
