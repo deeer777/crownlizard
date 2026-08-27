@@ -1,12 +1,13 @@
 import {
   COSMETICS,
   CROWN_CRATE_COST,
+  STORE_PRODUCTS,
   SOVEREIGN_GUARANTEE,
   TIER_BY_KEY,
   chooseCosmetic,
   rollTier,
   secureRandom,
-} from './cosmetics.js?v=20260824-45-security';
+} from './cosmetics.js?v=20260827-79-crown-store-final';
 
 export const SHARD_RULES = Object.freeze({
   version: 1,
@@ -97,6 +98,7 @@ const normalizeState = value => {
       cosmetics[id] = {
         acquiredAt: typeof acquisition?.acquiredAt === 'string' ? acquisition.acquiredAt : new Date().toISOString(),
         source: acquisitionSources.has(acquisition?.source) ? acquisition.source : 'crate',
+        seenAt: typeof acquisition?.seenAt === 'string' ? acquisition.seenAt : null,
       };
     });
   }
@@ -191,6 +193,43 @@ export class ShardWallet {
     state.transactions = state.transactions.slice(-250);
     const saved = this.write(state);
     return { reward, balance: saved.balance, duplicate: false };
+  }
+
+  purchaseStoreItem(sku) {
+    const product = STORE_PRODUCTS.find(item => item.sku === sku && item.type === 'cosmetic');
+    if (!product) throw walletError('PRODUCT_UNAVAILABLE', 'This store item is unavailable.');
+    const state = this.read();
+    if (state.inventory.cosmetics[product.cosmeticId]) throw walletError('ALREADY_OWNED', 'This item is already owned.');
+    if (state.balance < product.price) throw walletError('NOT_ENOUGH_SHARDS', 'Not enough shards.');
+    if (!globalThis.crypto?.randomUUID) throw walletError('SECURE_RANDOM_UNAVAILABLE', 'Secure store identifiers are unavailable.');
+    const requestId = globalThis.crypto.randomUUID();
+    const acquiredAt = new Date().toISOString();
+    state.balance -= product.price;
+    state.inventory.cosmetics[product.cosmeticId] = { acquiredAt, source: 'shop', seenAt: null };
+    state.transactions.push({
+      id: `store:${requestId}`,
+      kind: 'store_purchase',
+      amount: -product.price,
+      createdAt: acquiredAt,
+      sku: product.sku,
+      cosmeticId: product.cosmeticId,
+    });
+    state.transactions = state.transactions.slice(-250);
+    const saved = this.write(state);
+    return {
+      duplicateRequest: false,
+      balance: saved.balance,
+      purchase: { ...product, purchasedAt: acquiredAt },
+      wallet: saved,
+    };
+  }
+
+  markCosmeticSeen(cosmeticId) {
+    const state = this.read();
+    const cosmetic = state.inventory.cosmetics[cosmeticId];
+    if (!cosmetic) throw walletError('COSMETIC_LOCKED', 'This cosmetic is not owned.');
+    if (!cosmetic.seenAt) cosmetic.seenAt = new Date().toISOString();
+    return this.write(state);
   }
 
   getSponsoredOffer(runId, now = new Date()) {

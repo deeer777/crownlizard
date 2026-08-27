@@ -1,15 +1,15 @@
-import { CONFIG } from './config.js?v=20260827-78-late-game-balance';
+import { CONFIG } from './config.js?v=20260827-79-crown-store-final';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260827-78-late-game-balance';
-import { Game } from './game.js?v=20260827-78-late-game-balance';
-import { ShardWallet } from './economy.js?v=20260824-45-security';
-import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE } from './cosmetics.js?v=20260824-45-security';
+import { Music, SoundFx } from './audio.js?v=20260827-79-crown-store-final';
+import { Game } from './game.js?v=20260827-79-crown-store-final';
+import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260826-73-cinematic-endings';
+import { PlayerAccount } from './player-account.js?v=20260827-79-crown-store-final4';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
-import { PwaManager } from './pwa.js?v=20260827-78-late-game-balance';
+import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -30,7 +30,9 @@ const ui = {
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
-  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'),
+  vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'),
+  storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
+  storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
@@ -44,7 +46,7 @@ const ui = {
   recordMessage: $('recordMessage'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
-  networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
+  networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), pwaUpdateVersion: $('pwaUpdateVersion'), pwaReleaseTitle: $('pwaReleaseTitle'), pwaReleaseNotes: $('pwaReleaseNotes'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
 };
 
 let selectedDifficulty = localStorage.getItem('crownlizard:difficulty') || 'arcade';
@@ -74,6 +76,7 @@ let pwaManager = null;
 let pwaUpdateReady = false;
 let pwaUpdateDeferred = false;
 let pwaOverlayReturn = 'menu';
+let pwaReleaseInfo = null;
 let accountMode = 'secure';
 let accountBusy = false;
 let leaderboardReturn = 'menu';
@@ -133,7 +136,7 @@ const serverWalletView = wallet => ({
   balance: Number(wallet?.balance) || 0,
   transactions: [],
   inventory: {
-    cosmetics: Object.fromEntries((wallet?.inventory || []).map(item => [item.cosmeticId, { acquiredAt: item.acquiredAt, source: item.source }])),
+    cosmetics: Object.fromEntries((wallet?.inventory || []).map(item => [item.cosmeticId, { acquiredAt: item.acquiredAt, source: item.source, seenAt: item.seenAt || null }])),
     equipped: { ship: wallet?.equippedShip || 'ship_default' },
   },
   vault: { opens: Number(wallet?.opens) || 0, sinceSovereign: Number(wallet?.sinceSovereign) || 0, pendingReward: null },
@@ -185,7 +188,14 @@ addEventListener('offline', renderNetworkStatus);
 renderNetworkStatus();
 let crateOpening = false;
 let vaultOddsExpanded = false;
+let vaultMode = 'crates';
+let storeCatalog = localPreview ? [...STORE_PRODUCTS] : [];
+let storeCatalogLoaded = localPreview;
+let storeCatalogLoading = false;
+let storeBusySku = '';
+let storeMessage = '';
 let selectedCosmeticDetailId = '';
+let selectedCosmeticOrigin = 'collection';
 let crateRevealReturn = 'vault';
 let rewardedAdViewing = false;
 let currentSponsoredOffer = null;
@@ -197,6 +207,111 @@ const renderVaultOddsVisibility = () => {
   ui.vaultOdds.classList.toggle('hidden', !vaultOddsExpanded);
   ui.vaultOddsToggle.setAttribute('aria-expanded', String(vaultOddsExpanded));
   ui.vaultOddsToggle.querySelector('b').textContent = vaultOddsExpanded ? 'HIDE · ▲' : 'VIEW · ▼';
+};
+
+const storeProductForCosmetic = cosmeticId => storeCatalog.find(product => product.type === 'cosmetic' && product.cosmeticId === cosmeticId);
+
+const renderVaultMode = () => {
+  const storeSelected = vaultMode === 'store';
+  ui.vaultCratesTab.classList.toggle('selected', !storeSelected);
+  ui.vaultStoreTab.classList.toggle('selected', storeSelected);
+  ui.vaultCratesTab.setAttribute('aria-selected', String(!storeSelected));
+  ui.vaultStoreTab.setAttribute('aria-selected', String(storeSelected));
+  ui.vaultBody.classList.toggle('hidden', storeSelected);
+  ui.vaultStore.classList.toggle('hidden', !storeSelected);
+};
+
+const renameAvailability = () => {
+  const renamedAt = playerProfile?.lastRenamedAt ? new Date(playerProfile.lastRenamedAt).getTime() : 0;
+  const availableAt = renamedAt ? renamedAt + 7 * 24 * 60 * 60 * 1000 : 0;
+  return { available: !availableAt || availableAt <= Date.now(), availableAt };
+};
+
+const openStoreRename = () => {
+  if (currentAccountState() !== 'signed-in' || !playerProfile) {
+    storeMessage = 'SECURE YOUR PLAYER ACCOUNT AND CLAIM A CALLSIGN FIRST';
+    ui.storeStatus.textContent = storeMessage;
+    return;
+  }
+  const availability = renameAvailability();
+  if (!availability.available) {
+    storeMessage = `CALLSIGN CHANGE AVAILABLE ${new Date(availability.availableAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase()}`;
+    ui.storeStatus.textContent = storeMessage;
+    return;
+  }
+  ui.storeCurrentCallsign.textContent = playerProfile.displayName;
+  ui.storeCallsignInput.value = '';
+  ui.storeRenameStatus.textContent = '';
+  ui.storeRename.classList.remove('hidden');
+  ui.storeCallsignInput.focus({ preventScroll: true });
+};
+
+const renderStore = () => {
+  const state = walletState();
+  if (!storeCatalogLoaded && !localPreview) {
+    ui.storeCatalog.replaceChildren();
+    ui.storeStatus.textContent = storeCatalogLoading ? 'STORE LINK CONNECTING...' : 'STORE CATALOG UNAVAILABLE';
+    return;
+  }
+  const cards = storeCatalog.map(product => {
+    const tier = RARITY_BY_KEY[product.rarity] || RARITY_BY_KEY.standard;
+    const cosmetic = product.cosmeticId ? COSMETIC_BY_ID[product.cosmeticId] : null;
+    const owned = cosmetic ? Boolean(state.inventory.cosmetics[cosmetic.id]) : false;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `store-product${owned ? ' owned' : ''}${product.type === 'service' ? ' service' : ''}`;
+    card.dataset.storeSku = product.sku;
+    if (cosmetic) card.dataset.cosmeticId = cosmetic.id;
+    card.style.setProperty('--tier-color', tier.color);
+    const visual = cosmetic ? document.createElement('img') : document.createElement('span');
+    if (cosmetic) {
+      visual.src = cosmeticSpriteUrl(cosmetic);
+      visual.alt = '';
+    } else {
+      visual.className = 'store-service-mark';
+      visual.innerHTML = '<b>ABC</b><i>↻</i>';
+    }
+    const copy = document.createElement('span');
+    const rarity = document.createElement('small');
+    rarity.textContent = product.type === 'service' ? 'PLAYER SERVICE' : `${tier.name} · STORE EXCLUSIVE`;
+    const name = document.createElement('strong');
+    name.textContent = product.name;
+    const description = document.createElement('em');
+    description.textContent = product.description;
+    const action = document.createElement('b');
+    if (owned) action.textContent = 'OWNED · VIEW';
+    else if (product.type === 'service') {
+      const availability = renameAvailability();
+      action.textContent = currentAccountState() !== 'signed-in'
+        ? 'ACCOUNT REQUIRED'
+        : availability.available ? `CHANGE · ◆ ${product.price.toLocaleString('en-US')}` : 'COOLDOWN ACTIVE';
+    } else action.textContent = `VIEW · ◆ ${product.price.toLocaleString('en-US')}`;
+    copy.append(rarity, name, description, action);
+    card.append(visual, copy);
+    card.disabled = storeBusySku === product.sku;
+    card.setAttribute('aria-label', `${product.name}, ${owned ? 'owned' : `${product.price} shards`}`);
+    card.addEventListener('click', () => cosmetic ? showCosmeticDetail(cosmetic.id, 'store') : openStoreRename());
+    return card;
+  });
+  ui.storeCatalog.replaceChildren(...cards);
+  if (!storeBusySku) ui.storeStatus.textContent = storeMessage || 'SELECT AN ITEM TO INSPECT BEFORE PURCHASE';
+};
+
+const loadCrownStore = async () => {
+  if (localPreview || storeCatalogLoading || storeCatalogLoaded) return;
+  storeCatalogLoading = true;
+  renderStore();
+  try {
+    const payload = await playerAccount.getStore();
+    acceptServerWallet(payload);
+    storeCatalog = (payload.products || []).filter(product => product.type === 'service' || COSMETIC_BY_ID[product.cosmeticId]);
+    storeCatalogLoaded = true;
+  } catch {
+    storeMessage = 'STORE LINK FAILED · TRY AGAIN';
+  } finally {
+    storeCatalogLoading = false;
+    renderVault();
+  }
 };
 
 const renderVault = () => {
@@ -222,24 +337,27 @@ const renderVault = () => {
   ui.vaultCollection.replaceChildren(...COLLECTION_COSMETICS.map(cosmetic => {
     const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
     const equipped = state.inventory.equipped.ship === cosmetic.id;
+    const storeExclusive = STORE_PRODUCTS.some(product => product.cosmeticId === cosmetic.id);
+    const acquisition = state.inventory.cosmetics[cosmetic.id];
+    const isNew = acquisition?.source === 'shop' && !acquisition.seenAt;
     const tier = RARITY_BY_KEY[cosmetic.rarity];
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `vault-cosmetic ${acquired ? 'owned' : 'locked'}${equipped ? ' equipped' : ''}`;
+    card.className = `vault-cosmetic ${acquired ? 'owned' : 'locked'}${equipped ? ' equipped' : ''}${storeExclusive ? ' store-exclusive' : ''}${isNew ? ' new' : ''}`;
     card.dataset.cosmeticId = cosmetic.id;
-    card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}`);
+    card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}${isNew ? ', new' : ''}`);
     card.style.setProperty('--tier-color', tier.color);
     const image = document.createElement('img');
     image.src = cosmeticSpriteUrl(cosmetic);
     image.alt = '';
     const copy = document.createElement('span');
     const name = document.createElement('b');
-    name.textContent = acquired ? cosmetic.name : 'LOCKED';
+    name.textContent = acquired || storeExclusive ? cosmetic.name : 'LOCKED';
     const rarity = document.createElement('small');
-    rarity.textContent = equipped ? 'EQUIPPED' : tier.name;
+    rarity.textContent = equipped ? 'EQUIPPED' : !acquired && storeExclusive ? 'CROWN STORE' : tier.name;
     copy.append(name, rarity);
     card.append(image, copy);
-    card.addEventListener('click', () => showCosmeticDetail(cosmetic.id));
+    card.addEventListener('click', () => showCosmeticDetail(cosmetic.id, 'collection'));
     return card;
   }));
   const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
@@ -275,35 +393,91 @@ const renderVault = () => {
   }
   ui.vaultAnimationToggle.setAttribute('aria-checked', String(vaultAnimationEnabled));
   ui.vaultAnimationToggle.querySelector('b').textContent = vaultAnimationEnabled ? 'ON' : 'OFF';
+  renderVaultMode();
+  renderStore();
   renderShardBalance();
 };
 
-const showCosmeticDetail = cosmeticId => {
+const acknowledgeNewCosmetic = cosmeticId => {
+  const acquisition = walletState().inventory.cosmetics[cosmeticId];
+  if (acquisition?.source !== 'shop' || acquisition.seenAt) return;
+  if (localPreview) {
+    shardWallet.markCosmeticSeen(cosmeticId);
+    renderVault();
+    return;
+  }
+  acquisition.seenAt = new Date().toISOString();
+  renderVault();
+  void playerAccount.markCosmeticSeen(cosmeticId).catch(() => {
+    acquisition.seenAt = null;
+    renderVault();
+  });
+};
+
+const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store' : 'collection') => {
   const cosmetic = COSMETIC_BY_ID[cosmeticId];
   if (!cosmetic) return;
   const tier = RARITY_BY_KEY[cosmetic.rarity];
   const state = walletState();
   const acquired = cosmetic.id === 'ship_default' || Boolean(state.inventory.cosmetics[cosmetic.id]);
   const equipped = state.inventory.equipped.ship === cosmetic.id;
+  const storeProduct = storeProductForCosmetic(cosmetic.id);
+  const storeExclusive = Boolean(storeProduct);
   selectedCosmeticDetailId = cosmetic.id;
+  selectedCosmeticOrigin = origin;
   ui.cosmeticDetail.style.setProperty('--tier-color', tier.color);
   ui.cosmeticDetailImage.src = cosmeticSpriteUrl(cosmetic);
   ui.cosmeticDetailTier.textContent = tier.name;
   ui.cosmeticDetailName.textContent = cosmetic.name;
-  ui.cosmeticDetailStatus.textContent = acquired ? 'OWNED' : 'LOCKED';
+  ui.cosmeticDetailStatus.textContent = acquired ? 'OWNED' : storeExclusive ? 'DIRECT SALE' : 'LOCKED';
   ui.cosmeticDetailStatus.classList.toggle('owned', acquired);
   ui.cosmeticDetail.classList.toggle('detail-owned', acquired);
-  ui.cosmeticDetailHint.textContent = acquired ? (equipped ? 'ACTIVE SHIP CHASSIS' : 'READY FOR YOUR NEXT RUN') : 'AVAILABLE IN CROWN CRATES';
-  ui.equipCosmetic.classList.toggle('hidden', !acquired);
-  ui.equipCosmetic.disabled = equipped;
-  ui.equipCosmetic.innerHTML = equipped ? '<i>♛</i> EQUIPPED' : '<i>♛</i> EQUIP';
+  ui.cosmeticDetail.classList.toggle('detail-store', storeExclusive);
+  ui.cosmeticDetailHint.textContent = acquired
+    ? (equipped ? 'ACTIVE SHIP CHASSIS' : 'READY FOR YOUR NEXT RUN')
+    : storeExclusive ? 'STORE EXCLUSIVE · NEVER DROPS FROM CRATES' : 'AVAILABLE IN CROWN CRATES';
+  ui.equipCosmetic.classList.toggle('hidden', !acquired && !storeExclusive);
+  if (!acquired && storeProduct) {
+    const missing = Math.max(0, storeProduct.price - state.balance);
+    ui.equipCosmetic.disabled = Boolean(storeBusySku) || missing > 0 || (serverEconomy && !serverEconomyReady);
+    ui.equipCosmetic.innerHTML = missing
+      ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
+      : `<i>♛</i> BUY · ◆ ${storeProduct.price.toLocaleString('en-US')}`;
+  } else {
+    ui.equipCosmetic.disabled = equipped;
+    ui.equipCosmetic.innerHTML = equipped ? '<i>♛</i> EQUIPPED' : '<i>♛</i> EQUIP';
+  }
+  ui.closeCosmeticDetail.innerHTML = origin === 'store' ? '<i>♛</i> BACK TO STORE' : '<i>♛</i> BACK TO COLLECTION';
   ui.cosmeticDetail.classList.remove('hidden');
-  (acquired ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
+  (acquired || storeExclusive ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
+  if (origin === 'collection') acknowledgeNewCosmetic(cosmetic.id);
 };
 
 const closeCosmeticDetail = () => {
   ui.cosmeticDetail.classList.add('hidden');
-  ui.vaultCollection.querySelector(`[data-cosmetic-id="${selectedCosmeticDetailId}"]`)?.focus({ preventScroll: true });
+  const origin = selectedCosmeticOrigin === 'store' ? ui.storeCatalog : ui.vaultCollection;
+  origin.querySelector(`[data-cosmetic-id="${selectedCosmeticDetailId}"]`)?.focus({ preventScroll: true });
+};
+
+const showStorePurchaseReveal = cosmeticId => {
+  const cosmetic = COSMETIC_BY_ID[cosmeticId];
+  const tier = cosmetic ? RARITY_BY_KEY[cosmetic.rarity] : null;
+  if (!cosmetic || !tier) return;
+  ui.cosmeticDetail.classList.add('hidden');
+  ui.storePurchaseReveal.style.setProperty('--tier-color', tier.color);
+  ui.storePurchaseImage.src = cosmeticSpriteUrl(cosmetic);
+  ui.storePurchaseTier.textContent = `${tier.name} · STORE EXCLUSIVE`;
+  ui.storePurchaseName.textContent = cosmetic.name;
+  ui.storePurchaseReveal.classList.remove('hidden');
+  void ui.storePurchaseReveal.offsetWidth;
+  ui.storePurchaseContinue.focus({ preventScroll: true });
+};
+
+const closeStorePurchaseReveal = () => {
+  ui.storePurchaseReveal.classList.add('hidden');
+  ui.cosmeticDetail.classList.add('hidden');
+  renderVault();
+  ui.storeCatalog.querySelector(`[data-cosmetic-id="${selectedCosmeticDetailId}"]`)?.focus({ preventScroll: true });
 };
 
 const playCrateOpeningCinematic = async ({ signal = false, tier = 'uncommon' } = {}) => {
@@ -386,6 +560,7 @@ const openVault = () => {
   renderVaultOddsVisibility();
   ui.vaultOverlay.classList.remove('hidden');
   if (serverEconomy && !serverEconomyReady) void connectServerEconomy().then(() => renderVault());
+  if (serverEconomy && !storeCatalogLoaded) void loadCrownStore();
   const pending = walletState().vault.pendingReward;
   if (pending) showCrateReveal(pending);
   else ui.openCrate.focus({ preventScroll: true });
@@ -1045,6 +1220,8 @@ const returnToMenu = () => {
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
+  ui.storeRename.classList.add('hidden');
+  ui.storePurchaseReveal.classList.add('hidden');
   ui.hud.classList.add('hidden');
   ui.dashButton.classList.add('hidden');
   ui.pauseButton.classList.add('hidden');
@@ -1081,9 +1258,23 @@ const closePwaInstallHelp = () => {
   ui.installApp.focus({ preventScroll: true });
 };
 
+const renderPwaReleaseInfo = () => {
+  const info = pwaReleaseInfo;
+  ui.pwaUpdateVersion.textContent = info?.build
+    ? `SYSTEM UPDATE · VER ${info.release || '?'} · BUILD ${info.build}`
+    : 'SYSTEM UPDATE';
+  ui.pwaReleaseTitle.textContent = info?.title || "WHAT'S NEW";
+  ui.pwaReleaseNotes.replaceChildren(...(info?.notes || ['NEW ARCADE CONTENT AND POLISH']).map(note => {
+    const item = document.createElement('li');
+    item.textContent = note;
+    return item;
+  }));
+};
+
 const presentPwaUpdate = (origin = 'menu') => {
   if (!pwaUpdateReady || (origin === 'menu' && pwaUpdateDeferred) || game.active) return;
   pwaOverlayReturn = origin;
+  renderPwaReleaseInfo();
   ui.settingsOverlay.classList.add('hidden');
   ui.pwaUpdateOverlay.classList.remove('hidden');
   ui.applyPwaUpdate.focus({ preventScroll: true });
@@ -1344,6 +1535,19 @@ ui.accountRecovery.addEventListener('click', async () => {
 });
 ui.closeLeaderboard.addEventListener('click', closeLeaderboard);
 ui.closeVault.addEventListener('click', closeVault);
+ui.vaultCratesTab.addEventListener('click', () => {
+  vaultMode = 'crates';
+  renderVault();
+  ui.openCrate.focus({ preventScroll: true });
+  sfx.play('confirm');
+});
+ui.vaultStoreTab.addEventListener('click', () => {
+  vaultMode = 'store';
+  renderVault();
+  if (serverEconomy && !storeCatalogLoaded) void loadCrownStore();
+  ui.storeCatalog.querySelector('button')?.focus({ preventScroll: true });
+  sfx.play('confirm');
+});
 ui.vaultOddsToggle.addEventListener('click', () => {
   vaultOddsExpanded = !vaultOddsExpanded;
   renderVaultOddsVisibility();
@@ -1360,19 +1564,90 @@ ui.watchAd.addEventListener('click', showRewardedCrate);
 ui.vaultWatchAd.addEventListener('click', showRewardedCrate);
 ui.cancelRewardedAd.addEventListener('click', () => rewardedAd.cancel());
 ui.closeCosmeticDetail.addEventListener('click', closeCosmeticDetail);
+ui.storePurchaseContinue.addEventListener('click', closeStorePurchaseReveal);
+ui.closeStoreRename.addEventListener('click', () => {
+  if (storeBusySku) return;
+  ui.storeRename.classList.add('hidden');
+  ui.storeCatalog.querySelector('[data-store-sku="service_callsign_rename"]')?.focus({ preventScroll: true });
+});
+ui.storeCallsignInput.addEventListener('input', () => {
+  const normalized = ui.storeCallsignInput.value.toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 10);
+  if (ui.storeCallsignInput.value !== normalized) ui.storeCallsignInput.value = normalized;
+});
+ui.storeRenameForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (storeBusySku || localPreview || currentAccountState() !== 'signed-in') return;
+  const callsign = ui.storeCallsignInput.value.trim().toUpperCase();
+  if (!ui.storeRenameForm.reportValidity() || callsign === playerProfile?.displayName) {
+    ui.storeRenameStatus.textContent = callsign === playerProfile?.displayName ? 'CHOOSE A NEW CALLSIGN' : 'CHECK THE CALLSIGN FORMAT';
+    return;
+  }
+  try {
+    storeBusySku = 'service_callsign_rename';
+    ui.storeRenameSubmit.disabled = true;
+    ui.storeRenameStatus.textContent = 'SECURING NEW ARCADE ID...';
+    const result = await playerAccount.renameCallsign(callsign);
+    playerProfile = result.profile || playerProfile;
+    await refreshServerWallet();
+    storeMessage = `CALLSIGN CHANGED · WELCOME ${playerProfile.displayName}`;
+    ui.storeCurrentCallsign.textContent = playerProfile.displayName;
+    ui.storeCallsignInput.value = '';
+    ui.storeRenameStatus.textContent = `CALLSIGN SECURED · ◆ ${Number(result.cost || 500).toLocaleString('en-US')} SPENT`;
+    renderMenuIdentity();
+    renderVault();
+    sfx.play('perk');
+    if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
+  } catch (error) {
+    const messages = {
+      CALLSIGN_TAKEN: 'THAT CALLSIGN IS ALREADY TAKEN',
+      RENAME_COOLDOWN: 'CALLSIGN CHANGE IS STILL ON COOLDOWN',
+      NOT_ENOUGH_SHARDS: 'NOT ENOUGH SHARDS',
+    };
+    ui.storeRenameStatus.textContent = messages[error?.code] || String(error?.message || 'CALLSIGN SERVICE UNAVAILABLE').toUpperCase();
+  } finally {
+    storeBusySku = '';
+    ui.storeRenameSubmit.disabled = false;
+    renderVault();
+  }
+});
 ui.equipCosmetic.addEventListener('click', async () => {
+  const state = walletState();
+  const acquired = selectedCosmeticDetailId === 'ship_default' || Boolean(state.inventory.cosmetics[selectedCosmeticDetailId]);
+  const storeProduct = storeProductForCosmetic(selectedCosmeticDetailId);
+  let purchased = false;
   try {
     ui.equipCosmetic.disabled = true;
-    if (localPreview) shardWallet.equipCosmetic(selectedCosmeticDetailId);
+    if (!acquired && storeProduct) {
+      storeBusySku = storeProduct.sku;
+      storeMessage = 'AUTHORIZING STORE PURCHASE...';
+      ui.storeStatus.textContent = storeMessage;
+      if (localPreview) shardWallet.purchaseStoreItem(storeProduct.sku);
+      else acceptServerWallet(await playerAccount.purchaseStoreItem(storeProduct.sku));
+      purchased = true;
+      storeMessage = `${storeProduct.name} ACQUIRED · READY TO EQUIP`;
+      ui.storeStatus.textContent = storeMessage;
+      sfx.play('vault-royal');
+      if (hapticsEnabled) navigator.vibrate?.([35, 30, 70]);
+    } else if (localPreview) shardWallet.equipCosmetic(selectedCosmeticDetailId);
     else acceptServerWallet(await playerAccount.equipCosmetic(selectedCosmeticDetailId));
     applyEquippedShip();
     renderVault();
-    showCosmeticDetail(selectedCosmeticDetailId);
-    sfx.play('perk');
-    if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
-  } catch {
-    ui.cosmeticDetailHint.textContent = 'THIS CHASSIS IS STILL LOCKED';
+    if (purchased) showStorePurchaseReveal(selectedCosmeticDetailId);
+    else showCosmeticDetail(selectedCosmeticDetailId, selectedCosmeticOrigin);
+    if (acquired) {
+      sfx.play('perk');
+      if (hapticsEnabled) navigator.vibrate?.([35, 25, 55]);
+    }
+  } catch (error) {
+    ui.cosmeticDetailHint.textContent = error?.code === 'NOT_ENOUGH_SHARDS'
+      ? 'NOT ENOUGH SHARDS FOR THIS ACQUISITION'
+      : error?.code === 'ALREADY_OWNED'
+        ? 'ITEM ALREADY OWNED · INVENTORY REFRESHED'
+        : 'STORE LINK FAILED · NO SHARDS WERE SPENT';
     ui.equipCosmetic.disabled = false;
+  } finally {
+    storeBusySku = '';
+    renderVault();
   }
 });
 ui.openCrate.addEventListener('click', async () => {
@@ -1493,6 +1768,8 @@ addEventListener('keydown', event => {
   if (!ui.pwaUpdateOverlay.classList.contains('hidden')) deferPwaUpdate();
   else if (!ui.pwaInstallOverlay.classList.contains('hidden')) closePwaInstallHelp();
   else if (!ui.rewardedAdOverlay.classList.contains('hidden')) rewardedAd.cancel();
+  else if (!ui.storePurchaseReveal.classList.contains('hidden')) closeStorePurchaseReveal();
+  else if (!ui.storeRename.classList.contains('hidden') && !storeBusySku) ui.closeStoreRename.click();
   else if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
@@ -1545,7 +1822,8 @@ addEventListener('keydown', event => {
 pwaManager = new PwaManager({
   preview: pwaPreviewMode,
   onInstallChange: renderSettings,
-  onUpdateReady: () => {
+  onUpdateReady: ({ releaseInfo } = {}) => {
+    pwaReleaseInfo = releaseInfo || pwaReleaseInfo;
     pwaUpdateReady = true;
     renderSettings();
     if (!game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
@@ -1555,7 +1833,11 @@ pwaManager.register();
 renderSettings();
 if (pwaPreviewMode && debugParams.has('update')) {
   pwaUpdateReady = true;
-  queueMicrotask(() => { renderSettings(); presentPwaUpdate('menu'); });
+  pwaManager.getReleaseInfo().then(releaseInfo => {
+    pwaReleaseInfo = releaseInfo;
+    renderSettings();
+    presentPwaUpdate('menu');
+  });
 }
 loadLeaderboard(selectedDifficulty, true);
 

@@ -112,15 +112,36 @@ create table if not exists public.player_inventory (
   cosmetic_id text not null,
   source text not null check (source in ('crate', 'shop', 'sponsored', 'grant', 'legacy')),
   acquired_at timestamptz not null default now(),
+  seen_at timestamptz,
   primary key (user_id, cosmetic_id)
 );
+
+alter table public.player_inventory
+  add column if not exists seen_at timestamptz;
 
 create table if not exists public.cosmetic_catalog (
   id text primary key,
   rarity text not null check (rarity in ('uncommon', 'rare', 'royal', 'mythic', 'sovereign')),
   sort_order integer not null,
-  active boolean not null default true
+  active boolean not null default true,
+  acquisition_source text not null default 'crate' check (acquisition_source in ('crate', 'store', 'event'))
 );
+
+alter table public.cosmetic_catalog
+  add column if not exists acquisition_source text not null default 'crate';
+do $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+     where conname = 'cosmetic_catalog_acquisition_source_check'
+       and conrelid = 'public.cosmetic_catalog'::regclass
+  ) then
+    alter table public.cosmetic_catalog
+      add constraint cosmetic_catalog_acquisition_source_check
+      check (acquisition_source in ('crate', 'store', 'event'));
+  end if;
+end
+$$;
 
 insert into public.cosmetic_catalog (id, rarity, sort_order) values
   ('ship_verdant_scout', 'uncommon', 10),
@@ -133,6 +154,44 @@ insert into public.cosmetic_catalog (id, rarity, sort_order) values
   ('ship_crown_sovereign', 'sovereign', 80)
 on conflict (id) do update
   set rarity = excluded.rarity,
+      sort_order = excluded.sort_order,
+      active = true;
+
+insert into public.cosmetic_catalog (id, rarity, sort_order, acquisition_source) values
+  ('ship_gilded_viper', 'royal', 110, 'store'),
+  ('ship_neon_basilisk', 'mythic', 120, 'store')
+on conflict (id) do update
+  set rarity = excluded.rarity,
+      sort_order = excluded.sort_order,
+      acquisition_source = excluded.acquisition_source,
+      active = true;
+
+create table if not exists public.store_catalog (
+  sku text primary key,
+  product_type text not null check (product_type in ('cosmetic', 'service')),
+  cosmetic_id text references public.cosmetic_catalog(id) on delete restrict,
+  name text not null,
+  description text not null,
+  price integer not null check (price between 1 and 1000000),
+  rarity text not null check (rarity in ('standard', 'uncommon', 'rare', 'royal', 'mythic', 'sovereign')),
+  sort_order integer not null,
+  active boolean not null default true,
+  available_from timestamptz,
+  available_until timestamptz,
+  check ((product_type = 'cosmetic' and cosmetic_id is not null) or (product_type = 'service' and cosmetic_id is null))
+);
+
+insert into public.store_catalog (sku, product_type, cosmetic_id, name, description, price, rarity, sort_order) values
+  ('store_ship_gilded_viper', 'cosmetic', 'ship_gilded_viper', 'GILDED VIPER', 'STORE-EXCLUSIVE SHIP CHASSIS', 1250, 'royal', 10),
+  ('store_ship_neon_basilisk', 'cosmetic', 'ship_neon_basilisk', 'NEON BASILISK', 'STORE-EXCLUSIVE SHIP CHASSIS', 2500, 'mythic', 20),
+  ('service_callsign_rename', 'service', null, 'CALLSIGN CHANGE', 'NEW ARCADE ID · 7 DAY COOLDOWN', 500, 'standard', 30)
+on conflict (sku) do update
+  set product_type = excluded.product_type,
+      cosmetic_id = excluded.cosmetic_id,
+      name = excluded.name,
+      description = excluded.description,
+      price = excluded.price,
+      rarity = excluded.rarity,
       sort_order = excluded.sort_order,
       active = true;
 
@@ -166,12 +225,14 @@ create index if not exists auth_bootstrap_events_rate_idx
 alter table public.player_wallets enable row level security;
 alter table public.player_inventory enable row level security;
 alter table public.cosmetic_catalog enable row level security;
+alter table public.store_catalog enable row level security;
 alter table public.economy_transactions enable row level security;
 alter table public.auth_bootstrap_events enable row level security;
 
 revoke all on table public.player_wallets from anon, authenticated;
 revoke all on table public.player_inventory from anon, authenticated;
 revoke all on table public.cosmetic_catalog from anon, authenticated;
+revoke all on table public.store_catalog from anon, authenticated;
 revoke all on table public.economy_transactions from anon, authenticated;
 revoke all on table public.auth_bootstrap_events from anon, authenticated;
 
@@ -358,12 +419,12 @@ begin
 
   select count(*) into candidate_count
     from public.cosmetic_catalog
-   where rarity = selected_tier and active;
+   where rarity = selected_tier and active and acquisition_source = 'crate';
   if candidate_count = 0 then raise exception 'empty cosmetic tier'; end if;
 
   select id into selected_cosmetic
     from public.cosmetic_catalog
-   where rarity = selected_tier and active
+   where rarity = selected_tier and active and acquisition_source = 'crate'
    order by sort_order
    offset (p_cosmetic_roll % candidate_count)
    limit 1;
@@ -375,7 +436,7 @@ begin
   ) then
     select count(*) into candidate_count
       from public.cosmetic_catalog catalog
-     where catalog.rarity = selected_tier and catalog.active
+     where catalog.rarity = selected_tier and catalog.active and catalog.acquisition_source = 'crate'
        and not exists (
          select 1 from public.player_inventory owned
           where owned.user_id = p_user_id and owned.cosmetic_id = catalog.id
@@ -384,7 +445,7 @@ begin
     if candidate_count > 0 then
       select catalog.id into selected_cosmetic
         from public.cosmetic_catalog catalog
-       where catalog.rarity = selected_tier and catalog.active
+       where catalog.rarity = selected_tier and catalog.active and catalog.acquisition_source = 'crate'
          and not exists (
            select 1 from public.player_inventory owned
             where owned.user_id = p_user_id and owned.cosmetic_id = catalog.id
@@ -395,7 +456,7 @@ begin
     else
       select count(*) into candidate_count
         from public.cosmetic_catalog catalog
-       where catalog.active
+       where catalog.active and catalog.acquisition_source = 'crate'
          and not exists (
            select 1 from public.player_inventory owned
             where owned.user_id = p_user_id and owned.cosmetic_id = catalog.id
@@ -403,7 +464,7 @@ begin
       if candidate_count > 0 then
         select catalog.id into selected_cosmetic
           from public.cosmetic_catalog catalog
-         where catalog.active
+         where catalog.active and catalog.acquisition_source = 'crate'
            and not exists (
              select 1 from public.player_inventory owned
               where owned.user_id = p_user_id and owned.cosmetic_id = catalog.id
@@ -476,6 +537,133 @@ $$;
 
 revoke all on function public.open_crown_crate(uuid, uuid, integer, integer) from public, anon, authenticated;
 grant execute on function public.open_crown_crate(uuid, uuid, integer, integer) to service_role;
+
+-- Atomically purchases one active direct-sale cosmetic. The database resolves
+-- the SKU and price; browser-supplied product details are never trusted.
+create or replace function public.purchase_store_cosmetic(
+  p_user_id uuid,
+  p_sku text,
+  p_request_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  wallet public.player_wallets%rowtype;
+  product public.store_catalog%rowtype;
+  existing_tx public.economy_transactions%rowtype;
+  resulting_balance integer;
+  purchased_at timestamptz;
+  outcome jsonb;
+begin
+  if p_user_id is null or p_request_id is null or p_sku is null then
+    return jsonb_build_object('error', 'INVALID_REQUEST');
+  end if;
+
+  insert into public.player_wallets (user_id)
+  values (p_user_id)
+  on conflict (user_id) do nothing;
+
+  select * into wallet
+    from public.player_wallets
+   where user_id = p_user_id
+   for update;
+
+  select * into existing_tx
+    from public.economy_transactions
+   where user_id = p_user_id and external_id = 'store:' || p_request_id::text;
+  if found then
+    return jsonb_build_object(
+      'duplicateRequest', true,
+      'balance', existing_tx.balance_after,
+      'purchase', existing_tx.metadata->'purchase'
+    );
+  end if;
+
+  select * into product
+    from public.store_catalog
+   where sku = p_sku
+     and product_type = 'cosmetic'
+     and active
+     and (available_from is null or available_from <= now())
+     and (available_until is null or available_until > now());
+  if not found then return jsonb_build_object('error', 'PRODUCT_UNAVAILABLE'); end if;
+
+  if not exists (
+    select 1 from public.cosmetic_catalog
+     where id = product.cosmetic_id and active and acquisition_source = 'store'
+  ) then
+    return jsonb_build_object('error', 'PRODUCT_UNAVAILABLE');
+  end if;
+
+  if exists (
+    select 1 from public.player_inventory
+     where user_id = p_user_id and cosmetic_id = product.cosmetic_id
+  ) then
+    return jsonb_build_object('error', 'ALREADY_OWNED', 'balance', wallet.balance, 'cosmeticId', product.cosmetic_id);
+  end if;
+
+  if wallet.balance < product.price then
+    return jsonb_build_object('error', 'NOT_ENOUGH_SHARDS', 'balance', wallet.balance, 'cost', product.price);
+  end if;
+
+  purchased_at := now();
+  insert into public.player_inventory (user_id, cosmetic_id, source, acquired_at)
+  values (p_user_id, product.cosmetic_id, 'shop', purchased_at);
+
+  update public.player_wallets
+     set balance = balance - product.price,
+         updated_at = purchased_at
+   where user_id = p_user_id
+   returning balance into resulting_balance;
+
+  outcome := jsonb_build_object(
+    'sku', product.sku,
+    'type', product.product_type,
+    'cosmeticId', product.cosmetic_id,
+    'name', product.name,
+    'price', product.price,
+    'rarity', product.rarity,
+    'purchasedAt', purchased_at
+  );
+
+  insert into public.economy_transactions (user_id, external_id, kind, amount, balance_after, metadata)
+  values (
+    p_user_id,
+    'store:' || p_request_id::text,
+    'store_purchase',
+    -product.price,
+    resulting_balance,
+    jsonb_build_object('purchase', outcome)
+  );
+
+  return jsonb_build_object('duplicateRequest', false, 'balance', resulting_balance, 'purchase', outcome);
+end;
+$$;
+
+revoke all on function public.purchase_store_cosmetic(uuid, text, uuid) from public, anon, authenticated;
+grant execute on function public.purchase_store_cosmetic(uuid, text, uuid) to service_role;
+
+create or replace function public.mark_inventory_seen(
+  p_user_id uuid,
+  p_cosmetic_id text
+) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.player_inventory
+     set seen_at = coalesce(seen_at, now())
+   where user_id = p_user_id
+     and cosmetic_id = p_cosmetic_id;
+  return found;
+end;
+$$;
+
+revoke all on function public.mark_inventory_seen(uuid, text) from public, anon, authenticated;
+grant execute on function public.mark_inventory_seen(uuid, text) to service_role;
 
 create or replace function public.equip_player_ship(
   p_user_id uuid,

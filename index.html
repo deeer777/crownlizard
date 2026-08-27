@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260827-78-late-game-balance">
+  <link rel="stylesheet" href="./styles.css?v=20260827-79-crown-store-final7">
 </head>
 <body>
   <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
@@ -170,9 +170,13 @@
 
   <section id="pwaUpdateOverlay" class="overlay system-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="pwaUpdateTitle">
     <div class="system-panel pwa-panel">
-      <div class="eyebrow">SYSTEM UPDATE</div>
+      <div id="pwaUpdateVersion" class="eyebrow">SYSTEM UPDATE</div>
       <h2 id="pwaUpdateTitle">NEW BUILD READY</h2>
-      <p class="pwa-update-copy">YOUR RUN IS SAFE. UPDATE NOW TO LOAD THE LATEST ARCADE BUILD.</p>
+      <div class="pwa-release-notes" aria-labelledby="pwaReleaseTitle">
+        <strong id="pwaReleaseTitle">WHAT'S NEW</strong>
+        <ul id="pwaReleaseNotes"><li>NEW ARCADE CONTENT AND POLISH</li></ul>
+      </div>
+      <p class="pwa-update-copy">YOUR RUN IS SAFE. UPDATE TO LOAD THE NEW BUILD.</p>
       <button id="applyPwaUpdate" class="system-action" type="button"><i>♛</i> UPDATE NOW</button>
       <button id="laterPwaUpdate" class="system-link" type="button">LATER</button>
     </div>
@@ -231,7 +235,11 @@
       <h2 id="vaultTitle">CROWN VAULT</h2>
       <div class="vault-wallet"><span>YOUR SHARDS</span><strong id="vaultBalance">◆ 0</strong></div>
       <div id="vaultSyncStatus" class="vault-sync-status" data-state="guest">DEVICE VAULT · GUEST</div>
-      <div class="vault-body">
+      <div class="vault-mode-tabs" role="tablist" aria-label="Crown Vault section">
+        <button id="vaultCratesTab" class="selected" type="button" role="tab" aria-selected="true" aria-controls="vaultBody"><i>♛</i> CRATES &amp; COLLECTION</button>
+        <button id="vaultStoreTab" type="button" role="tab" aria-selected="false" aria-controls="vaultStore"><i>♛</i> CROWN STORE</button>
+      </div>
+      <div id="vaultBody" class="vault-body" role="tabpanel">
         <div class="vault-crate-column">
           <div class="crown-crate" aria-hidden="true"><span></span><img id="crownCrateSprite" alt=""></div>
           <h3>CROWN CRATE</h3>
@@ -250,7 +258,7 @@
         <div class="vault-info-column">
           <button id="vaultOddsToggle" class="vault-section-title vault-odds-toggle" type="button" aria-expanded="false" aria-controls="vaultOdds"><span>DROP ODDS</span><b>VIEW · ▼</b></button>
           <div id="vaultOdds" class="vault-odds hidden"></div>
-          <div class="vault-section-title collection-title"><span>SHIP COLLECTION</span><b id="vaultOwned">0 / 8</b></div>
+          <div class="vault-section-title collection-title"><span>SHIP COLLECTION</span><b id="vaultOwned">0 / 10</b></div>
           <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
             <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship">SHIPS</button>
             <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
@@ -260,8 +268,40 @@
           <div id="vaultCollection" class="vault-collection"></div>
         </div>
       </div>
+      <div id="vaultStore" class="vault-store hidden" role="tabpanel">
+        <div class="store-header">
+          <div><span>DIRECT ACQUISITIONS</span><strong>NO RANDOM ROLLS</strong></div>
+          <p>STORE EXCLUSIVES NEVER DROP FROM CRATES</p>
+        </div>
+        <div id="storeCatalog" class="store-catalog" aria-live="polite"></div>
+        <p id="storeStatus" class="store-status" role="status"></p>
+      </div>
       <p class="vault-fineprint">DUPLICATES ARE SALVAGED FOR SHARDS · COSMETICS ONLY</p>
       <button id="closeVault" class="system-action" type="button"><i>♛</i> BACK</button>
+    </div>
+
+    <div id="storeRename" class="store-rename hidden" role="dialog" aria-modal="true" aria-labelledby="storeRenameTitle">
+      <form id="storeRenameForm" class="store-rename-panel">
+        <div class="eyebrow">CROWN STORE SERVICE</div>
+        <h3 id="storeRenameTitle">CHANGE CALLSIGN</h3>
+        <div class="store-current-name"><span>CURRENT ARCADE ID</span><strong id="storeCurrentCallsign">PLAYER</strong></div>
+        <label>NEW CALLSIGN<input id="storeCallsignInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" minlength="3" maxlength="10" pattern="[A-Za-z0-9][A-Za-z0-9_]*[A-Za-z0-9]" required></label>
+        <p>3–10 CHARACTERS · A–Z 0–9 _ · ONE CHANGE EVERY 7 DAYS</p>
+        <p id="storeRenameStatus" class="store-rename-status" role="status"></p>
+        <button id="storeRenameSubmit" class="system-action" type="submit"><i>♛</i> CONFIRM · ◆ 500</button>
+        <button id="closeStoreRename" class="system-action" type="button"><i>♛</i> BACK TO STORE</button>
+      </form>
+    </div>
+    <div id="storePurchaseReveal" class="store-purchase-reveal hidden" role="dialog" aria-modal="true" aria-labelledby="storePurchaseName">
+      <div class="store-purchase-panel">
+        <div class="store-purchase-seal">♛</div>
+        <div class="eyebrow">ACQUISITION COMPLETE</div>
+        <div class="store-purchase-ship"><span></span><img id="storePurchaseImage" alt="Purchased ship chassis"></div>
+        <div id="storePurchaseTier" class="store-purchase-tier">ROYAL · STORE EXCLUSIVE</div>
+        <h3 id="storePurchaseName">GILDED VIPER</h3>
+        <p>ADDED TO YOUR COLLECTION</p>
+        <button id="storePurchaseContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
+      </div>
     </div>
   </section>
 
@@ -308,6 +348,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260827-78-late-game-balance"></script>
+  <script type="module" src="./src/main.js?v=20260827-79-crown-store-final7"></script>
 </body>
 </html>

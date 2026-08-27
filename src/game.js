@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260826-76-balance-pass1-final';
+import { CONFIG } from './config.js?v=20260827-79-crown-store-final';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

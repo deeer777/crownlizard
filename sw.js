@@ -1,29 +1,32 @@
-const CACHE_VERSION = 'crown-lizard-shell-v78-late-game-balance';
+const CACHE_VERSION = 'crown-lizard-shell-v79-crown-store-final7';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/styles.css?v=20260827-78-late-game-balance',
-  '/src/main.js?v=20260827-78-late-game-balance',
-  '/src/config.js?v=20260827-78-late-game-balance',
+  '/release.json',
+  '/styles.css?v=20260827-79-crown-store-final7',
+  '/src/main.js?v=20260827-79-crown-store-final7',
+  '/src/config.js?v=20260827-79-crown-store-final',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260820-26',
-  '/src/audio.js?v=20260827-78-late-game-balance',
-  '/src/game.js?v=20260827-78-late-game-balance',
-  '/src/economy.js?v=20260824-45-security',
-  '/src/cosmetics.js?v=20260824-45-security',
+  '/src/audio.js?v=20260827-79-crown-store-final',
+  '/src/game.js?v=20260827-79-crown-store-final',
+  '/src/economy.js?v=20260827-79-crown-store-final4',
+  '/src/cosmetics.js?v=20260827-79-crown-store-final',
   '/src/leaderboard.js?v=20260824-45-cutover',
-  '/src/player-account.js?v=20260826-73-cinematic-endings',
+  '/src/player-account.js?v=20260827-79-crown-store-final4',
   '/src/account-presentation.js?v=20260826-73-cinematic-endings',
   '/src/rewarded-ad.js?v=20260824-45',
-  '/src/pwa.js?v=20260827-78-late-game-balance',
+  '/src/pwa.js?v=20260827-79-crown-store-final6',
   '/assets/fonts/PressStart2P-Regular.ttf',
   '/assets/fonts/Silkscreen-Regular.ttf',
   '/assets/fonts/Silkscreen-Bold.ttf',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
   '/assets/icons/apple-touch-icon.png',
-  '/assets/runtime/sprites/crown-lizard-player-v1.png'
+  '/assets/runtime/sprites/crown-lizard-player-v1.png',
+  '/assets/sprites/ship-gilded-viper-v1.png',
+  '/assets/sprites/ship-neon-basilisk-v1.png'
 ];
 
 self.addEventListener('install', event => {

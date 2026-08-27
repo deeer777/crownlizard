@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { installContext } from '../src/pwa.js';
+import { installContext, normalizeReleaseInfo } from '../src/pwa.js';
 
 const manifest = JSON.parse(readFileSync(new URL('../manifest.webmanifest', import.meta.url), 'utf8'));
 const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
+const release = JSON.parse(readFileSync(new URL('../release.json', import.meta.url), 'utf8'));
 
 assert.equal(manifest.id, '/', 'the installed identity remains stable across start URL changes');
 assert.equal(manifest.display, 'standalone', 'the game launches without browser chrome');
@@ -32,7 +33,12 @@ assert.match(serviceWorker, /request\.headers\.has\('range'\)/, 'media range req
 assert.match(serviceWorker, /request\.mode === 'navigate'/, 'navigation uses its dedicated network-first strategy');
 assert.match(serviceWorker, /SKIP_WAITING/, 'updates only activate after explicit player confirmation');
 assert.match(headers, /\/sw\.js\s+Cache-Control: no-cache, no-store, must-revalidate/, 'Cloudflare never pins an obsolete service worker');
+assert.match(headers, /\/release\.json\s+Cache-Control: no-cache, no-store, must-revalidate/, 'release notes always describe the waiting build');
 assert.match(headers, /\/\s+Cache-Control: no-cache, must-revalidate\s*$/, 'the installed root entry point always revalidates before loading a build');
+assert.match(serviceWorker, /'\/release\.json'/, 'the current release notes remain available offline');
+assert.equal(release.notes.length, 3, 'the mobile update screen stays focused on three release notes');
+assert.deepEqual(normalizeReleaseInfo({ release: '1.2.3', build: 80, title: ' UPDATE ', notes: [' ONE ', '', 'TWO'] }), { release: '1.2.3', build: 80, title: 'UPDATE', notes: ['ONE', 'TWO'] }, 'release metadata is normalized before rendering');
+assert.equal(normalizeReleaseInfo(null).notes.length, 1, 'invalid release metadata receives a safe fallback');
 
 assert.deepEqual(installContext({ userAgent: 'iPhone', standalone: false }), { installed: false, nativePrompt: false, instructions: true }, 'iPhone receives manual Add to Home Screen help');
 assert.deepEqual(installContext({ standalone: true, hasPrompt: true }), { installed: true, nativePrompt: false, instructions: false }, 'installed apps never advertise installation again');

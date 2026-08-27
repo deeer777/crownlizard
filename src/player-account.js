@@ -1,6 +1,7 @@
 const SESSION_KEY = 'cl:player-session:v1';
 const PENDING_CRATE_KEY = 'cl:pending-crate:v1';
 const PENDING_SETTLEMENT_KEY = 'cl:pending-settlement:v1';
+const PENDING_STORE_KEY = 'cl:pending-store:v1';
 const PASSWORD_SETUP_KEY = 'cl:account-password:v1';
 const REQUEST_TIMEOUT = 20000;
 
@@ -48,6 +49,8 @@ const requestJson = async (url, options = {}) => {
     if (!response.ok) {
       const error = new Error(payload.error || 'Player service unavailable.');
       error.status = response.status;
+      error.code = String(payload.code || '');
+      if (payload.availableAt) error.availableAt = payload.availableAt;
       throw error;
     }
     return payload;
@@ -248,6 +251,14 @@ export class PlayerAccount {
     });
   }
 
+  renameCallsign(callsign, requestId = globalThis.crypto?.randomUUID?.()) {
+    if (!requestId) throw new Error('Secure store identifiers are unavailable.');
+    return this.authorizedRequest('/api/player/profile/callsign', {
+      method: 'PUT',
+      body: JSON.stringify({ callsign, requestId }),
+    });
+  }
+
   async bootstrapWallet() {
     if (this.session) return this.getWallet();
     const payload = await requestJson('/api/player/bootstrap', { method: 'POST', body: '{}' });
@@ -372,6 +383,45 @@ export class PlayerAccount {
 
   equipCosmetic(cosmeticId) {
     return this.authorizedRequest('/api/vault/equip', {
+      method: 'POST',
+      body: JSON.stringify({ cosmeticId }),
+    });
+  }
+
+  getStore() {
+    return this.authorizedRequest('/api/vault/store');
+  }
+
+  pendingStorePurchase(sku) {
+    try {
+      const pending = JSON.parse(this.storage?.getItem(PENDING_STORE_KEY) || 'null');
+      if (pending?.sku === sku && typeof pending.requestId === 'string') return pending.requestId;
+    } catch {}
+    if (!globalThis.crypto?.randomUUID) throw new Error('Secure store identifiers are unavailable.');
+    const requestId = globalThis.crypto.randomUUID();
+    try { this.storage?.setItem(PENDING_STORE_KEY, JSON.stringify({ sku, requestId })); } catch {}
+    return requestId;
+  }
+
+  async purchaseStoreItem(sku) {
+    const requestId = this.pendingStorePurchase(sku);
+    try {
+      const result = await this.authorizedRequest('/api/vault/store/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ sku, requestId }),
+      });
+      try { this.storage?.removeItem(PENDING_STORE_KEY); } catch {}
+      return result;
+    } catch (error) {
+      if ([400, 404, 409].includes(error.status)) {
+        try { this.storage?.removeItem(PENDING_STORE_KEY); } catch {}
+      }
+      throw error;
+    }
+  }
+
+  markCosmeticSeen(cosmeticId) {
+    return this.authorizedRequest('/api/vault/inventory/seen', {
       method: 'POST',
       body: JSON.stringify({ cosmeticId }),
     });

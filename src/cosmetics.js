@@ -13,7 +13,7 @@ export const COSMETIC_TIERS = Object.freeze([
 
 export const DEFAULT_COSMETIC = Object.freeze({ id: 'ship_default', name: 'CROWN LIZARD', slot: 'ship', rarity: 'standard', source: ['default'], shardPrice: null, sprite: 'crown-lizard-player-v1.png' });
 
-export const COSMETICS = Object.freeze([
+export const CRATE_COSMETICS = Object.freeze([
   Object.freeze({ id: 'ship_verdant_scout', name: 'VERDANT SCOUT', slot: 'ship', rarity: 'uncommon', source: ['crate'], shardPrice: null, sprite: 'ship-verdant-scout-v1.png' }),
   Object.freeze({ id: 'ship_ember_runner', name: 'EMBER RUNNER', slot: 'ship', rarity: 'uncommon', source: ['crate'], shardPrice: null, sprite: 'ship-ember-runner-v1.png' }),
   Object.freeze({ id: 'ship_crystal_dart', name: 'CRYSTAL DART', slot: 'ship', rarity: 'uncommon', source: ['crate'], shardPrice: null, sprite: 'ship-crystal-dart-v1.png' }),
@@ -23,6 +23,36 @@ export const COSMETICS = Object.freeze([
   Object.freeze({ id: 'ship_rift_phantom', name: 'RIFT PHANTOM', slot: 'ship', rarity: 'mythic', source: ['crate'], shardPrice: null, sprite: 'ship-rift-phantom-v1.png' }),
   Object.freeze({ id: 'ship_crown_sovereign', name: 'CROWN SOVEREIGN', slot: 'ship', rarity: 'sovereign', source: ['crate'], shardPrice: null, sprite: 'ship-crown-sovereign-v1.png' }),
 ]);
+
+export const STORE_COSMETICS = Object.freeze([
+  Object.freeze({ id: 'ship_gilded_viper', name: 'GILDED VIPER', slot: 'ship', rarity: 'royal', source: ['store'], shardPrice: 1250, sprite: 'ship-gilded-viper-v1.png' }),
+  Object.freeze({ id: 'ship_neon_basilisk', name: 'NEON BASILISK', slot: 'ship', rarity: 'mythic', source: ['store'], shardPrice: 2500, sprite: 'ship-neon-basilisk-v1.png' }),
+]);
+
+export const STORE_PRODUCTS = Object.freeze([
+  ...STORE_COSMETICS.map((cosmetic, index) => Object.freeze({
+    sku: `store_${cosmetic.id}`,
+    type: 'cosmetic',
+    cosmeticId: cosmetic.id,
+    name: cosmetic.name,
+    description: 'STORE-EXCLUSIVE SHIP CHASSIS',
+    price: cosmetic.shardPrice,
+    rarity: cosmetic.rarity,
+    sortOrder: (index + 1) * 10,
+  })),
+  Object.freeze({
+    sku: 'service_callsign_rename',
+    type: 'service',
+    cosmeticId: null,
+    name: 'CALLSIGN CHANGE',
+    description: 'NEW ARCADE ID · 7 DAY COOLDOWN',
+    price: 500,
+    rarity: 'standard',
+    sortOrder: 30,
+  }),
+]);
+
+export const COSMETICS = Object.freeze([...CRATE_COSMETICS, ...STORE_COSMETICS]);
 
 export const COLLECTION_COSMETICS = Object.freeze([DEFAULT_COSMETIC, ...COSMETICS]);
 
@@ -47,7 +77,7 @@ export const rollTier = (random = secureRandom) => {
 };
 
 export const chooseCosmetic = (tierKey, random = secureRandom) => {
-  const choices = COSMETICS.filter(cosmetic => cosmetic.rarity === tierKey);
+  const choices = CRATE_COSMETICS.filter(cosmetic => cosmetic.rarity === tierKey);
   const index = Math.min(choices.length - 1, Math.floor(Math.max(0, Math.min(.999999, Number(random()) || 0)) * choices.length));
   return choices[index];
 };

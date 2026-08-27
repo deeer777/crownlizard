@@ -1,5 +1,9 @@
 # Crown Lizard — session handoff
 
+## Crown Network decisions
+
+De låsta produkt- och säkerhetsreglerna för kommande visuella Crown Duel-lobbyn och Global Serverboss finns i `CROWN_NETWORK_DESIGN.md`. Dokumentet är källan inför implementation och innehåller Crown Profile, normaliserad seedad PvP, invite-länkar, social skin-presentation, permanent Crown Armory, begränsad veteranbonus, bossfaser, serverägda bidrag och den beslutade byggordningen.
+
 Current production version: **67** (`VER 0.16.2`)
 Latest completed local version: **67** (`VER 0.16.2`)
 Test URL: `http://127.0.0.1:4174/?debug=1&touch=1&reload=62-cookie-handoff`

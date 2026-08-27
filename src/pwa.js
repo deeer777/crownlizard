@@ -4,6 +4,24 @@ export const installContext = ({ userAgent = '', standalone = false, hasPrompt =
   instructions: Boolean(!standalone && (preview || /iPad|iPhone|iPod/.test(userAgent))),
 });
 
+const FALLBACK_RELEASE = Object.freeze({
+  release: '',
+  build: null,
+  title: "WHAT'S NEW",
+  notes: Object.freeze(['NEW ARCADE CONTENT AND POLISH']),
+});
+
+export const normalizeReleaseInfo = value => {
+  if (!value || typeof value !== 'object') return FALLBACK_RELEASE;
+  const release = typeof value.release === 'string' && /^\d+\.\d+\.\d+$/.test(value.release.trim()) ? value.release.trim() : '';
+  const build = Number.isSafeInteger(value.build) && value.build > 0 ? value.build : null;
+  const title = typeof value.title === 'string' && value.title.trim() ? value.title.trim().slice(0, 32) : FALLBACK_RELEASE.title;
+  const notes = Array.isArray(value.notes)
+    ? value.notes.filter(note => typeof note === 'string' && note.trim()).slice(0, 3).map(note => note.trim().slice(0, 80))
+    : [];
+  return { release, build, title, notes: notes.length ? notes : [...FALLBACK_RELEASE.notes] };
+};
+
 export class PwaManager {
   constructor({ preview = false, onInstallChange = () => {}, onUpdateReady = () => {} } = {}) {
     this.preview = preview;
@@ -35,6 +53,19 @@ export class PwaManager {
     this.onInstallChange({ available: this.installAvailable, installed: this.installed });
   }
 
+  async getReleaseInfo() {
+    try {
+      const response = await fetch(`/release.json?update=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) return FALLBACK_RELEASE;
+      return normalizeReleaseInfo(await response.json());
+    } catch {
+      return FALLBACK_RELEASE;
+    }
+  }
+
   async install() {
     if (this.deferredPrompt) {
       const prompt = this.deferredPrompt;
@@ -48,10 +79,10 @@ export class PwaManager {
     return 'unavailable';
   }
 
-  markUpdate(worker) {
+  async markUpdate(worker) {
     if (!worker || !navigator.serviceWorker.controller) return;
     this.waitingWorker = worker;
-    this.onUpdateReady();
+    this.onUpdateReady({ releaseInfo: await this.getReleaseInfo() });
   }
 
   observeRegistration(registration) {

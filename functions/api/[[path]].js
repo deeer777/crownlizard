@@ -1,5 +1,5 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -7,6 +7,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COSMETIC_IDS = new Set([
   'ship_verdant_scout', 'ship_ember_runner', 'ship_crystal_dart', 'ship_void_hunter',
   'ship_solar_guard', 'ship_royal_vanguard', 'ship_rift_phantom', 'ship_crown_sovereign',
+  'ship_gilded_viper', 'ship_neon_basilisk',
 ]);
 const LEGACY_BALANCE_CAP = 50_000;
 const AUTH_BOOTSTRAP_LIMIT = 60;
@@ -276,7 +277,7 @@ const ensureWallet = async (config, userId) => {
 const walletSnapshot = async (config, userId) => {
   await ensureWallet(config, userId);
   const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,equipped_ship,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
-  const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at', user_id: `eq.${userId}`, order: 'acquired_at.asc' });
+  const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at,seen_at', user_id: `eq.${userId}`, order: 'acquired_at.asc' });
   const [wallets, inventory] = await Promise.all([
     supabaseFetch(config, `player_wallets?${walletQuery}`),
     supabaseFetch(config, `player_inventory?${inventoryQuery}`),
@@ -290,8 +291,30 @@ const walletSnapshot = async (config, userId) => {
     equippedShip: wallet.equipped_ship,
     legacyImported: Boolean(wallet.legacy_imported_at),
     updatedAt: wallet.updated_at,
-    inventory: inventory.map(item => ({ cosmeticId: item.cosmetic_id, source: item.source, acquiredAt: item.acquired_at })),
+    inventory: inventory.map(item => ({ cosmeticId: item.cosmetic_id, source: item.source, acquiredAt: item.acquired_at, seenAt: item.seen_at || null })),
   };
+};
+
+const storeCatalogSnapshot = async config => {
+  const now = new Date().toISOString();
+  const query = new URLSearchParams({
+    select: 'sku,product_type,cosmetic_id,name,description,price,rarity,sort_order,available_from,available_until',
+    active: 'eq.true',
+    order: 'sort_order.asc',
+  });
+  const rows = await supabaseFetch(config, `store_catalog?${query}`);
+  return rows
+    .filter(row => (!row.available_from || row.available_from <= now) && (!row.available_until || row.available_until > now))
+    .map(row => ({
+      sku: String(row.sku || ''),
+      type: String(row.product_type || ''),
+      cosmeticId: row.cosmetic_id ? String(row.cosmetic_id) : null,
+      name: String(row.name || ''),
+      description: String(row.description || ''),
+      price: Number(row.price) || 0,
+      rarity: String(row.rarity || 'standard'),
+      sortOrder: Number(row.sort_order) || 0,
+    }));
 };
 
 export const validateLegacyWallet = body => {
@@ -740,6 +763,50 @@ const openCrownCrate = async (request, config) => {
   return json(result, result.duplicateRequest ? 200 : 201);
 };
 
+const getCrownStore = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  const [products, wallet] = await Promise.all([
+    storeCatalogSnapshot(config),
+    walletSnapshot(config, user.id),
+  ]);
+  return json({ products, wallet });
+};
+
+const purchaseCrownStoreItem = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid store request.' }, 400); }
+  const requestId = String(body.requestId || '');
+  const sku = String(body.sku || '');
+  if (!UUID_PATTERN.test(requestId) || !/^[a-z0-9_]{3,64}$/.test(sku)) return json({ error: 'Invalid store request.' }, 400);
+  const result = await supabaseFetch(config, 'rpc/purchase_store_cosmetic', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_sku: sku, p_request_id: requestId }),
+  });
+  if (result.error === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards.', code: result.error, balance: result.balance, cost: result.cost }, 409);
+  if (result.error === 'ALREADY_OWNED') return json({ error: 'This item is already owned.', code: result.error, balance: result.balance, cosmeticId: result.cosmeticId }, 409);
+  if (result.error === 'PRODUCT_UNAVAILABLE') return json({ error: 'This store item is unavailable.', code: result.error }, 404);
+  if (result.error) return json({ error: 'Store purchase failed.', code: 'STORE_PURCHASE_FAILED' }, 409);
+  return json({ ...result, wallet: await walletSnapshot(config, user.id) }, result.duplicateRequest ? 200 : 201);
+};
+
+const markPlayerInventorySeen = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid inventory request.' }, 400); }
+  const cosmeticId = String(body.cosmeticId || '');
+  if (!COSMETIC_IDS.has(cosmeticId)) return json({ error: 'Invalid cosmetic.' }, 400);
+  const marked = await supabaseFetch(config, 'rpc/mark_inventory_seen', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_cosmetic_id: cosmeticId }),
+  });
+  if (marked !== true) return json({ error: 'This cosmetic is not owned.', code: 'COSMETIC_LOCKED' }, 404);
+  return json({ marked: true, cosmeticId });
+};
+
 const equipPlayerShip = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
@@ -919,6 +986,9 @@ export const onRequest = async context => {
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
     if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerShip(request, config);
+    if (path === 'vault/store' && request.method === 'GET') return await getCrownStore(request, config);
+    if (path === 'vault/store/purchase' && request.method === 'POST') return await purchaseCrownStoreItem(request, config);
+    if (path === 'vault/inventory/seen' && request.method === 'POST') return await markPlayerInventorySeen(request, config);
     if (path === 'player/profile' && request.method === 'GET') return await getPlayerProfile(request, config);
     if (path === 'player/profile/callsign' && request.method === 'POST') return await claimPlayerCallsign(request, config);
     if (path === 'player/profile/callsign' && request.method === 'PUT') return await renamePlayerCallsign(request, config);
