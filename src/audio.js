@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-85-mobile-type';
+import { CONFIG } from './config.js?v=20260828-86-shards-stack';
 
 export class Music {
   constructor() {

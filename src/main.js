@@ -1,18 +1,18 @@
-import { CONFIG } from './config.js?v=20260828-85-mobile-type';
+import { CONFIG } from './config.js?v=20260828-86-shards-stack';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
-import { Music, SoundFx } from './audio.js?v=20260828-85-mobile-type';
-import { Game } from './game.js?v=20260828-85-mobile-type';
+import { Music, SoundFx } from './audio.js?v=20260828-86-shards-stack';
+import { Game } from './game.js?v=20260828-86-shards-stack';
 import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260828-85-mobile-type';
+import { PlayerAccount } from './player-account.js?v=20260828-86-shards-stack';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
-import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-85-mobile-type';
-import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-85-mobile-type';
-import { BossNetwork } from './boss-network.js?v=20260828-85-mobile-type';
+import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-86-shards-stack';
+import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-86-shards-stack';
+import { BossNetwork } from './boss-network.js?v=20260828-86-shards-stack';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -198,10 +198,10 @@ const refreshPlayerProfile = async () => {
 };
 const renderShardBalance = () => {
   if (serverEconomy && !serverEconomyReady) {
-    ui.menuShards.textContent = '◆ CONNECTING...';
+    ui.menuShards.textContent = 'CONNECTING...';
     return;
   }
-  ui.menuShards.textContent = `◆ ${walletState().balance.toLocaleString('en-US')} SHARDS`;
+  ui.menuShards.textContent = walletState().balance.toLocaleString('en-US');
 };
 renderShardBalance();
 const renderNetworkStatus = () => {
@@ -1548,7 +1548,7 @@ const authRedirectReady = playerAccount.redirectResult?.pending
   : Promise.resolve(playerAccount.redirectResult);
 
 const bootstrapServerEconomy = async () => {
-  ui.menuShards.textContent = '◆ CONNECTING WALLET...';
+  ui.menuShards.textContent = 'CONNECTING...';
   await authRedirectReady;
   const snapshot = await playerAccount.bootstrapWallet();
   acceptServerWallet(snapshot);
@@ -1571,7 +1571,7 @@ const connectServerEconomy = () => {
   playerReadyPromise = bootstrapServerEconomy()
     .catch(error => {
       serverEconomyReady = false;
-      ui.menuShards.textContent = '◆ VAULT OFFLINE · GAME READY';
+      ui.menuShards.textContent = 'OFFLINE';
       renderSettings();
       if (!ui.accountOverlay.classList.contains('hidden')) {
         renderAccount();

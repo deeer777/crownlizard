@@ -13,7 +13,7 @@ const masteryCount = Object.values(CONFIG.weaponMasteries).reduce((total, choice
 assert.equal(masteryCount, 10, 'the existing game exposes exactly ten mastery blueprints');
 assert.deepEqual([0, 99, 100, 249, 250, 3999, 4000, 999999].map(arsenalRankForXp), [0, 0, 1, 1, 2, 9, 10, 10], 'Arsenal Rank follows the locked 0–10 curve');
 
-const currentRun = { game_version: '0.27.1-85' };
+const currentRun = { game_version: '0.27.2-86' };
 const verified = validateArmorySummary({
   durationMs: 240_000,
   enemies: 80,

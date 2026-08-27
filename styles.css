@@ -136,6 +136,8 @@ body {
 .status-score { text-align: center; }
 .status-score small { color: var(--gold); }
 .status-shards { color: #8db8ae; text-align: right; line-height: 1.45; }
+.status-shards small { color: #648b82; }
+.status-shards b { color: #8db8ae; }
 .arcade-status[data-account-state="signed-in"] .status-player b { color: var(--mint); }
 .arcade-status[data-account-state="setup"] .status-player b,
 .arcade-status[data-account-state="expired"] .status-player b { color: var(--gold); }
@@ -1328,7 +1330,7 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .arcade-status { gap: 8px; margin-bottom: 0; font-size: 10px; letter-spacing: .03em; }
   .arcade-status small { font-size: 10px; }
   .arcade-status b { font-size: 12px; }
-  .status-shards { font-size: 11px; line-height: 1.35; }
+  .status-shards { line-height: 1.35; }
   .hero-panel .tagline { font-size: 10px; letter-spacing: .08em; }
   .hero-panel .primary span,
   .hero-panel .menu-event em { font-size: 9px; }
