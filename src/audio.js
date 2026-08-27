@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260827-84-warden-rewards';
+import { CONFIG } from './config.js?v=20260828-85-mobile-type';
 
 export class Music {
   constructor() {

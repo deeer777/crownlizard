@@ -125,6 +125,7 @@ body {
   color: #668d86;
   font: 800 7px ui-monospace, monospace;
   letter-spacing: .08em;
+  transform: translateY(-22px);
 }
 .arcade-status > span { min-width: 0; }
 .arcade-status small,
@@ -1256,6 +1257,141 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .mastery-card .perk-icon { width: 82px; height: 82px; }
   .mastery-card.weapon-laser .perk-icon { width: 62px; height: 62px; margin-top: 8px; margin-bottom: 12px; }
   .mastery-card.weapon-laser .perk-icon img { width: 41px; height: 62px; }
+
+  /* Pixel fonts lose their shape below roughly 9 px on phone displays. Keep
+     decorative HUD copy compact, but never make meaningful text microscopic. */
+  .hero-panel .tagline,
+  .hero-panel .best,
+  .arcade-status small,
+  .status-shards,
+  .network-status,
+  .weapon-hud em,
+  .weapon-rank > span,
+  .weapon-rank > i,
+  .stage-hud span,
+  .tutorial-steps span,
+  .summary-loadout,
+  .assault-result-grid small,
+  .warden-signal,
+  .warden-signal b,
+  .warden-briefing small,
+  .warden-assault-entry > small,
+  .boss-ranking header > b,
+  .boss-ranking > p,
+  .boss-rewards header > b,
+  .boss-reward-copy span,
+  .boss-reward-copy b,
+  .boss-rewards > p,
+  .armory-heading span,
+  .arsenal-rank span,
+  .arsenal-rank b,
+  .armory-selected small,
+  .armory-selected b,
+  .armory-card b,
+  .armory-card small,
+  .vault-categories small,
+  .store-header p,
+  .store-product small,
+  .store-product em { font-size: 9px; }
+
+  .assault-hud span,
+  .assault-phase b,
+  .combo::before { font-size: 8px; }
+  .assault-global strong { font-size: 9px; }
+
+  .pwa-update-copy,
+  .callsign-preview small,
+  .callsign-form p,
+  .sponsored-reward span,
+  .assault-result-panel > p,
+  .warden-briefing p,
+  .armory-selected p,
+  .vault-crate-column > p,
+  .store-rename-panel > p,
+  .crate-opening-cinematic > p,
+  .rewarded-ad-panel p { font-size: 10px; line-height: 1.6; }
+
+  .boss-reward-copy strong,
+  .boss-reward button,
+  .armory-progress > div,
+  .armory-list-head,
+  .vault-section-title b,
+  .store-product strong,
+  .store-product > span b:last-child { font-size: 10px; }
+
+  .vault-mode-tabs button,
+  .vault-sponsored-signal .system-action,
+  .vault-categories button { font-size: 11px; }
+
+  /* Global mobile type hierarchy. Values, actions and body copy must remain
+     readable at arm's length; only secondary game HUD labels may use 8 px. */
+  .arcade-status { gap: 8px; margin-bottom: 0; font-size: 10px; letter-spacing: .03em; }
+  .arcade-status small { font-size: 10px; }
+  .arcade-status b { font-size: 12px; }
+  .status-shards { font-size: 11px; line-height: 1.35; }
+  .hero-panel .tagline { font-size: 10px; letter-spacing: .08em; }
+  .hero-panel .primary span,
+  .hero-panel .menu-event em { font-size: 9px; }
+
+  .score-block span,
+  .final-score span,
+  .result-panel .eyebrow,
+  .score-entry label small,
+  .score-identity small,
+  .score-identity span,
+  .score-entry > span,
+  .summary-stat span,
+  .shard-reward-head,
+  .shard-breakdown span,
+  .shard-breakdown b,
+  .shard-balance,
+  .shard-unqualified p,
+  .sponsored-reward b,
+  .assault-milestone > div { font-size: 10px; }
+
+  .leaderboard-head { font-size: 10px; }
+  .leaderboard-list li { font-size: 11px; }
+  .leaderboard-list li span small { font-size: 9px; }
+  .leaderboard-player-result span,
+  .leaderboard-status { font-size: 10px; }
+
+  .setting-list button { min-height: 52px; font-size: 11px; }
+  .tutorial-steps b { font-size: 10px; }
+  .tutorial-steps span,
+  .pwa-install-steps p,
+  .pwa-release-notes li,
+  .pwa-update-copy,
+  .account-state p,
+  .account-tabs button,
+  .account-form label,
+  .callsign-form label,
+  .callsign-preview small,
+  .callsign-form p,
+  .account-form-status,
+  .account-warning { font-size: 10px; }
+
+  .rewarded-ad-panel .eyebrow,
+  .rewarded-ad-screen span,
+  .rewarded-ad-panel > strong,
+  .rewarded-ad-panel .system-action { font-size: 10px; }
+
+  .vault-sync-status,
+  .vault-guarantee,
+  .vault-animation-toggle,
+  .vault-fineprint,
+  .store-header span,
+  .store-status,
+  .store-rename-panel label,
+  .store-purchase-tier,
+  .store-purchase-panel p,
+  .cosmetic-detail-panel > p { font-size: 10px; }
+  .vault-cosmetic.new::before,
+  .armory-card.trial::before { font-size: 9px; }
+
+  .perk-swipe-hint,
+  .perk-card small,
+  .mastery-card strong,
+  .mastery-card::before { font-size: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
