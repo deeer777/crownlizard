@@ -1,15 +1,18 @@
-import { CONFIG } from './config.js?v=20260827-79-crown-store-final';
+import { CONFIG } from './config.js?v=20260827-83-global-event';
 import { Engine } from './engine.js?v=20260820-18';
-import { Input } from './input.js?v=20260820-26';
-import { Music, SoundFx } from './audio.js?v=20260827-79-crown-store-final';
-import { Game } from './game.js?v=20260827-79-crown-store-final';
+import { Input } from './input.js?v=20260827-82-input-release';
+import { Music, SoundFx } from './audio.js?v=20260827-83-global-event';
+import { Game } from './game.js?v=20260827-83-global-event';
 import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260827-79-crown-store-final4';
+import { PlayerAccount } from './player-account.js?v=20260827-83-global-event';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
+import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260827-83-global-event';
+import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260827-83-global-event';
+import { BossNetwork } from './boss-network.js?v=20260827-83-global-event';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -22,17 +25,19 @@ const callsignPreviewMode = localPreview && debugParams.has('debug') && debugPar
 const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
 const serverEconomy = !localPreview;
 const ui = {
-  menu: $('menu'), gameover: $('gameover'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
+  menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'),
-  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'),
   storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
   storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
+  wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
+  assaultHud: $('assaultHud'), assaultTime: $('assaultTime'), assaultPhaseLabel: $('assaultPhaseLabel'), assaultPhaseName: $('assaultPhaseName'), assaultPhaseRole: $('assaultPhaseRole'), assaultDamage: $('assaultDamage'), assaultGlobalHp: $('assaultGlobalHp'), assaultResultEyebrow: $('assaultResultEyebrow'), assaultDamageLabel: $('assaultDamageLabel'), assaultResultTitle: $('assaultResultTitle'), assaultFinalDamage: $('assaultFinalDamage'), assaultFinalTime: $('assaultFinalTime'), assaultFinalTargets: $('assaultFinalTargets'), assaultFinalRank: $('assaultFinalRank'), assaultFinalMultiplier: $('assaultFinalMultiplier'), assaultFinalGlobalHp: $('assaultFinalGlobalHp'), assaultFinalEventRank: $('assaultFinalEventRank'), assaultResultMessage: $('assaultResultMessage'), assaultRetry: $('assaultRetry'), assaultArmory: $('assaultArmory'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
@@ -88,7 +93,21 @@ let economyRunId = '';
 let selectedMenuChoice = 0;
 let selectedResultChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
-const input = new Input($('game'), ui.dashButton, ui.joystick);
+const gameCanvas = $('game');
+const input = new Input(gameCanvas, ui.dashButton, ui.joystick);
+const focusGameInput = () => {
+  const focus = () => {
+    const gameplayVisible = ui.menu.classList.contains('hidden')
+      && ui.gameover.classList.contains('hidden')
+      && ui.assaultResult.classList.contains('hidden')
+      && ui.pauseOverlay.classList.contains('hidden')
+      && ui.tutorialOverlay.classList.contains('hidden');
+    if (gameplayVisible) gameCanvas.focus({ preventScroll: true });
+  };
+  requestAnimationFrame(focus);
+  setTimeout(focus, 120);
+};
+gameCanvas.addEventListener('pointerenter', focusGameInput);
 const shardWallet = new ShardWallet();
 try {
   const walletResetKey = 'cl:wallet-session-reset:v51';
@@ -101,6 +120,11 @@ try {
 const playerAccount = new PlayerAccount();
 const currentAccountState = () => callsignPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
 let playerProfile = null;
+const bossNetwork = new BossNetwork({
+  preview: localPreview,
+  accessToken: () => playerAccount.getAccessToken(),
+  playerName: () => playerProfile?.displayName || 'YOU',
+});
 let profileStatus = localPreview ? 'ready' : 'loading';
 const accountPresentation = () => buildAccountPresentation({
   state: currentAccountState(),
@@ -201,7 +225,330 @@ let rewardedAdViewing = false;
 let currentSponsoredOffer = null;
 let lastSponsoredClaimedRunId = '';
 let crownCrateOpenPreload = null;
+let armory = null;
+let armoryLoading = false;
+let armorySelecting = '';
+let bossEvent = null;
+let bossRanking = { leaders: [], player: null };
+let bossEventLoading = false;
+let activeBossAssault = null;
+let bossAssaultStarting = false;
+let bossSettlementPending = false;
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+const armoryBlueprintColor = blueprint => CONFIG.weapons[blueprint?.weaponKey]?.color || CONFIG.weapons.blaster.color;
+
+const setArmoryStatus = (message = '', error = false) => {
+  ui.armoryStatus.textContent = message;
+  ui.armoryStatus.classList.toggle('error', error);
+};
+
+const renderBossEvent = () => {
+  if (!bossEvent) {
+    ui.wardenSignalState.textContent = bossEventLoading ? 'CONNECTING' : 'OFFLINE';
+    ui.bossEventHp.textContent = bossEventLoading ? 'CONNECTING...' : 'NO ACTIVE EVENT';
+    ui.bossRankingList.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: bossEventLoading ? 'SYNCING GLOBAL DAMAGE...' : 'NO VERIFIED EVENT DATA' }));
+    ui.bossPlayerRank.textContent = 'YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT';
+    return;
+  }
+  const remainingMs = Math.max(0, Date.parse(bossEvent.endsAt) - Date.now());
+  const hours = Math.floor(remainingMs / 3_600_000);
+  const minutes = Math.floor(remainingMs % 3_600_000 / 60_000);
+  ui.wardenSignalState.textContent = bossEvent.status === 'active' ? `LIVE · ${hours}H ${minutes}M` : bossEvent.status.toUpperCase();
+  ui.bossEventHp.textContent = `${Number(bossEvent.currentHp).toLocaleString('en-US')} / ${Number(bossEvent.maxHp).toLocaleString('en-US')} HP`;
+  const rows = (bossRanking.leaders || []).map(entry => {
+    const item = document.createElement('li');
+    item.classList.toggle('top-three', Number(entry.rank) <= 3);
+    item.classList.toggle('own', bossRanking.player?.playerId && entry.playerId === bossRanking.player.playerId);
+    const rank = Object.assign(document.createElement('span'), { className: 'rank', textContent: `#${entry.rank}` });
+    const name = Object.assign(document.createElement('strong'), { textContent: String(entry.playerName || 'CROWN PILOT').slice(0, 16) });
+    const damage = Object.assign(document.createElement('span'), { className: 'damage', textContent: Number(entry.damage).toLocaleString('en-US') });
+    const attempts = Object.assign(document.createElement('span'), { className: 'attempts', textContent: `${entry.assaults} RUN${entry.assaults === 1 ? '' : 'S'}` });
+    item.append(rank, name, damage, attempts);
+    return item;
+  });
+  if (!rows.length) rows.push(Object.assign(document.createElement('li'), { className: 'empty', textContent: 'BE THE FIRST VERIFIED PILOT' }));
+  ui.bossRankingList.replaceChildren(...rows);
+  ui.bossPlayerRank.textContent = bossRanking.player
+    ? `YOUR RANK #${bossRanking.player.rank} · ${Number(bossRanking.player.damage).toLocaleString('en-US')} VERIFIED DAMAGE`
+    : 'YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT';
+};
+
+const loadBossEvent = async () => {
+  if (bossEventLoading) return;
+  bossEventLoading = true;
+  renderBossEvent();
+  renderArmory();
+  try {
+    const recovered = await bossNetwork.resumePending().catch(() => null);
+    if (recovered) {
+      bossEvent = recovered.event || bossEvent;
+      bossRanking = recovered.ranking || bossRanking;
+    }
+    const payload = await bossNetwork.getEvent();
+    bossEvent = payload.event || null;
+    bossRanking = payload.ranking || { leaders: [], player: null };
+  } catch {
+    bossEvent = null;
+    bossRanking = { leaders: [], player: null };
+  } finally {
+    bossEventLoading = false;
+    renderBossEvent();
+    renderArmory();
+  }
+};
+
+setInterval(() => {
+  if (!ui.wardenOverlay.classList.contains('hidden') && !bossEventLoading && !game.active) void loadBossEvent();
+}, 20_000);
+
+const renderArmory = () => {
+  if (!armory) {
+    ui.armoryGrid.replaceChildren();
+    ui.armoryOwned.textContent = '0 / 11 AVAILABLE';
+    ui.armoryXpFill.style.width = '0%';
+    ui.wardenAssault.disabled = true;
+    ui.wardenAssault.innerHTML = `<i>♛</i> ${armoryLoading ? 'CONNECTING ARMORY' : 'ARMORY OFFLINE'}`;
+    setArmoryStatus(armoryLoading ? 'CONNECTING TO CROWN ARMORY...' : 'ARMORY LINK UNAVAILABLE', !armoryLoading);
+    return;
+  }
+  const progress = armoryRankProgress(armory.progression);
+  const selected = armory.blueprints.find(item => item.id === armory.progression.selectedBlueprintId)
+    || armory.blueprints.find(item => item.id === armory.standardBlueprintId)
+    || armory.blueprints[0];
+  const available = armory.blueprints.filter(item => item.access !== 'locked');
+  const eventReady = bossEvent?.status === 'active' && Number(bossEvent.currentHp) > 0 && Date.parse(bossEvent.endsAt) > Date.now();
+  ui.wardenAssault.disabled = Boolean(armorySelecting || armoryLoading || bossEventLoading || bossAssaultStarting || !selected || !eventReady);
+  ui.wardenAssault.innerHTML = `<i>♛</i> ${armorySelecting ? 'EQUIPPING...' : bossAssaultStarting ? 'OPENING SIGNAL...' : bossEventLoading ? 'CONNECTING EVENT...' : eventReady ? 'START BOSS ASSAULT' : 'EVENT OFFLINE'}`;
+  ui.armoryRank.textContent = String(progress.rank).padStart(2, '0');
+  ui.armoryBonus.textContent = `+${Math.round((Number(armory.progression.damageBonus) || 0) * 100)}% BOSS DMG`;
+  ui.armoryXpLabel.textContent = progress.rank >= 10 ? `${progress.xp} XP · MAX RANK` : `${progress.xp} / ${progress.ceiling} XP`;
+  ui.armoryXpRemaining.textContent = progress.rank >= 10 ? 'ARSENAL COMPLETE' : `${progress.remaining} TO RANK ${progress.rank + 1}`;
+  ui.armoryXpFill.style.width = `${progress.percent}%`;
+  ui.armoryOwned.textContent = `${available.length} / ${armory.blueprints.length} AVAILABLE`;
+  if (selected) {
+    const color = armoryBlueprintColor(selected);
+    ui.armorySelected.style.setProperty('--weapon-color', color);
+    ui.armorySelectedImage.src = weaponMountUrl(selected.weaponKey);
+    ui.armorySelectedImage.alt = `${selected.name} weapon mount`;
+    ui.armorySelectedName.textContent = selected.name;
+    ui.armorySelectedRole.textContent = selected.role;
+    ui.armorySelectedDescription.textContent = selected.description || 'MASTERY BLUEPRINT PREPARED FOR BOSS ASSAULTS.';
+  }
+  const cards = armory.blueprints.map(blueprint => {
+    const card = document.createElement('button');
+    const locked = blueprint.access === 'locked';
+    const selectedCard = blueprint.id === selected?.id;
+    card.type = 'button';
+    card.className = `armory-card ${blueprint.access}${locked ? ' locked' : ''}${selectedCard ? ' selected' : ''}`;
+    card.style.setProperty('--weapon-color', armoryBlueprintColor(blueprint));
+    card.disabled = Boolean(armorySelecting) || locked;
+    card.dataset.blueprintId = blueprint.id;
+    card.setAttribute('aria-pressed', String(selectedCard));
+    card.setAttribute('aria-label', `${blueprint.name}, ${armoryAccessLabel(blueprint.access)}${selectedCard ? ', equipped' : ''}`);
+    const image = document.createElement('img');
+    image.src = weaponMountUrl(blueprint.weaponKey);
+    image.alt = '';
+    const copy = document.createElement('span');
+    const name = document.createElement('strong');
+    name.textContent = blueprint.name;
+    const role = document.createElement('b');
+    role.textContent = blueprint.role;
+    const access = document.createElement('small');
+    access.textContent = selectedCard ? 'EQUIPPED' : armoryAccessLabel(blueprint.access);
+    copy.append(name, role, access);
+    card.append(image, copy);
+    if (!locked) card.addEventListener('click', () => selectArmoryBlueprint(blueprint.id));
+    return card;
+  });
+  ui.armoryGrid.replaceChildren(...cards);
+  if (!armorySelecting) {
+    const trialEnds = armory.trial?.endsAt ? new Date(armory.trial.endsAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase() : '';
+    setArmoryStatus(trialEnds ? `WEEKLY TRIAL ACTIVE UNTIL ${trialEnds} · MASTER WEAPONS IN ARCADE TO KEEP THEM` : 'MASTER WEAPONS IN ARCADE TO UNLOCK PERMANENT BLUEPRINTS');
+  }
+};
+
+async function selectArmoryBlueprint(blueprintId) {
+  if (!armory || armorySelecting || blueprintId === armory.progression.selectedBlueprintId) return;
+  armorySelecting = blueprintId;
+  setArmoryStatus('EQUIPPING BLUEPRINT...');
+  renderArmory();
+  try {
+    if (!localPreview) await playerAccount.selectArmoryBlueprint(blueprintId);
+    armory.progression.selectedBlueprintId = blueprintId;
+    sfx.play('confirm');
+    if (hapticsEnabled) navigator.vibrate?.(18);
+    armorySelecting = '';
+    renderArmory();
+    setArmoryStatus(`${armory.blueprints.find(item => item.id === blueprintId)?.name || 'BLUEPRINT'} EQUIPPED`, false);
+  } catch (error) {
+    armorySelecting = '';
+    renderArmory();
+    setArmoryStatus(String(error?.message || 'BLUEPRINT COULD NOT BE EQUIPPED').toUpperCase(), true);
+  }
+}
+
+const loadArmory = async () => {
+  if (armoryLoading) return;
+  armoryLoading = true;
+  renderArmory();
+  try {
+    armory = localPreview ? previewArmory() : (await playerAccount.getArmory()).armory;
+    renderArmory();
+  } catch (error) {
+    armory = null;
+    setArmoryStatus(String(error?.message || 'ARMORY LINK UNAVAILABLE').toUpperCase(), true);
+  } finally {
+    armoryLoading = false;
+    renderArmory();
+  }
+};
+
+const openWarden = () => {
+  if (!localPreview) armory = null;
+  ui.wardenOverlay.classList.remove('hidden');
+  renderBossEvent();
+  renderArmory();
+  void Promise.allSettled([loadArmory(), loadBossEvent()]);
+  ui.closeWarden.focus({ preventScroll: true });
+};
+
+const closeWarden = () => {
+  ui.wardenOverlay.classList.add('hidden');
+  selectMenuChoice(ui.menuChoices.indexOf(ui.menuWarden), true);
+};
+
+const formatAssaultTime = seconds => {
+  const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const selectedAssaultLoadout = () => {
+  const blueprint = armory?.blueprints.find(item => item.id === armory?.progression?.selectedBlueprintId);
+  const loadout = blueprint && BOSS_BLUEPRINTS[blueprint.id];
+  return blueprint && loadout ? { blueprint, loadout } : null;
+};
+
+const startBossAssault = async () => {
+  const selection = selectedAssaultLoadout();
+  if (!selection || !bossEvent || game.active || bossAssaultStarting || bossSettlementPending) return;
+  const { blueprint, loadout } = selection;
+  bossAssaultStarting = true;
+  renderArmory();
+  try {
+    const payload = await bossNetwork.start({
+      eventId: bossEvent.id,
+      blueprintId: blueprint.id,
+      gameVersion: `${CONFIG.version.release}-${CONFIG.version.build}`,
+      arsenalRank: armory.progression.rank,
+    });
+    activeBossAssault = payload.assault;
+    bossEvent = payload.event || bossEvent;
+    bossRanking = payload.ranking || bossRanking;
+    renderBossEvent();
+  } catch (error) {
+    setArmoryStatus(String(error?.message || 'BOSS SIGNAL COULD NOT BE OPENED').toUpperCase(), true);
+    bossAssaultStarting = false;
+    renderArmory();
+    return;
+  }
+  bossAssaultStarting = false;
+  input.clear();
+  [ui.menu, ui.gameover, ui.assaultResult, ui.wardenOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.vaultOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
+  ui.hud.classList.remove('hidden');
+  ui.assaultHud.classList.remove('hidden');
+  ui.dashButton.classList.remove('hidden');
+  ui.pauseButton.classList.remove('hidden');
+  document.documentElement.classList.add('assault-active');
+  game.startAssault({
+    blueprintId: blueprint.id,
+    weaponKey: loadout.weaponKey,
+    masteryKey: loadout.masteryKey,
+    arsenalRank: activeBossAssault.arsenalRank,
+    damageBonus: activeBossAssault.damageBonus,
+    globalHp: activeBossAssault.globalHp,
+  });
+  focusGameInput();
+  music.playGame();
+  showToast(`${blueprint.name} · ASSAULT READY`, 'weapon', armoryBlueprintColor(blueprint));
+};
+
+const showAssaultResult = async result => {
+  let retryBlocked = false;
+  hideToast();
+  ui.assaultHud.classList.add('hidden');
+  document.documentElement.classList.remove('assault-active');
+  ui.hud.classList.add('hidden');
+  ui.dashButton.classList.add('hidden');
+  ui.pauseButton.classList.add('hidden');
+  ui.assaultResultEyebrow.textContent = 'CROWN NETWORK · VERIFYING STRIKE';
+  ui.assaultDamageLabel.textContent = 'REPORTED DAMAGE';
+  ui.assaultResultTitle.textContent = result.outcome === 'destroyed' ? 'SIGNAL LOST' : result.outcome === 'breach' ? 'CORE BREACHED' : 'ASSAULT COMPLETE';
+  ui.assaultFinalDamage.textContent = Number(result.damage).toLocaleString('en-US');
+  ui.assaultFinalTime.textContent = formatAssaultTime(result.elapsed);
+  ui.assaultFinalTargets.textContent = String(result.targetsDestroyed);
+  ui.assaultFinalRank.textContent = String(result.arsenalRank).padStart(2, '0');
+  ui.assaultFinalMultiplier.textContent = 'VERIFYING';
+  ui.assaultFinalGlobalHp.textContent = 'SYNCING';
+  ui.assaultFinalEventRank.textContent = '—';
+  ui.assaultResultMessage.textContent = 'VERIFYING PHASE DAMAGE · KEEP THIS SCREEN OPEN';
+  ui.assaultRetry.disabled = true;
+  ui.assaultRetry.innerHTML = '<i>♛</i> TRY AGAIN';
+  ui.assaultArmory.disabled = true;
+  ui.assaultRetry.classList.add('result-selected');
+  ui.assaultArmory.classList.remove('result-selected');
+  ui.assaultResult.classList.remove('hidden');
+  music.pause();
+  ui.assaultRetry.focus({ preventScroll: true });
+  if (!activeBossAssault) {
+    ui.assaultResultEyebrow.textContent = 'CROWN NETWORK · UNVERIFIED';
+    ui.assaultResultMessage.textContent = 'NO SERVER ASSAULT WAS ISSUED · DAMAGE NOT ADDED';
+    ui.assaultRetry.disabled = false;
+    ui.assaultArmory.disabled = false;
+    return;
+  }
+  bossSettlementPending = true;
+  try {
+    const payload = await bossNetwork.settle({
+      assaultId: activeBossAssault.assaultId,
+      requestId: crypto.randomUUID(),
+      elapsedMs: Math.round(result.elapsed * 1000),
+      phaseDamage: result.phaseDamage,
+      outcome: result.outcome,
+      targetsDestroyed: result.targetsDestroyed,
+    });
+    const settlement = payload.settlement;
+    bossEvent = payload.event || bossEvent;
+    bossRanking = payload.ranking || bossRanking;
+    ui.assaultResultEyebrow.textContent = 'CROWN NETWORK · STRIKE VERIFIED';
+    ui.assaultDamageLabel.textContent = 'VERIFIED DAMAGE';
+    ui.assaultFinalDamage.textContent = Number(settlement.effectiveDamage).toLocaleString('en-US');
+    ui.assaultFinalMultiplier.textContent = `×${Number(settlement.attemptMultiplier).toFixed(2)}`;
+    ui.assaultFinalGlobalHp.textContent = Number(settlement.globalHp).toLocaleString('en-US');
+    ui.assaultFinalEventRank.textContent = bossRanking.player ? `#${bossRanking.player.rank}` : '—';
+    ui.assaultResultMessage.textContent = settlement.eventDefeated
+      ? 'THE GLOBAL WARDEN HAS FALLEN · EVENT VICTORY CONFIRMED'
+      : `${Number(settlement.playerTotalDamage).toLocaleString('en-US')} TOTAL EVENT DAMAGE · ATOMIC SETTLEMENT COMPLETE`;
+    renderBossEvent();
+  } catch (error) {
+    ui.assaultResultEyebrow.textContent = 'CROWN NETWORK · VERIFICATION FAILED';
+    retryBlocked = !error?.status;
+    ui.assaultResultMessage.textContent = retryBlocked
+      ? 'STRIKE SAVED ON THIS DEVICE · RETURN TO ARMORY TO RETRY THE SAME SETTLEMENT'
+      : `${String(error?.message || 'STRIKE NOT SETTLED').toUpperCase()} · DAMAGE NOT ADDED`;
+    if (retryBlocked) ui.assaultRetry.innerHTML = '<i>♛</i> WAITING FOR NETWORK';
+  } finally {
+    activeBossAssault = null;
+    bossSettlementPending = false;
+    ui.assaultRetry.disabled = retryBlocked;
+    ui.assaultArmory.disabled = false;
+    if (retryBlocked) {
+      ui.assaultRetry.classList.remove('result-selected');
+      ui.assaultArmory.classList.add('result-selected');
+      ui.assaultArmory.focus({ preventScroll: true });
+    }
+  }
+};
 
 const renderVaultOddsVisibility = () => {
   ui.vaultOdds.classList.toggle('hidden', !vaultOddsExpanded);
@@ -573,7 +920,7 @@ const closeVault = () => {
   ui.cosmeticDetail.classList.add('hidden');
   ui.vaultOverlay.classList.add('hidden');
   renderShardBalance();
-  selectMenuChoice(3, true);
+  selectMenuChoice(ui.menuChoices.indexOf(ui.menuVault), true);
 };
 let toastTimer = 0;
 let toastPriority = -1;
@@ -740,7 +1087,7 @@ const openLeaderboard = (origin = 'menu', difficulty = selectedDifficulty, resul
 
 const closeLeaderboard = () => {
   ui.leaderboardOverlay.classList.add('hidden');
-  if (leaderboardReturn === 'menu') selectMenuChoice(2, true);
+  if (leaderboardReturn === 'menu') selectMenuChoice(ui.menuChoices.indexOf(ui.menuLeaderboard), true);
 };
 
 const prepareScoreEntry = (score, summary) => {
@@ -977,6 +1324,15 @@ const game = new Game($('game'), input, {
     [...ui.weaponPips.children].forEach((pip, index) => pip.classList.toggle('active', index < state.weaponLevel));
     ui.weaponHud.style.setProperty('--weapon-color', state.weaponColor);
     ui.dashButton.classList.toggle('ready', state.dash >= .999);
+    if (state.assault) {
+      ui.assaultTime.textContent = formatAssaultTime(state.assault.remaining);
+      ui.assaultPhaseLabel.textContent = `PHASE ${state.assault.phase}`;
+      ui.assaultPhaseName.textContent = state.assault.phaseInfo.name;
+      ui.assaultPhaseRole.textContent = state.assault.phaseInfo.role;
+      ui.assaultDamage.textContent = state.assault.damage.toLocaleString('en-US');
+      ui.assaultGlobalHp.textContent = state.assault.globalHp.toLocaleString('en-US');
+      ui.assaultHud.style.setProperty('--assault-phase-color', state.assault.phaseInfo.color);
+    }
   },
   combo: () => {
     ui.combo.classList.remove('bump');
@@ -1019,6 +1375,11 @@ const game = new Game($('game'), input, {
     ui.pauseButton.classList.add('hidden');
     music.pause();
   },
+  assaultPhase: phase => {
+    showToast(`PHASE ${phase.number} · ${phase.name}`, 'threat', phase.color);
+    sfx.play('stage');
+  },
+  assaultover: showAssaultResult,
   stage: stage => {
     document.documentElement.style.setProperty('--stage-accent', stage.palette.accent);
     sfx.play('stage');
@@ -1186,7 +1547,7 @@ addEventListener('keydown', event => {
   requestCinematicSkip(event);
 });
 
-const runVisible = () => ui.menu.classList.contains('hidden') && ui.gameover.classList.contains('hidden') && ui.tutorialOverlay.classList.contains('hidden') && game.player.health > 0;
+const runVisible = () => ui.menu.classList.contains('hidden') && ui.gameover.classList.contains('hidden') && ui.assaultResult.classList.contains('hidden') && ui.tutorialOverlay.classList.contains('hidden') && game.player.health > 0;
 
 const resumeRun = () => {
   if (!game.active || game.awaitingPerk) return;
@@ -1194,6 +1555,7 @@ const resumeRun = () => {
   ui.pauseOverlay.classList.add('hidden');
   ui.pauseButton.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
+  focusGameInput();
   music.playGame();
 };
 
@@ -1216,13 +1578,15 @@ const returnToMenu = () => {
   game.stop();
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
   ui.storeRename.classList.add('hidden');
   ui.storePurchaseReveal.classList.add('hidden');
   ui.hud.classList.add('hidden');
+  ui.assaultHud.classList.add('hidden');
+  document.documentElement.classList.remove('assault-active');
   ui.dashButton.classList.add('hidden');
   ui.pauseButton.classList.add('hidden');
   ui.menu.classList.remove('hidden');
@@ -1355,6 +1719,7 @@ const finishTutorial = () => {
   game.paused = false;
   ui.pauseButton.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
+  focusGameInput();
   sfx.play('confirm');
 };
 
@@ -1382,7 +1747,9 @@ const start = async () => {
   rewardedAdViewing = false;
   lastSponsoredClaimedRunId = '';
   closeRewardedAdOverlay();
-  [ui.menu, ui.gameover, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.menu, ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
+  ui.assaultHud.classList.add('hidden');
+  document.documentElement.classList.remove('assault-active');
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -1400,6 +1767,7 @@ const start = async () => {
   music.playGame();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
   if (needsTutorial) openTutorial();
+  else focusGameInput();
   ui.play.disabled = false;
   ui.retry.disabled = false;
   startingRun = false;
@@ -1416,6 +1784,22 @@ ui.menuSettings.addEventListener('click', () => openSettings('menu'));
 ui.menuMode.addEventListener('click', () => { cycleDifficulty(1); sfx.play('confirm'); });
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.menuVault.addEventListener('click', openVault);
+ui.menuWarden.addEventListener('click', openWarden);
+ui.closeWarden.addEventListener('click', closeWarden);
+ui.wardenAssault.addEventListener('click', startBossAssault);
+ui.assaultRetry.addEventListener('click', startBossAssault);
+ui.assaultArmory.addEventListener('click', () => {
+  returnToMenu();
+  openWarden();
+});
+[ui.assaultRetry, ui.assaultArmory].forEach(button => {
+  const select = () => {
+    ui.assaultRetry.classList.toggle('result-selected', button === ui.assaultRetry);
+    ui.assaultArmory.classList.toggle('result-selected', button === ui.assaultArmory);
+  };
+  button.addEventListener('focus', select);
+  button.addEventListener('pointerenter', select);
+});
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
 ui.installApp.addEventListener('click', async () => {
@@ -1772,12 +2156,26 @@ addEventListener('keydown', event => {
   else if (!ui.storeRename.classList.contains('hidden') && !storeBusySku) ui.closeStoreRename.click();
   else if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
+  else if (!ui.assaultResult.classList.contains('hidden')) returnToMenu();
+  else if (!ui.wardenOverlay.classList.contains('hidden')) closeWarden();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
   else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
   else if (!ui.accountOverlay.classList.contains('hidden')) closeAccount();
   else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
   else pauseRun(false);
+});
+addEventListener('keydown', event => {
+  if (ui.assaultResult.classList.contains('hidden')) return;
+  if (['ArrowDown', 'ArrowUp', 'KeyW', 'KeyS'].includes(event.code)) {
+    event.preventDefault();
+    const next = ui.assaultRetry.classList.contains('result-selected') ? ui.assaultArmory : ui.assaultRetry;
+    next.focus({ preventScroll: true });
+    sfx.play('confirm');
+  } else if (event.code === 'Enter' || event.code === 'Space') {
+    event.preventDefault();
+    (ui.assaultRetry.classList.contains('result-selected') ? ui.assaultRetry : ui.assaultArmory).click();
+  }
 });
 addEventListener('keydown', event => {
   if (ui.gameover.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.rewardedAdOverlay.classList.contains('hidden') || !ui.crateOpeningCinematic.classList.contains('hidden') || !ui.crateReveal.classList.contains('hidden') || document.activeElement === ui.playerInitials) return;
@@ -1796,7 +2194,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();
@@ -1871,11 +2269,31 @@ if (localPreview && debugParams.has('sovereign')) {
 if (debugMode) {
   globalThis.__crownLizardDebug = game;
   const debugWeapons = { Digit1: 'blaster', Digit2: 'spread', Digit3: 'pulse', Digit4: 'laser', Digit5: 'tesla' };
+  const debugBossBlueprints = Object.entries(BOSS_BLUEPRINTS);
   const debugEnemies = ['chaser', 'shooter', 'tank', 'weaver', 'skimmer'];
   const debugEnemyNames = { chaser: 'RIPPER', shooter: 'HEX MOTH', tank: 'IRON SCARAB', weaver: 'CROWN WEAVER', skimmer: 'VOID SKIMMER' };
   let debugEnemyIndex = 0;
   let debugLateFormationIndex = 0;
+  let debugBossBlueprintIndex = Math.max(0, debugBossBlueprints.findIndex(([id]) => id === armory?.progression?.selectedBlueprintId));
   addEventListener('keydown', event => {
+    if (['F1', 'F2', 'F3'].includes(event.code) && game.mode === 'assault' && game.active) {
+      event.preventDefault();
+      const phase = Number(event.code.slice(1));
+      game.debugAssaultPhase(phase);
+      showToast(`DEBUG ASSAULT · PHASE ${phase}`, 'debug');
+    }
+    if ((event.code === 'BracketLeft' || event.code === 'BracketRight') && game.mode === 'assault' && game.active) {
+      event.preventDefault();
+      debugBossBlueprintIndex = (debugBossBlueprintIndex + (event.code === 'BracketRight' ? 1 : -1) + debugBossBlueprints.length) % debugBossBlueprints.length;
+      const [blueprintId, loadout] = debugBossBlueprints[debugBossBlueprintIndex];
+      game.debugAssaultLoadout({ blueprintId, ...loadout });
+      showToast(`DEBUG LOADOUT · ${blueprintId.replaceAll('_', ' ').toUpperCase()}`, 'debug');
+    }
+    if (event.code === 'KeyT' && game.mode === 'assault' && game.active) {
+      event.preventDefault();
+      game.assault.elapsed = ASSAULT_DURATION - .2;
+      showToast('DEBUG ASSAULT · FINAL SECONDS', 'debug');
+    }
     if (event.code === 'KeyP' || event.key?.toLowerCase() === 'p') {
       event.preventDefault();
       if (!game.active && ui.menu.classList.contains('hidden') === false) start();
@@ -1979,4 +2397,16 @@ if (debugMode) {
       showToast(`DEBUG WEAPON · ${CONFIG.weapons[weapon].name}`, 'debug');
     }
   });
+
+  if (debugParams.has('assault')) {
+    void (async () => {
+      openWarden();
+      await Promise.allSettled([loadArmory(), loadBossEvent()]);
+      const requestedBlueprint = debugParams.get('blueprint');
+      if (requestedBlueprint && BOSS_BLUEPRINTS[requestedBlueprint] && armory?.progression) {
+        armory.progression.selectedBlueprintId = requestedBlueprint;
+        renderArmory();
+      }
+    })();
+  }
 }

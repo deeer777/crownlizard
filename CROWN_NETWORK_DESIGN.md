@@ -106,14 +106,157 @@ Profilen får aldrig exponera e-postadress, autentiseringsuppgifter eller andra 
 - Bidrag skrivs med idempotency key och atomisk databasfunktion så replay inte kan ge dubbel skada eller belöning.
 - Misstänkta bidrag ska kunna flaggas och exkluderas utan att hela eventet stoppas.
 
-## Beslutad byggordning
+## Serverboss — beslutad MVP-form
 
-1. Crown Profile och återanvändbart visuellt Player Card.
-2. PvP-lobby med vänteläge, Quick Match, invite-länk och två synliga skepp.
-3. Seedad och serverbunden 1v1 Crown Duel.
-4. Permanent Crown Armory och blueprint-upplåsning från verifierad singleplayer.
-5. Global Serverboss MVP.
-6. Crown Store och därefter Market ovanpå samma profil-, katalog- och inventorygrund.
+- Ett event pågår normalt i 48 timmar. Första liveprovet kan vara kortare och manuellt styrt.
+- Ett Boss Assault är en fristående, tidsbegränsad run på cirka 90 sekunder.
+- Spelaren väljer en permanent upplåst mastery-blueprint före start. Inga vanliga weapon crates eller slumpmässiga Crown Powers används under försöket.
+- Nya spelare får alltid ett standardalternativ och en eventroterande trial-blueprint.
+- Global boss-HP visas separat från försöksrunens fas- och damagepresentation.
+- Ett försök fortsätter genom flera tydliga faser; spelaren bidrar med den godkända skadan efter avslutad run.
+- Bossen ska ha minst tre mekaniska faser: exponerad kärna för focus damage, add/relay-fas för crowd och chain, samt sköld/pylon-fas för piercing och multi-target. Överlevnad och projektiltryck används genom hela striden.
+- Alla tio mastery-former ska ha minst en relevant styrka i eventet. Ingen blueprint får dominera samtliga faser.
+- Arsenal Rank 0–10 ger preliminärt +2 % godkänd boss damage per rank, högst +20 %. Den tjänas endast från serververifierad singleplayer-progression.
+- Försök 1–3 per event räknas preliminärt till 100 %, försök 4–6 till 75 % och senare försök till 50 %. Modellen ska vara serverägd och konfigurerbar.
+- Ett giltigt minsta personligt bidrag krävs för global eventbelöning. Topplaceringar ger bara prestige, titel eller badge.
+- MVP:n använder polling efter assault och med lugnt intervall på eventskärmen. Realtime får läggas till senare om det ger tydlig visuell nytta.
+
+## Serverboss — implementeringspass
+
+### Pass 1 — Serverägd progression och Crown Armory
+
+Mål: skapa den permanenta progression som gör att erfarna spelare får fler val och en måttlig styrkefördel.
+
+Innehåll:
+
+- datamodell för spelarprogression, Arsenal XP, Arsenal Rank och upplåsta weapon blueprints;
+- serverägd katalog över de tio mastery-blueprints som redan finns i spelet;
+- ett kostnadsfritt standardvapen och stöd för en roterande trial-blueprint;
+- utökad verifierad run-settlement som kan ge Arsenal XP och godkänna en mastery-upplåsning;
+- serverkontroller för minsta rimliga run-tid, crateantal, Warden-resultat och spelversion innan blueprint kan låsas upp;
+- idempotenta XP- och unlock-transaktioner så samma run aldrig kan ge progression två gånger;
+- möjlighet att beräkna/backfilla rimlig start-rank från befintliga server-settled runs utan att importera lokalt manipulerbar data;
+- RLS/grants där klienten får läsa sin Armory men aldrig skriva rank eller unlocks direkt.
+
+Klart när:
+
+- en verifierad singleplayer-run kan ge exakt en serverägd progressionstransaktion;
+- en mastery-blueprint kan låsas upp permanent och återläsas på en annan enhet;
+- replay, annat konto och orimliga run-resultat avvisas;
+- standard- och trial-loadout alltid finns även för ett nytt konto.
+
+### Pass 2 — Crown Armory UX och event-entry
+
+Mål: spelaren ska förstå vad som är upplåst, hur det låstes upp och vad som kan användas mot serverbossen.
+
+Innehåll:
+
+- en mobile-first `CROWN ARMORY`-skärm i samma arkadstil som Vault;
+- blueprint-grid per vapen med locked, unlocked, selected och trial-status;
+- stor pixelart-preview, rollbeskrivning och tydliga styrkor per mastery;
+- Arsenal Rank, aktuell bonus och begriplig progress mot nästa rank;
+- unlock-feedback efter en kvalificerad singleplayer-run utan störande toastspam;
+- en `GLOBAL WARDEN`-signal på huvudmenyn när ett event är aktivt;
+- eventskärm med global HP, tid kvar, personligt bidrag, försöksnivå och vald blueprint;
+- inga e-postuppgifter eller privata profilfält i offentlig presentation.
+
+Klart när:
+
+- en ny respektive erfaren spelare ser korrekta och begripliga loadoutalternativ på mobil och desktop;
+- locked blueprints inte kan väljas genom DOM- eller requestmanipulation;
+- selected blueprint bevaras server-side mellan enheter;
+- event-entry förklarar trial, Arsenal-bonus och avtagande bidrag innan start.
+
+### Pass 3 — Lokal Boss Assault och bossmekanik
+
+Mål: göra själva 90-sekundersstriden rolig innan global ekonomi eller belöningar kopplas in.
+
+Innehåll:
+
+- separat Boss Assault-spelläge som inte påverkar normal highscore;
+- start direkt med vald mastery-blueprint och servergodkänd Arsenal-multiplikator;
+- en ny serverboss-presentation med egna pixelart-assets, intro, impacts, phase transitions och wreck/completion state;
+- exponerad kärnfas för focus-vapen;
+- add/relay-fas för crowd-, chain- och defence-builds;
+- pylon/sköldfas för piercing och multi-target;
+- tydlig lokal assault damage, fasstatus, tid kvar och global HP-snapshot i HUD;
+- liv, dash och reduced-effects fungerar enligt spelets befintliga mobile-first-regler;
+- automatiserade damage-budgettester för alla tio blueprints så ingen dominerar hela försöket;
+- lokal debugväg för fasbyte, loadoutbyte och full 90-sekunders simulering.
+
+Klart när:
+
+- alla tio mastery-former har minst en mätbar styrka och en tydlig tradeoff;
+- ett standardkonto kan bidra men ett erfaret konto märker sin begränsade bonus;
+- försöket håller stabil bildfrekvens på mobil och slutar med ett deterministiskt damage-resultat;
+- död, timeout och avslutat försök alltid landar i samma säkra result state.
+
+### Pass 4 — Global eventmotor och säker contribution settlement
+
+Mål: koppla den färdiga striden till ett verkligt globalt boss-event utan att lita på klienten.
+
+Innehåll:
+
+- datamodeller för boss-event, assaults, contributions, attempts och event rewards;
+- adminstyrd eventrad med starttid, sluttid, global max/current HP, trial-blueprint och balanskonfiguration;
+- endpoint som startar assault och låser event, spelare, blueprint, Arsenal Rank, seed, starttid och spelversion;
+- final endpoint som tar idempotency key och run telemetry men räknar godkänt bidrag server-side;
+- serverberäknat damage ceiling per blueprint, aktiv tid och fas; rapporterad skada klampas eller avvisas;
+- atomisk databasfunktion som låser assault/event, skriver contribution och minskar global HP exakt en gång;
+- serverägd diminishing-returns-multiplikator per försök;
+- hantering av event som avslutas medan ett redan giltigt assault pågår;
+- auditfält och flaggning för misstänkt bidrag;
+- polling av global HP med cache- och rate-limit-säkra intervall.
+- serverägd damage-ranking per event där varje konto får en rad med summerad godkänd contribution, antal godkända assaults och callsign;
+- en kompakt Top 10 på eventskärmen samt en full ranking med spelarens egen placering, även när spelaren ligger utanför Top 100;
+- stabil rangordning på godkänd damage, därefter tidpunkten då totalskadan först uppnåddes; lokalt rapporterad raw damage får aldrig styra listan;
+- endast slutförda och atomiskt verifierade contributions får påverka damage-topplistan.
+
+Klart när:
+
+- dubbla requests ger samma svar utan dubbel skada;
+- annat konto, fel blueprint, utgånget assault och orimlig skada avvisas;
+- samtidiga contributions aldrig kan sänka global HP under noll eller tappa uppdateringar;
+- en klient kan vara offline kort och återuppta exakt samma pending settlement.
+- samma spelare kan göra flera assaults men visas bara en gång med sin verifierade totalskada och korrekta personliga placering.
+
+### Pass 5 — Milestones, eventresultat och lanseringspolish
+
+Mål: göra eventet begripligt, belönande och driftbart från signal till avslut.
+
+Innehåll:
+
+- personliga damage milestones och kvalifikationsgräns för global reward;
+- global victory, failed event och event expired som separata visuella states;
+- serverägd, atomisk och idempotent reward claim;
+- eventbelöning som kosmetik/badge samt begränsade shards, aldrig gameplay-kraft eller highscorebonus;
+- contributor-lista och prestige-ranking utan exklusiv power reward;
+- resultatkort som visar raw damage, godkänt bidrag, attempt multiplier, total contribution och nästa milestone;
+- återhämtning från nätfel, gammal PWA-cache och eventversion som ändrats;
+- telemetry för participation, completion, blueprint pick rate, phase damage, deaths och avvisade settlements;
+- ett internt kort testevent före första publika 48-timmarseventet;
+- säkerhets-, mobil-, PWA- och belastningstest samt dokumenterad rollback/disable-flagga.
+
+Klart när:
+
+- en spelare kan gå från huvudmenysignal till Armory, assault, settlement, milestone och reward utan oklar state;
+- eventet kan pausas eller stängas server-side utan ny frontenddeploy;
+- belöningar kan varken dubbelclaimas eller hämtas av okvalificerat konto;
+- eventmetrics räcker för att balansera nästa boss utan att samla privata uppgifter.
+
+## Reviderad byggordning
+
+1. Serverboss Pass 1: Crown Armory och serverägd progression.
+2. Serverboss Pass 2: Armory UX och event-entry.
+3. Serverboss Pass 3: lokal Boss Assault.
+4. Serverboss Pass 4: global eventmotor och contribution settlement.
+5. Serverboss Pass 5: milestones, rewards och lanseringspolish.
+6. Crown Profile och återanvändbart visuellt Player Card.
+7. Crown Store med direkta shardköp och socialt synlig kosmetik.
+8. PvP-lobby med vänteläge, invite-länk och två synliga skepp.
+9. Seedad invite-only Crown Duel.
+10. Quick Match och Ranked PvP när spelarbas och verifiering är redo.
+11. Market MVP när spelarbas och inventory-likviditet är tillräckliga.
 
 ## Icke-mål för första versionerna
 

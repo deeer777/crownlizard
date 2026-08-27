@@ -2,7 +2,7 @@
 
 ## Crown Network decisions
 
-De låsta produkt- och säkerhetsreglerna för kommande visuella Crown Duel-lobbyn och Global Serverboss finns i `CROWN_NETWORK_DESIGN.md`. Dokumentet är källan inför implementation och innehåller Crown Profile, normaliserad seedad PvP, invite-länkar, social skin-presentation, permanent Crown Armory, begränsad veteranbonus, bossfaser, serverägda bidrag och den beslutade byggordningen.
+De låsta produkt- och säkerhetsreglerna för kommande visuella Crown Duel-lobbyn och Global Serverboss finns i `CROWN_NETWORK_DESIGN.md`. Serverboss är nu prioriterad före PvP. Dokumentet är källan inför implementation och innehåller fem färdigdefinierade serverboss-pass: Crown Armory/progression, Armory UX/event-entry, lokal Boss Assault, global contribution settlement samt milestones/rewards/lanseringspolish. Det bevarar även reglerna för framtida normaliserad seedad PvP, invite-länkar och social skin-presentation.
 
 Current production version: **67** (`VER 0.16.2`)
 Latest completed local version: **67** (`VER 0.16.2`)

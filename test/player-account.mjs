@@ -234,11 +234,23 @@ globalThis.fetch = async (url, options = {}) => {
     { cosmetic_id: 'ship_void_hunter', source: 'legacy', acquired_at: new Date().toISOString() },
   ]);
   if (String(url).includes('/rest/v1/leaderboard_runs?')) return Response.json([{
-    id: '223e4567-e89b-42d3-a456-426614174000', user_id: mockedRunOwner, created_at: new Date(Date.now() - 125_000).toISOString(), economy_settled_at: rpcDuplicate ? new Date().toISOString() : null,
+    id: '223e4567-e89b-42d3-a456-426614174000', user_id: mockedRunOwner, difficulty: 'arcade', game_version: '0.23.0-80', created_at: new Date(Date.now() - 125_000).toISOString(), economy_settled_at: rpcDuplicate ? new Date().toISOString() : null,
   }]);
   if (String(url).endsWith('/rest/v1/rpc/settle_run_reward')) return Response.json({
     duplicate: rpcDuplicate, balance: 475, amount: 55, reward: calculateServerShardReward(normalRun),
   });
+  if (String(url).endsWith('/rest/v1/rpc/settle_armory_progression')) return Response.json({
+    duplicate: rpcDuplicate, xpAwarded: 72, xp: 172, rank: 1, unlockedBlueprintIds: [],
+  });
+  if (String(url).endsWith('/rest/v1/rpc/ensure_player_armory')) return Response.json(true);
+  if (String(url).includes('/rest/v1/player_progression?')) return Response.json([{
+    arsenal_xp: 172, arsenal_rank: 1, selected_blueprint_id: 'blaster_standard', backfilled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }]);
+  if (String(url).includes('/rest/v1/player_weapon_blueprints?')) return Response.json([]);
+  if (String(url).includes('/rest/v1/weapon_blueprint_catalog?')) return Response.json([
+    { id: 'blaster_standard', weapon_key: 'blaster', mastery_key: null, name: 'STANDARD BLASTER', role: 'RELIABLE ALL-ROUNDER', sort_order: 0, trial_eligible: false, active: true },
+    { id: 'laser_sovereign_lance', weapon_key: 'laser', mastery_key: 'sovereignLance', name: 'SOVEREIGN LANCE', role: 'FOCUS DAMAGE', sort_order: 70, trial_eligible: true, active: true },
+  ]);
   if (String(url).endsWith('/rest/v1/rpc/open_crown_crate')) {
     if (crateResult === 'poor') return Response.json({ error: 'NOT_ENOUGH_SHARDS', balance: 20 });
     return Response.json({
@@ -435,6 +447,9 @@ const settlement = await settlementResponse.json();
 assert.equal(settlement.amount, 55, 'the API uses its server-calculated reward');
 const rpcCall = calls.find(call => call.url.endsWith('/rest/v1/rpc/settle_run_reward'));
 assert.equal(JSON.parse(rpcCall.options.body).p_amount, 55, 'only the server-calculated amount reaches the atomic database function');
+const ensureArmoryIndex = calls.findIndex(call => call.url.endsWith('/rest/v1/rpc/ensure_player_armory'));
+const settleRewardIndex = calls.findIndex(call => call.url.endsWith('/rest/v1/rpc/settle_run_reward'));
+assert.ok(ensureArmoryIndex >= 0 && ensureArmoryIndex < settleRewardIndex, 'historical rank backfill freezes before the current run becomes settled');
 
 rpcDuplicate = true;
 const replayResponse = await onRequest({

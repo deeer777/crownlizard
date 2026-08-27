@@ -1,4 +1,5 @@
-import { CONFIG } from './config.js?v=20260827-79-crown-store-final';
+import { CONFIG } from './config.js?v=20260827-83-global-event';
+import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260827-83-global-event';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -42,6 +43,8 @@ const ENEMY_DRAW_SIZES = {
   weaver: { width: 74, height: 66 },
   skimmer: { width: 96, height: 64 },
   boss: { width: 148, height: 158 },
+  assaultRelay: { width: 82, height: 82 },
+  assaultPylon: { width: 76, height: 104 },
 };
 
 export class Game {
@@ -94,6 +97,9 @@ export class Game {
       meteorWarning: 'hazards/meteor-warning-v1.png',
       meteorCore: 'hazards/meteor-core-v1.png',
       meteorImpact: 'hazards/meteor-impact-v1.png',
+      globalWarden: 'sprites/global-warden-v1.png?v=82-opt',
+      assaultRelay: 'sprites/crown-relay-v1.png?v=82-opt',
+      assaultPylon: 'sprites/shield-pylon-v1.png?v=82-opt',
     };
     return Object.fromEntries(Object.entries(files).map(([key, filename]) => {
       const image = new Image();
@@ -179,6 +185,8 @@ export class Game {
   }
 
   reset() {
+    this.mode = 'endless';
+    this.assault = null;
     this.time = 0;
     this.stageIndex = 0;
     this.lastStageIndex = 0;
@@ -266,6 +274,43 @@ export class Game {
     this.paused = false;
     this.events.stage?.(this.stageInfo());
   }
+
+  startAssault({ blueprintId = 'blaster_standard', weaponKey = 'blaster', masteryKey = '', arsenalRank = 0, damageBonus = 0, globalHp = ASSAULT_GLOBAL_HP_SNAPSHOT } = {}) {
+    this.difficulty = 'arcade';
+    this.reset();
+    this.mode = 'assault';
+    this.weapon = CONFIG.weapons[weaponKey] ? weaponKey : 'blaster';
+    this.weaponLevels = { blaster: 0, spread: 0, pulse: 0, laser: 0, tesla: 0, [this.weapon]: 5 };
+    this.weaponMasteries[this.weapon] = this.masteryDefinition(this.weapon, masteryKey) ? masteryKey : '';
+    const rank = Math.max(0, Math.min(10, Math.floor(Number(arsenalRank) || 0)));
+    const bonus = Math.max(0, Math.min(.2, Number(damageBonus) || 0));
+    this.modifiers.damage = 1 + bonus;
+    this.player.health = CONFIG.difficulties.arcade.health;
+    this.assault = {
+      blueprintId,
+      arsenalRank: rank,
+      damageBonus: bonus,
+      elapsed: 0,
+      remaining: ASSAULT_DURATION,
+      phase: 1,
+      damage: 0,
+      phaseDamage: [0, 0, 0],
+      targetsDestroyed: 0,
+      intro: 2.4,
+      transition: 0,
+      finishing: 0,
+      outcome: '',
+      spawnTimer: 1.2,
+      spawnIndex: 0,
+      globalHp: Math.max(0, Number(globalHp) || ASSAULT_GLOBAL_HP_SNAPSHOT),
+    };
+    this.spawnAssaultBoss();
+    this.active = true;
+    this.paused = false;
+    this.events.stage?.({ ...CONFIG.stages[3], number: 1, progress: 0, name: 'CROWN NEXUS' });
+    this.events.assaultPhase?.(assaultPhaseAt(0));
+    this.events.hud?.(this.snapshot());
+  }
   stop() { this.active = false; this.paused = false; }
 
   snapshot() {
@@ -296,6 +341,16 @@ export class Game {
       bossName: boss?.bossName || '',
       bossPhase: boss?.bossPhase || 0,
       bossHealth: boss ? clamp(boss.health / boss.maxHealth, 0, 1) : 0,
+      mode: this.mode,
+      assault: this.assault ? {
+        remaining: Math.max(0, this.assault.remaining),
+        elapsed: this.assault.elapsed,
+        damage: Math.round(this.assault.damage),
+        phase: this.assault.phase,
+        phaseInfo: assaultPhaseAt(this.assault.elapsed),
+        globalHp: Math.max(0, this.assault.globalHp - Math.round(this.assault.damage)),
+        targetsDestroyed: this.assault.targetsDestroyed,
+      } : null,
     };
   }
 
@@ -311,8 +366,13 @@ export class Game {
       crates: this.runStats.crates,
       bestCombo: this.runStats.bestCombo,
       weapon: CONFIG.weapons[this.weapon].name,
+      weaponKey: this.weapon,
       weaponLevel: this.weaponLevels[this.weapon],
       weaponMastery: this.masteryDefinition(this.weapon)?.name || '',
+      masteryKey: this.weaponMasteries[this.weapon] || '',
+      masteries: Object.entries(this.weaponMasteries)
+        .filter(([, masteryKey]) => Boolean(masteryKey))
+        .map(([weaponKey, masteryKey]) => ({ weaponKey, masteryKey })),
       powers,
     };
   }
@@ -379,6 +439,14 @@ export class Game {
   }
 
   stageInfo() {
+    if (this.assault) return {
+      ...CONFIG.stages[3],
+      name: 'CROWN NEXUS',
+      subtitle: 'Global Warden signal',
+      number: 1,
+      cycle: 1,
+      progress: clamp(this.assault.elapsed / ASSAULT_DURATION, 0, 1),
+    };
     const number = this.stageIndex + 1;
     const definition = CONFIG.stages[this.stageIndex % CONFIG.stages.length];
     return {
@@ -402,11 +470,180 @@ export class Game {
     };
   }
 
+  spawnAssaultBoss() {
+    this.enemies.push({
+      id: this.nextEntityId++, type: 'boss', assaultBoss: true,
+      x: (this.arenaLeft + this.arenaRight) / 2, y: -145,
+      radius: 76, health: ASSAULT_BOSS_HEALTH, maxHealth: ASSAULT_BOSS_HEALTH,
+      speed: 30, value: 0, color: '#ff647d', elite: null, shoot: 1,
+      phase: 0, burst: 0, intro: 2.4, introMax: 2.4, invulnerable: 2.4,
+      bossPhase: 1, bossVariant: 3, bossName: 'THE SOVEREIGN ENGINE',
+      phaseTransition: 0, phaseTransitionMax: 0, patternTimer: .75, patternIndex: 0,
+      hitTime: 0, recoilX: 0, recoilY: 0, dead: false,
+    });
+  }
+
+  spawnAssaultTarget(type, index = 0) {
+    const relay = type === 'assaultRelay';
+    const positions = relay
+      ? [[.22, .27], [.5, .34], [.78, .27]]
+      : [[.18, .25], [.5, .38], [.82, .25]];
+    const [xRatio, yRatio] = positions[index % positions.length];
+    const health = relay ? 62 : 84;
+    this.enemies.push({
+      id: this.nextEntityId++, type,
+      x: this.arenaLeft + this.arenaWidth * xRatio, y: this.height * yRatio,
+      anchorX: this.arenaLeft + this.arenaWidth * xRatio, anchorY: this.height * yRatio,
+      radius: relay ? 28 : 31, health, maxHealth: health, speed: 0, value: 0,
+      color: relay ? '#6fffd2' : '#ffd36b', elite: null, shoot: .8 + index * .22,
+      phase: index * 2.1, burst: 0, intro: 0, invulnerable: 0, hitTime: 0,
+      recoilX: 0, recoilY: 0, dead: false,
+    });
+  }
+
+  beginAssaultPhase(phase) {
+    const assault = this.assault;
+    if (!assault || phase === assault.phase) return;
+    assault.phase = phase;
+    assault.transition = 1.15;
+    assault.spawnTimer = 1.2;
+    this.enemyBullets = [];
+    this.bossWarnings = [];
+    this.hazards = [];
+    this.enemies = this.enemies.filter(enemy => enemy.assaultBoss);
+    const boss = this.enemies.find(enemy => enemy.assaultBoss);
+    if (boss) {
+      boss.bossPhase = phase;
+      boss.phaseTransition = assault.transition;
+      boss.phaseTransitionMax = assault.transition;
+      boss.invulnerable = assault.transition;
+      boss.patternIndex = 0;
+      boss.patternTimer = .65;
+    }
+    if (phase === 2) for (let index = 0; index < 3; index += 1) this.spawnAssaultTarget('assaultRelay', index);
+    if (phase === 3) for (let index = 0; index < 3; index += 1) this.spawnAssaultTarget('assaultPylon', index);
+    this.shake = 10;
+    this.flash = .6;
+    this.events.assaultPhase?.(assaultPhaseAt(assault.elapsed));
+    this.events.haptic?.(phase === 2 ? [25, 30, 45] : [30, 25, 30, 25, 60]);
+  }
+
+  debugAssaultPhase(phase) {
+    if (!this.assault || ![1, 2, 3].includes(phase)) return false;
+    this.assault.elapsed = (phase - 1) * 30 + .01;
+    this.assault.remaining = ASSAULT_DURATION - this.assault.elapsed;
+    if (phase === 1) {
+      this.assault.phase = 0;
+      this.enemies = this.enemies.filter(enemy => enemy.assaultBoss);
+    }
+    this.beginAssaultPhase(phase);
+    return true;
+  }
+
+  debugAssaultLoadout({ blueprintId, weaponKey, masteryKey = '' } = {}) {
+    if (!this.assault || !CONFIG.weapons[weaponKey]) return false;
+    this.weapon = weaponKey;
+    this.weaponLevels = { blaster: 0, spread: 0, pulse: 0, laser: 0, tesla: 0, [weaponKey]: 5 };
+    this.weaponMasteries = { blaster: '', spread: '', pulse: '', laser: '', tesla: '', [weaponKey]: this.masteryDefinition(weaponKey, masteryKey) ? masteryKey : '' };
+    this.assault.blueprintId = blueprintId;
+    this.weaponTimer = 0;
+    this.laserFocus = { targetId: 0, expiresAt: 0, stacks: 0 };
+    return true;
+  }
+
+  updateAssault(dt) {
+    const assault = this.assault;
+    if (!assault) return;
+    this.updateStars(dt * (assault.finishing ? .28 : 1));
+    this.flash = Math.max(0, this.flash - dt * 3.5);
+    this.shake = Math.max(0, this.shake - dt * 18);
+    if (assault.finishing > 0) {
+      assault.finishing = Math.max(0, assault.finishing - dt);
+      this.updateEffects(dt * .35);
+      this.events.hud?.(this.snapshot());
+      if (assault.finishing === 0) {
+        this.active = false;
+        this.events.assaultover?.(assaultResult(assault));
+      }
+      return;
+    }
+    if (assault.intro > 0) {
+      assault.intro = Math.max(0, assault.intro - dt);
+      const boss = this.enemies.find(enemy => enemy.assaultBoss);
+      if (boss) {
+        boss.intro = assault.intro;
+        boss.invulnerable = assault.intro;
+        boss.y += (Math.min(210, this.height * .3) - boss.y) * Math.min(1, dt * 2.2);
+      }
+      this.updatePlayer(dt);
+      this.updateEffects(dt);
+      this.events.hud?.(this.snapshot());
+      return;
+    }
+    assault.elapsed = Math.min(ASSAULT_DURATION, assault.elapsed + dt);
+    assault.remaining = Math.max(0, ASSAULT_DURATION - assault.elapsed);
+    const phase = assaultPhaseAt(assault.elapsed).number;
+    if (phase !== assault.phase) this.beginAssaultPhase(phase);
+    assault.transition = Math.max(0, assault.transition - dt);
+    this.time = assault.elapsed;
+    this.updatePlayer(dt);
+    this.updateAssaultSpawning(dt);
+    this.updateZoneMechanics(dt);
+    this.updateWeapons(dt);
+    this.updateEnemies(dt);
+    this.updateBossWarnings(dt);
+    this.updateProjectiles(dt);
+    this.updateEffects(dt);
+    this.events.hud?.(this.snapshot());
+    if (assault.elapsed >= ASSAULT_DURATION) this.finishAssault('timeout');
+  }
+
+  updateAssaultSpawning(dt) {
+    const assault = this.assault;
+    if (!assault || assault.transition > 0) return;
+    assault.spawnTimer -= dt;
+    const adds = this.enemies.filter(enemy => !enemy.dead && !enemy.assaultBoss && !['assaultRelay', 'assaultPylon'].includes(enemy.type));
+    const cap = assault.phase === 2 ? 9 : assault.phase === 3 ? 5 : 0;
+    if (cap && adds.length < cap && assault.spawnTimer <= 0) {
+      const type = assault.phase === 2
+        ? ['chaser', 'shooter', 'chaser', 'tank'][assault.spawnIndex % 4]
+        : ['shooter', 'chaser'][assault.spawnIndex % 2];
+      const lane = assault.spawnIndex++;
+      this.spawnEnemy(type, {
+        x: this.arenaLeft + 46 + (lane * 137 % Math.max(80, this.arenaWidth - 92)),
+        y: -38,
+        elite: null,
+      });
+      assault.spawnTimer = assault.phase === 2 ? 1.05 : 1.7;
+    }
+  }
+
+  finishAssault(outcome = 'timeout') {
+    const assault = this.assault;
+    if (!assault || assault.finishing > 0 || assault.outcome) return false;
+    assault.outcome = outcome;
+    assault.finishing = 1.35;
+    this.enemyBullets = [];
+    this.bossWarnings = [];
+    this.hazards = [];
+    this.shake = outcome === 'breach' ? 18 : 9;
+    this.flash = outcome === 'destroyed' ? 1 : .65;
+    const boss = this.enemies.find(enemy => enemy.assaultBoss);
+    if (boss) this.burst(boss.x, boss.y, outcome === 'breach' ? '#ffd36b' : '#ff647d', 60, 360);
+    this.events.cinematic?.(outcome === 'destroyed' ? 'assaultDeath' : 'assaultComplete');
+    this.events.haptic?.(outcome === 'destroyed' ? [45, 35, 80] : [30, 25, 30, 25, 70]);
+    return true;
+  }
+
   update(dt) {
     if (this.paused) return;
     if (!this.active) return;
     if (this.cinematic) {
       this.updateCinematic(dt);
+      return;
+    }
+    if (this.assault) {
+      this.updateAssault(dt);
       return;
     }
     this.updateStars(dt);
@@ -981,8 +1218,18 @@ export class Game {
             }
           }
         }
+      } else if (enemy.type === 'assaultRelay' || enemy.type === 'assaultPylon') {
+        enemy.x += (enemy.anchorX + Math.sin(this.time * 1.25 + enemy.phase) * (enemy.type === 'assaultRelay' ? 13 : 5) - enemy.x) * Math.min(1, dt * 4);
+        enemy.y += (enemy.anchorY + Math.cos(this.time * 1.4 + enemy.phase) * (enemy.type === 'assaultRelay' ? 8 : 4) - enemy.y) * Math.min(1, dt * 4);
+        enemy.shoot -= dt;
+        if (enemy.shoot <= 0) {
+          enemy.shoot = enemy.type === 'assaultRelay' ? 1.65 : 2.15;
+          const shot = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+          this.enemyBullets.push({ x: enemy.x, y: enemy.y, vx: Math.cos(shot) * 215, vy: Math.sin(shot) * 215, radius: 5, life: 4, kind: enemy.type === 'assaultRelay' ? 'wardenOrb' : 'wardenShard' });
+        }
       } else if (enemy.type === 'boss') {
-        this.updateBoss(enemy, dt, angle);
+        if (enemy.assaultBoss) this.updateAssaultBoss(enemy, dt, angle);
+        else this.updateBoss(enemy, dt, angle);
       } else {
         enemy.y += enemy.speed * dt;
         enemy.x += Math.sin(this.time * 2 + enemy.phase) * 55 * dt;
@@ -997,7 +1244,9 @@ export class Game {
         if (player.dashTime > 0) this.damageEnemy(enemy, CONFIG.dash.impactDamage, true);
         else this.hitPlayer(enemy.x, enemy.y);
       }
-      if (enemy.type === 'skimmer') {
+      if (enemy.assaultBoss || enemy.type === 'assaultRelay' || enemy.type === 'assaultPylon') {
+        // Assault actors stay inside their authored arena anchors.
+      } else if (enemy.type === 'skimmer') {
         if (enemy.skimmerIntro <= 0 && (enemy.x < this.arenaLeft - 130 || enemy.x > this.arenaRight + 130)) enemy.dead = true;
       } else if (enemy.y > this.height + 60) enemy.dead = true;
     }
@@ -1234,6 +1483,10 @@ export class Game {
       this.laserFocus.expiresAt = this.time + .5;
       damage *= 1 + this.laserFocus.stacks * hitOptions.focusRamp;
     }
+    if (this.assault) {
+      const masteryKey = this.weaponMasteries[this.weapon] || '';
+      damage *= assaultDamageMultiplier(masteryKey, this.assault.phase, enemy.type);
+    }
     const protector = enemy.type === 'boss' || enemy.type === 'weaver'
       ? null
       : this.enemies.find(candidate => candidate.type === 'weaver' && !candidate.dead && candidate.linkTargets?.includes(enemy.id));
@@ -1241,7 +1494,13 @@ export class Game {
       damage *= .32;
       this.burst(enemy.x, enemy.y, '#62f7c6', 5, 75);
     }
+    const healthBefore = enemy.health;
     enemy.health -= damage;
+    if (this.assault) {
+      const appliedDamage = Math.min(healthBefore, Math.max(0, damage));
+      this.assault.damage += appliedDamage;
+      this.assault.phaseDamage[Math.max(0, Math.min(2, this.assault.phase - 1))] += appliedDamage;
+    }
     const recoilDistance = Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y) || 1;
     const recoilForce = enemy.type === 'boss' ? 34 : enemy.type === 'tank' || enemy.type === 'weaver' ? 52 : enemy.type === 'shooter' ? 72 : 108;
     enemy.recoilX += (enemy.x - this.player.x) / recoilDistance * recoilForce;
@@ -1251,16 +1510,17 @@ export class Game {
     this.burst(enemy.x, enemy.y, enemy.color, dashed ? 14 : 4, dashed ? 280 : 100);
     if (enemy.health > 0 || enemy.dead) return;
     enemy.dead = true;
-    this.addDeathAnimation(enemy);
+    if (!['assaultRelay', 'assaultPylon'].includes(enemy.type)) this.addDeathAnimation(enemy);
     this.combo = Math.min(9, Math.floor(this.combo + this.modifiers.comboGain));
     this.runStats.enemies += 1;
+    if (this.assault && !enemy.assaultBoss) this.assault.targetsDestroyed += 1;
     this.runStats.bestCombo = Math.max(this.runStats.bestCombo, Math.floor(this.combo));
     this.comboTimer = CONFIG.comboWindow * this.modifiers.comboWindow;
     this.score += enemy.value * this.combo * (dashed ? 1.5 : 1) * CONFIG.difficulties[this.difficulty].score * this.modifiers.score;
     this.shake = enemy.type === 'boss' ? 16 : dashed ? 7 : enemy.type === 'tank' || enemy.type === 'weaver' ? 6 : 2;
     this.burst(enemy.x, enemy.y, enemy.color, enemy.type === 'boss' ? 60 : enemy.type === 'tank' || enemy.type === 'weaver' ? 24 : 12, enemy.type === 'boss' ? 360 : 210);
     this.events.combo?.();
-    if (enemy.type !== 'boss' && this.stageIndex % CONFIG.stages.length === 0 && Math.random() < .38) {
+    if (!this.assault && enemy.type !== 'boss' && this.stageIndex % CONFIG.stages.length === 0 && Math.random() < .38) {
       this.hazards.push({ type: 'poison', x: enemy.x, y: enemy.y, radius: enemy.elite ? 48 : 36, age: 0, warning: .65, life: 5.15 });
     }
     if (enemy.elite === 'volatile') {
@@ -1277,6 +1537,11 @@ export class Game {
       }
     }
     if (enemy.type === 'boss') {
+      if (this.assault && enemy.assaultBoss) {
+        this.events.sfx?.('boss');
+        this.finishAssault('breach');
+        return;
+      }
       this.runStats.wardens += 1;
       this.enemyBullets = [];
       this.bossWarnings = [];
@@ -1303,6 +1568,11 @@ export class Game {
     this.burst(player.x, player.y, '#ffffff', 28, 300);
     if (player.health <= 0) {
       player.health = 0;
+      if (this.assault) {
+        this.burst(player.x, player.y, '#fff4d2', 44, 330);
+        this.finishAssault('destroyed');
+        return;
+      }
       this.beginCinematic('death', {
         x: player.x,
         y: player.y,
@@ -1507,6 +1777,7 @@ export class Game {
     this.drawPickups(ctx);
     this.drawProjectiles(ctx);
     this.drawWeaverLinks(ctx);
+    this.drawAssaultLinks(ctx);
     this.drawEnemies(ctx);
     this.drawDeathAnimations(ctx);
     this.drawWeaponImpacts(ctx);
@@ -1516,6 +1787,7 @@ export class Game {
     this.drawParticles(ctx);
     ctx.restore();
     this.drawBossPresentation(ctx);
+    this.drawAssaultPresentation(ctx);
     this.drawCinematic(ctx);
     if (this.flash > 0) {
       ctx.fillStyle = `rgba(255, 70, 100, ${this.flash * (this.reducedEffects ? .04 : .15)})`;
@@ -1721,6 +1993,21 @@ export class Game {
     ctx.globalAlpha = 1;
   }
 
+  updateAssaultBoss(enemy, dt, aimAngle) {
+    const assault = this.assault;
+    if (!assault) return;
+    enemy.bossPhase = assault.phase;
+    enemy.invulnerable = Math.max(0, (enemy.invulnerable || 0));
+    enemy.phaseTransition = Math.max(0, assault.transition);
+    const center = (this.arenaLeft + this.arenaRight) / 2;
+    const amplitude = Math.min(this.arenaWidth * .19, 150);
+    enemy.x += (center + Math.sin(this.time * (.45 + assault.phase * .08)) * amplitude - enemy.x) * Math.min(1, dt * 2.2);
+    enemy.y += (Math.min(210, this.height * .3) + Math.sin(this.time * .9) * 5 - enemy.y) * Math.min(1, dt * 2.4);
+    if (assault.transition > 0) return;
+    enemy.patternTimer -= dt;
+    if (enemy.patternTimer <= 0) this.scheduleBossPattern(enemy, aimAngle);
+  }
+
   offerWardenReward() {
     const weaponKey = this.masteryQueue.find(key => !this.weaponMasteries[key]);
     if (weaponKey && this.offerMastery(weaponKey)) return;
@@ -1832,7 +2119,8 @@ export class Game {
       if (enemy.type === 'skimmer') {
         if (enemy.side < 0) ctx.scale(-1, 1);
         ctx.rotate(Math.sin(this.time * 3 + enemy.phase) * .025);
-      } else ctx.rotate(Math.sin(this.time * 2 + enemy.phase) * .15);
+      } else if (enemy.assaultBoss) ctx.rotate(Math.sin(this.time * .8) * .018);
+      else ctx.rotate(Math.sin(this.time * 2 + enemy.phase) * .15);
       const hit = clamp(enemy.hitTime / (enemy.type === 'boss' ? .18 : enemy.type === 'tank' ? .15 : .13), 0, 1);
       const idle = Math.sin(this.time * (enemy.type === 'shooter' ? 8 : enemy.type === 'chaser' ? 6 : 3) + enemy.phase);
       if (enemy.type === 'chaser') {
@@ -1857,15 +2145,19 @@ export class Game {
         ctx.beginPath(); ctx.arc(0, 0, enemy.radius + 8 + Math.sin(this.time * 5) * 2, 0, TAU); ctx.stroke();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       }
-      const sprite = enemy.type === 'boss' ? this.sprites[`boss-${enemy.bossVariant}`] : this.sprites[enemy.type];
+      const sprite = enemy.assaultBoss
+        ? this.sprites.globalWarden
+        : enemy.type === 'boss' ? this.sprites[`boss-${enemy.bossVariant}`] : this.sprites[enemy.type];
       if (sprite?.complete && sprite.naturalWidth) {
         ctx.imageSmoothingEnabled = false;
-        const size = ENEMY_DRAW_SIZES[enemy.type];
+        const size = enemy.assaultBoss
+          ? { width: Math.min(190, this.arenaWidth * .31), height: Math.min(190, this.arenaWidth * .31) }
+          : ENEMY_DRAW_SIZES[enemy.type];
         if (hit > 0) ctx.filter = `brightness(${1 + hit * 2.2}) saturate(${1 - hit * .65})`;
         ctx.drawImage(sprite, -size.width / 2, -size.height / 2, size.width, size.height);
         ctx.filter = 'none';
         if (enemy.maxHealth > 3 && (enemy.health < enemy.maxHealth || enemy.type === 'boss')) {
-          const barWidth = enemy.type === 'boss' ? 112 : enemy.radius * 2;
+          const barWidth = enemy.assaultBoss ? Math.min(180, size.width * .72) : enemy.type === 'boss' ? 112 : enemy.radius * 2;
           const barY = -size.height / 2 - 8;
           ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(-barWidth / 2, barY, barWidth, 4);
           ctx.fillStyle = enemy.type === 'boss' ? '#ffd36b' : '#ffffff'; ctx.fillRect(-barWidth / 2, barY, barWidth * clamp(enemy.health / enemy.maxHealth, 0, 1), 4);
@@ -2071,7 +2363,87 @@ export class Game {
     }
   }
 
+  drawAssaultLinks(ctx) {
+    if (!this.assault) return;
+    const boss = this.enemies.find(enemy => enemy.assaultBoss && !enemy.dead);
+    if (!boss) return;
+    const nodes = this.enemies.filter(enemy => !enemy.dead && (enemy.type === 'assaultRelay' || enemy.type === 'assaultPylon'));
+    for (const node of nodes) {
+      const color = node.type === 'assaultRelay' ? '#6fffd2' : '#ffd36b';
+      const dx = node.x - boss.x;
+      const dy = node.y - boss.y;
+      const distance = Math.hypot(dx, dy) || 1;
+      const nx = -dy / distance;
+      const ny = dx / distance;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = color;
+      ctx.lineWidth = node.type === 'assaultPylon' ? 4 : 2;
+      ctx.globalAlpha = .48 + Math.sin(this.time * 8 + node.phase) * .14;
+      ctx.beginPath();
+      ctx.moveTo(boss.x, boss.y);
+      for (let step = 1; step < 6; step += 1) {
+        const t = step / 6;
+        const jitter = Math.sin(this.time * 12 + step * 2 + node.phase) * (node.type === 'assaultRelay' ? 6 : 2);
+        ctx.lineTo(boss.x + dx * t + nx * jitter, boss.y + dy * t + ny * jitter);
+      }
+      ctx.lineTo(node.x, node.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  drawAssaultPresentation(ctx) {
+    const assault = this.assault;
+    if (!assault) return;
+    let title = '';
+    let subtitle = '';
+    let alpha = 0;
+    if (assault.intro > 0) {
+      const progress = 1 - assault.intro / 2.4;
+      title = 'BOSS ASSAULT';
+      subtitle = 'THE SOVEREIGN ENGINE · 90 SECOND STRIKE';
+      alpha = Math.sin(clamp(progress, 0, 1) * Math.PI) * .96;
+    } else if (assault.transition > 0) {
+      const phase = assaultPhaseAt(assault.elapsed);
+      const progress = 1 - assault.transition / 1.15;
+      title = `PHASE ${phase.number} · ${phase.name}`;
+      subtitle = phase.role;
+      alpha = Math.sin(clamp(progress, 0, 1) * Math.PI) * .94;
+    } else if (assault.finishing > 0) {
+      const progress = 1 - assault.finishing / 1.35;
+      title = assault.outcome === 'destroyed' ? 'SIGNAL LOST' : assault.outcome === 'breach' ? 'CORE BREACHED' : 'ASSAULT COMPLETE';
+      subtitle = `${Math.round(assault.damage).toLocaleString('en-US')} VERIFIED LOCAL DAMAGE`;
+      alpha = Math.sin(clamp(progress, 0, 1) * Math.PI) * .98;
+    }
+    if (alpha <= 0) return;
+    const centerY = Math.min(this.height * .42, 340);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const band = ctx.createLinearGradient(this.arenaLeft, 0, this.arenaRight, 0);
+    band.addColorStop(0, 'rgba(3,7,12,0)');
+    band.addColorStop(.16, 'rgba(3,7,12,.92)');
+    band.addColorStop(.84, 'rgba(3,7,12,.92)');
+    band.addColorStop(1, 'rgba(3,7,12,0)');
+    ctx.fillStyle = band;
+    ctx.fillRect(this.arenaLeft, centerY - 65, this.arenaWidth, 130);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `400 ${this.arenaWidth < 500 ? 17 : 24}px "Press Start 2P", monospace`;
+    ctx.fillStyle = '#fff4d2';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ff647d';
+    ctx.fillText(title, (this.arenaLeft + this.arenaRight) / 2, centerY - 10);
+    ctx.shadowBlur = 0;
+    ctx.font = '700 9px "Silkscreen", monospace';
+    ctx.fillStyle = '#ffd36b';
+    ctx.fillText(subtitle, (this.arenaLeft + this.arenaRight) / 2, centerY + 26);
+    ctx.restore();
+  }
+
   drawBossPresentation(ctx) {
+    if (this.assault) return;
     const boss = this.enemies.find(enemy => enemy.type === 'boss' && !enemy.dead);
     if (!boss) return;
     let title = '';

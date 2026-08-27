@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260827-79-crown-store-final';
+import { CONFIG } from './config.js?v=20260827-83-global-event';
 
 export class Music {
   constructor() {

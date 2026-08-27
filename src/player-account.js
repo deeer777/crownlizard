@@ -334,6 +334,8 @@ export class PlayerAccount {
       zone: summary.zone,
       wardens: summary.wardens,
       enemies: summary.enemies,
+      crates: summary.crates,
+      masteries: Array.isArray(summary.masteries) ? summary.masteries.map(({ weaponKey, masteryKey }) => ({ weaponKey, masteryKey })) : [],
     };
     try { this.storage?.setItem(PENDING_SETTLEMENT_KEY, JSON.stringify(settlement)); } catch {}
     const result = await this.authorizedRequest('/api/economy/settle', {
@@ -424,6 +426,17 @@ export class PlayerAccount {
     return this.authorizedRequest('/api/vault/inventory/seen', {
       method: 'POST',
       body: JSON.stringify({ cosmeticId }),
+    });
+  }
+
+  getArmory() {
+    return this.authorizedRequest('/api/armory');
+  }
+
+  selectArmoryBlueprint(blueprintId) {
+    return this.authorizedRequest('/api/armory/select', {
+      method: 'POST',
+      body: JSON.stringify({ blueprintId }),
     });
   }
 

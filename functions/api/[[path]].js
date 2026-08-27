@@ -1,5 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,6 +32,45 @@ const SHARD_RULES = Object.freeze({
   wardenCap: 60,
   maximumRunReward: 150,
 });
+const STANDARD_BLUEPRINT_ID = 'blaster_standard';
+const ARSENAL_RANK_THRESHOLDS = Object.freeze([0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000]);
+const BLUEPRINTS = Object.freeze([
+  { id: STANDARD_BLUEPRINT_ID, weaponKey: 'blaster', masteryKey: '', name: 'STANDARD BLASTER', role: 'RELIABLE ALL-ROUNDER', sortOrder: 0, trialEligible: false },
+  { id: 'blaster_royal_barrage', weaponKey: 'blaster', masteryKey: 'royalBarrage', name: 'ROYAL BARRAGE', role: 'CROWD CONTROL', sortOrder: 10, trialEligible: true },
+  { id: 'blaster_crownrail', weaponKey: 'blaster', masteryKey: 'crownrail', name: 'CROWNRAIL', role: 'ELITE BREAKER', sortOrder: 20, trialEligible: true },
+  { id: 'spread_halo_guard', weaponKey: 'spread', masteryKey: 'haloGuard', name: 'HALO GUARD', role: 'FULL DEFENCE', sortOrder: 30, trialEligible: true },
+  { id: 'spread_guillotine_fan', weaponKey: 'spread', masteryKey: 'guillotineFan', name: 'GUILLOTINE FAN', role: 'FORWARD BURST', sortOrder: 40, trialEligible: true },
+  { id: 'pulse_singularity', weaponKey: 'pulse', masteryKey: 'singularity', name: 'SINGULARITY', role: 'AREA DAMAGE', sortOrder: 50, trialEligible: true },
+  { id: 'pulse_comet_cores', weaponKey: 'pulse', masteryKey: 'cometCores', name: 'COMET CORES', role: 'BOSS PRESSURE', sortOrder: 60, trialEligible: true },
+  { id: 'laser_sovereign_lance', weaponKey: 'laser', masteryKey: 'sovereignLance', name: 'SOVEREIGN LANCE', role: 'FOCUS DAMAGE', sortOrder: 70, trialEligible: true },
+  { id: 'laser_prism_array', weaponKey: 'laser', masteryKey: 'prismArray', name: 'PRISM ARRAY', role: 'MULTI TARGET', sortOrder: 80, trialEligible: true },
+  { id: 'tesla_storm_web', weaponKey: 'tesla', masteryKey: 'stormWeb', name: 'STORM WEB', role: 'CHAIN CONTROL', sortOrder: 90, trialEligible: true },
+  { id: 'tesla_thunder_anchor', weaponKey: 'tesla', masteryKey: 'thunderAnchor', name: 'THUNDER ANCHOR', role: 'WARDEN HUNTER', sortOrder: 100, trialEligible: true },
+]);
+const BLUEPRINT_BY_MASTERY = new Map(BLUEPRINTS.filter(item => item.masteryKey).map(item => [`${item.weaponKey}:${item.masteryKey}`, item]));
+const BOSS_PHASE_CEILINGS = Object.freeze({
+  blaster_standard: [750, 750, 750], blaster_royal_barrage: [700, 1100, 760], blaster_crownrail: [850, 600, 1080],
+  spread_halo_guard: [650, 1120, 760], spread_guillotine_fan: [900, 700, 1150], pulse_singularity: [520, 1180, 620],
+  pulse_comet_cores: [760, 900, 1100], laser_sovereign_lance: [1250, 520, 650], laser_prism_array: [620, 900, 1200],
+  tesla_storm_web: [520, 1250, 650], tesla_thunder_anchor: [1150, 500, 760],
+});
+
+export const bossAttemptMultiplier = attempt => attempt <= 3 ? 1 : attempt <= 6 ? .75 : .5;
+
+export const validateBossSettlementPayload = body => {
+  const assaultId = String(body?.assaultId || '');
+  const requestId = String(body?.requestId || '');
+  const elapsedMs = normalizeInt(body?.elapsedMs, 0, 90_000);
+  const targetsDestroyed = normalizeInt(body?.targetsDestroyed, 0, 1000);
+  const outcome = String(body?.outcome || '');
+  const phaseDamage = Array.isArray(body?.phaseDamage) && body.phaseDamage.length === 3
+    ? body.phaseDamage.map(value => normalizeInt(value, 0, 1_000_000)) : [];
+  if (!UUID_PATTERN.test(assaultId) || !UUID_PATTERN.test(requestId) || elapsedMs === null || targetsDestroyed === null
+      || !['timeout', 'destroyed', 'breach'].includes(outcome) || phaseDamage.length !== 3 || phaseDamage.some(value => value === null)) {
+    return { error: 'Invalid boss settlement.' };
+  }
+  return { value: { assaultId, requestId, elapsedMs, targetsDestroyed, outcome, phaseDamage } };
+};
 
 const responseHeaders = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -191,6 +231,53 @@ export const validateEconomySummary = (body, run, now = Date.now()) => {
   return { reward };
 };
 
+export const arsenalRankForXp = xp => {
+  const normalized = Math.max(0, Math.floor(Number(xp) || 0));
+  let rank = 0;
+  ARSENAL_RANK_THRESHOLDS.forEach((threshold, index) => { if (normalized >= threshold) rank = index; });
+  return Math.min(10, rank);
+};
+
+export const validateArmorySummary = (body, run) => {
+  const durationMs = normalizeInt(body?.durationMs, 0, 86_400_000);
+  const enemies = normalizeInt(body?.enemies, 0, 1_000_000);
+  const zone = normalizeInt(body?.zone, 1, 999);
+  const wardens = normalizeInt(body?.wardens, 0, 999);
+  const crates = normalizeInt(body?.crates ?? 0, 0, 100_000);
+  if ([durationMs, enemies, zone, wardens, crates].some(value => value === null)) return { error: 'Invalid Armory progression data.' };
+  const durationSeconds = Math.floor(durationMs / 1000);
+  if (crates > durationSeconds / 4 + 8) return { error: 'Armory run statistics could not be verified.' };
+
+  const rawMasteries = body?.masteries ?? [];
+  if (!Array.isArray(rawMasteries) || rawMasteries.length > 5) return { error: 'Invalid mastery unlock data.' };
+  const claims = [];
+  const claimedWeapons = new Set();
+  let minimumCrates = 0;
+  for (const raw of rawMasteries) {
+    const weaponKey = String(raw?.weaponKey || '');
+    const masteryKey = String(raw?.masteryKey || '');
+    const blueprint = BLUEPRINT_BY_MASTERY.get(`${weaponKey}:${masteryKey}`);
+    if (!blueprint || claimedWeapons.has(weaponKey)) return { error: 'Invalid mastery unlock data.' };
+    claimedWeapons.add(weaponKey);
+    claims.push(blueprint.id);
+    minimumCrates += weaponKey === 'blaster' ? 4 : 5;
+  }
+
+  if (claims.length) {
+    if (!ARMORY_UNLOCK_VERSIONS.has(String(run?.game_version || ''))) return { error: 'This build cannot unlock Armory blueprints.' };
+    if (durationMs < claims.length * 110_000 || wardens < claims.length || crates < minimumCrates) return { error: 'Mastery unlock could not be verified.' };
+  }
+
+  const qualified = durationMs >= 60_000 && enemies >= 10;
+  const xp = qualified ? Math.min(250,
+    Math.min(60, Math.floor(durationSeconds / 30) * 5)
+    + Math.min(60, Math.floor(enemies / 10) * 4)
+    + Math.min(50, Math.max(0, zone - 1) * 10)
+    + Math.min(120, wardens * 30)
+  ) : 0;
+  return { xp, blueprintIds: claims };
+};
+
 const bearerToken = request => {
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(request.headers.get('Authorization') || '');
   return match && match[1].length <= 4096 ? match[1] : '';
@@ -315,6 +402,72 @@ const storeCatalogSnapshot = async config => {
       rarity: String(row.rarity || 'standard'),
       sortOrder: Number(row.sort_order) || 0,
     }));
+};
+
+export const armoryTrialWindow = (catalog, now = Date.now()) => {
+  const trials = [...catalog].filter(item => item.trialEligible).sort((a, b) => a.sortOrder - b.sortOrder);
+  if (!trials.length) return null;
+  const dayMs = 86_400_000;
+  const week = Math.floor((Math.floor(now / dayMs) + 3) / 7);
+  const startsAt = (week * 7 - 3) * dayMs;
+  const index = ((week % trials.length) + trials.length) % trials.length;
+  return {
+    blueprintId: trials[index].id,
+    startsAt: new Date(startsAt).toISOString(),
+    endsAt: new Date(startsAt + 7 * dayMs).toISOString(),
+  };
+};
+
+const armorySnapshot = async (config, userId) => {
+  await supabaseFetch(config, 'rpc/ensure_player_armory', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: userId }),
+  });
+  const progressionQuery = new URLSearchParams({ select: 'arsenal_xp,arsenal_rank,selected_blueprint_id,backfilled_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
+  const unlockQuery = new URLSearchParams({ select: 'blueprint_id,source,unlocked_run_id,unlocked_at', user_id: `eq.${userId}`, order: 'unlocked_at.asc' });
+  const catalogQuery = new URLSearchParams({ select: 'id,weapon_key,mastery_key,name,role,description,sort_order,trial_eligible,active', active: 'eq.true', order: 'sort_order.asc' });
+  const [progressions, unlocks, rows] = await Promise.all([
+    supabaseFetch(config, `player_progression?${progressionQuery}`),
+    supabaseFetch(config, `player_weapon_blueprints?${unlockQuery}`),
+    supabaseFetch(config, `weapon_blueprint_catalog?${catalogQuery}`),
+  ]);
+  if (!progressions.length) throw new Error('ARMORY_NOT_FOUND');
+  const progression = progressions[0];
+  const catalog = rows.map(row => ({
+    id: String(row.id), weaponKey: String(row.weapon_key), masteryKey: String(row.mastery_key || ''),
+    name: String(row.name), role: String(row.role), description: String(row.description || ''), sortOrder: Number(row.sort_order) || 0,
+    trialEligible: Boolean(row.trial_eligible),
+  }));
+  const unlockedById = new Map(unlocks.map(item => [String(item.blueprint_id), item]));
+  const trial = armoryTrialWindow(catalog);
+  const accessible = new Set([STANDARD_BLUEPRINT_ID, ...unlockedById.keys(), trial?.blueprintId].filter(Boolean));
+  const selectedBlueprintId = accessible.has(String(progression.selected_blueprint_id || ''))
+    ? String(progression.selected_blueprint_id)
+    : STANDARD_BLUEPRINT_ID;
+  const rank = Math.max(0, Math.min(10, Number(progression.arsenal_rank) || 0));
+  return {
+    progression: {
+      xp: Math.max(0, Number(progression.arsenal_xp) || 0),
+      rank,
+      damageBonus: rank * 0.02,
+      nextRankXp: rank < 10 ? ARSENAL_RANK_THRESHOLDS[rank + 1] : null,
+      selectedBlueprintId,
+      backfilled: Boolean(progression.backfilled_at),
+      updatedAt: progression.updated_at,
+    },
+    standardBlueprintId: STANDARD_BLUEPRINT_ID,
+    trial,
+    blueprints: catalog.map(item => {
+      const unlock = unlockedById.get(item.id);
+      const access = item.id === STANDARD_BLUEPRINT_ID ? 'standard' : unlock ? 'unlocked' : item.id === trial?.blueprintId ? 'trial' : 'locked';
+      return {
+        ...item,
+        access,
+        unlockedAt: unlock?.unlocked_at || null,
+        unlockedRunId: unlock?.unlocked_run_id || null,
+      };
+    }),
+  };
 };
 
 export const validateLegacyWallet = body => {
@@ -730,17 +883,154 @@ const settleRunReward = async (request, config) => {
   try { body = await readJson(request); } catch { return json({ error: 'Invalid settlement request.' }, 400); }
   const runId = String(body.runId || '');
   if (!UUID_PATTERN.test(runId)) return json({ error: 'Invalid run.' }, 400);
-  const runQuery = new URLSearchParams({ select: 'id,user_id,created_at,economy_settled_at', id: `eq.${runId}`, limit: '1' });
+  const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,created_at,economy_settled_at', id: `eq.${runId}`, limit: '1' });
   const runs = await supabaseFetch(config, `leaderboard_runs?${runQuery}`);
   if (!runs.length) return json({ error: 'Run not found.' }, 404);
   if (runs[0].user_id !== user.id) return json({ error: 'Run does not belong to this player.' }, 403);
   const validation = validateEconomySummary(body, runs[0]);
   if (validation.error) return json({ error: validation.error }, 422);
-  const result = await supabaseFetch(config, 'rpc/settle_run_reward', {
+  const armoryValidation = validateArmorySummary(body, runs[0]);
+  if (armoryValidation.error) return json({ error: armoryValidation.error }, 422);
+  // Freeze the one-time historical backfill before this run becomes settled,
+  // otherwise the current run could be counted once as history and once as XP.
+  await supabaseFetch(config, 'rpc/ensure_player_armory', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id }),
+  });
+  const rewardResult = await supabaseFetch(config, 'rpc/settle_run_reward', {
     method: 'POST',
     body: JSON.stringify({ p_user_id: user.id, p_run_id: runId, p_amount: validation.reward.total, p_reward: validation.reward }),
   });
-  return json(result, result.duplicate ? 200 : 201);
+  const progression = await supabaseFetch(config, 'rpc/settle_armory_progression', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_run_id: runId, p_xp: armoryValidation.xp, p_blueprint_ids: armoryValidation.blueprintIds }),
+  });
+  return json({ ...rewardResult, progression, armory: await armorySnapshot(config, user.id) }, rewardResult.duplicate && progression.duplicate ? 200 : 201);
+};
+
+const getCrownArmory = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  return json({ armory: await armorySnapshot(config, user.id) });
+};
+
+const selectCrownArmoryBlueprint = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid Armory request.' }, 400); }
+  const blueprintId = String(body.blueprintId || '');
+  if (!/^[a-z0-9_]{3,64}$/.test(blueprintId)) return json({ error: 'Invalid blueprint.' }, 400);
+  const current = await armorySnapshot(config, user.id);
+  const result = await supabaseFetch(config, 'rpc/select_armory_blueprint', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_blueprint_id: blueprintId, p_trial_blueprint_id: current.trial?.blueprintId || null }),
+  });
+  if (result.error === 'BLUEPRINT_LOCKED') return json({ error: 'This blueprint is locked.', code: result.error }, 403);
+  if (result.error) return json({ error: 'Blueprint selection failed.', code: 'ARMORY_SELECTION_FAILED' }, 409);
+  return json({ selectedBlueprintId: result.selectedBlueprintId, armory: await armorySnapshot(config, user.id) });
+};
+
+const bossEventRecord = async (config, eventId = '') => {
+  const query = new URLSearchParams({
+    select: 'id,slug,name,status,starts_at,ends_at,max_hp,current_hp,trial_blueprint_id,balance_version,config',
+    order: 'starts_at.desc', limit: '1',
+  });
+  if (eventId) query.set('id', `eq.${eventId}`);
+  else {
+    query.set('status', 'eq.active');
+    query.set('starts_at', `lte.${new Date().toISOString()}`);
+    query.set('ends_at', `gt.${new Date().toISOString()}`);
+    query.set('current_hp', 'gt.0');
+  }
+  const rows = await supabaseFetch(config, `boss_events?${query}`);
+  return rows[0] || null;
+};
+
+const publicBossEvent = row => row ? ({
+  id: String(row.id), slug: String(row.slug), name: String(row.name), status: String(row.status),
+  startsAt: row.starts_at, endsAt: row.ends_at, maxHp: Number(row.max_hp) || 0,
+  currentHp: Number(row.current_hp) || 0, trialBlueprintId: String(row.trial_blueprint_id || ''),
+  balanceVersion: Number(row.balance_version) || 1,
+}) : null;
+
+const bossLeaderboard = async (config, eventId, userId = null, limit = 10) => supabaseFetch(config, 'rpc/boss_event_leaderboard', {
+  method: 'POST', body: JSON.stringify({ p_event_id: eventId, p_user_id: userId, p_limit: Math.max(1, Math.min(100, limit)) }),
+});
+
+const getBossEvent = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  const event = await bossEventRecord(config);
+  if (!event) return json({ event: null, ranking: { leaders: [], player: null } }, 200, 'public, max-age=5, s-maxage=5');
+  return json({ event: publicBossEvent(event), ranking: await bossLeaderboard(config, event.id, user?.id || null, 10) });
+};
+
+const getBossLeaderboard = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  const url = new URL(request.url);
+  const eventId = String(url.searchParams.get('eventId') || '');
+  const limit = normalizeInt(Number(url.searchParams.get('limit') || 10), 1, 100);
+  if (!UUID_PATTERN.test(eventId) || limit === null) return json({ error: 'Invalid event ranking request.' }, 400);
+  const event = await bossEventRecord(config, eventId);
+  if (!event) return json({ error: 'Event not found.' }, 404);
+  return json({ event: publicBossEvent(event), ranking: await bossLeaderboard(config, event.id, user?.id || null, limit) });
+};
+
+const startBossAssaultRequest = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid assault request.' }, 400); }
+  const eventId = String(body.eventId || '');
+  const blueprintId = String(body.blueprintId || '');
+  const gameVersion = String(body.gameVersion || '');
+  if (!UUID_PATTERN.test(eventId) || !BOSS_PHASE_CEILINGS[blueprintId] || !SUPPORTED_GAME_VERSIONS.has(gameVersion)) {
+    return json({ error: 'Invalid assault loadout.' }, 400);
+  }
+  const event = await bossEventRecord(config, eventId);
+  if (!event || event.status !== 'active' || Date.parse(event.ends_at) <= Date.now() || Number(event.current_hp) <= 0) {
+    return json({ error: 'This event is not active.', code: 'EVENT_NOT_ACTIVE' }, 409);
+  }
+  const armory = await armorySnapshot(config, user.id);
+  const selected = armory.blueprints.find(item => item.id === blueprintId);
+  if (!selected || selected.access === 'locked' || armory.progression.selectedBlueprintId !== blueprintId) {
+    return json({ error: 'Equip an available blueprint before starting.', code: 'BLUEPRINT_NOT_EQUIPPED' }, 409);
+  }
+  const ceilingScale = 1 + armory.progression.damageBonus;
+  const phaseCeiling = BOSS_PHASE_CEILINGS[blueprintId].map(value => Math.round(value * ceilingScale));
+  const assault = await supabaseFetch(config, 'rpc/start_boss_assault', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_user_id: user.id, p_event_id: eventId, p_blueprint_id: blueprintId,
+      p_trial_blueprint_id: armory.trial?.blueprintId || null, p_seed: secureServerInt(2_147_483_647),
+      p_game_version: gameVersion, p_phase_ceiling: phaseCeiling,
+    }),
+  });
+  if (assault.error === 'BLUEPRINT_LOCKED') return json({ error: 'This blueprint is locked.', code: assault.error }, 403);
+  if (assault.error) return json({ error: 'Assault signal is unavailable.', code: assault.error }, 409);
+  return json({ assault, event: publicBossEvent(event), ranking: await bossLeaderboard(config, eventId, user.id, 10) }, assault.duplicate ? 200 : 201);
+};
+
+const settleBossAssaultRequest = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid boss settlement.' }, 400); }
+  const validation = validateBossSettlementPayload(body);
+  if (validation.error) return json({ error: validation.error }, 400);
+  const value = validation.value;
+  const settlement = await supabaseFetch(config, 'rpc/settle_boss_assault', {
+    method: 'POST', body: JSON.stringify({
+      p_user_id: user.id, p_assault_id: value.assaultId, p_request_id: value.requestId,
+      p_elapsed_ms: value.elapsedMs, p_phase_damage: value.phaseDamage,
+      p_outcome: value.outcome, p_targets_destroyed: value.targetsDestroyed,
+    }),
+  });
+  const statuses = { ASSAULT_NOT_FOUND: 404, ASSAULT_OWNER_MISMATCH: 403, ASSAULT_EXPIRED: 409, ASSAULT_TIME_INVALID: 422 };
+  if (settlement.error) return json({ error: 'Assault could not be verified.', code: settlement.error }, statuses[settlement.error] || 409);
+  const event = await bossEventRecord(config, settlement.eventId);
+  const ranking = await bossLeaderboard(config, settlement.eventId, user.id, 10);
+  return json({ settlement, event: publicBossEvent(event), ranking }, settlement.duplicate ? 200 : 201);
 };
 
 const openCrownCrate = async (request, config) => {
@@ -984,6 +1274,12 @@ export const onRequest = async context => {
     if (path === 'player/account/login/complete' && request.method === 'POST') return await completePlayerLoginPage(request, config);
     if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
+    if (path === 'armory' && request.method === 'GET') return await getCrownArmory(request, config);
+    if (path === 'armory/select' && request.method === 'POST') return await selectCrownArmoryBlueprint(request, config);
+    if (path === 'boss/event' && request.method === 'GET') return await getBossEvent(request, config);
+    if (path === 'boss/leaderboard' && request.method === 'GET') return await getBossLeaderboard(request, config);
+    if (path === 'boss/assault/start' && request.method === 'POST') return await startBossAssaultRequest(request, config);
+    if (path === 'boss/assault/settle' && request.method === 'POST') return await settleBossAssaultRequest(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
     if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerShip(request, config);
     if (path === 'vault/store' && request.method === 'GET') return await getCrownStore(request, config);
@@ -1003,7 +1299,7 @@ export const onRequest = async context => {
     if (path === 'scores' && request.method === 'POST') return await submitScore(request, config);
     return json({ error: 'Not found.' }, 404);
   } catch (error) {
-    console.error(JSON.stringify({ event: 'leaderboard_request_failed', path, message: String(error.message || error).slice(0, 120) }));
-    return json({ error: 'Leaderboard temporarily unavailable.' }, 503);
+    console.error(JSON.stringify({ event: 'api_request_failed', path, message: String(error.message || error).slice(0, 120) }));
+    return json({ error: 'Crown Network temporarily unavailable.' }, 503);
   }
 };

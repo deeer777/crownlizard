@@ -6,15 +6,31 @@ export class Input {
     this.joystick = joystick;
     this.dashQueued = false;
 
+    const gameplayKeys = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ShiftLeft', 'ShiftRight']);
+    const editableTarget = target => Boolean(target?.matches?.('input, textarea, select, [contenteditable="true"]'));
+    const clearHeldInput = () => {
+      this.keys.clear();
+      this.pointer.active = false;
+      this.dashQueued = false;
+      joystick.classList.add('hidden');
+      joystick.style.setProperty('--stick-x', '0px');
+      joystick.style.setProperty('--stick-y', '0px');
+    };
+
     addEventListener('keydown', event => {
+      if (editableTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (gameplayKeys.has(event.code)) event.preventDefault();
       this.keys.add(event.code);
       if (event.code === 'Space' || event.code.startsWith('Shift')) {
-        event.preventDefault();
         this.dashQueued = true;
       }
     });
-    addEventListener('keyup', event => this.keys.delete(event.code));
-    addEventListener('blur', () => { this.keys.clear(); this.pointer.active = false; });
+    addEventListener('keyup', event => {
+      if (gameplayKeys.has(event.code) && !editableTarget(event.target)) event.preventDefault();
+      this.keys.delete(event.code);
+    });
+    addEventListener('blur', clearHeldInput);
+    addEventListener('pagehide', clearHeldInput);
 
     const point = event => {
       const rect = canvas.getBoundingClientRect();

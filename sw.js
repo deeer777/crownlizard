@@ -1,20 +1,23 @@
-const CACHE_VERSION = 'crown-lizard-shell-v79-crown-store-final7';
+const CACHE_VERSION = 'crown-lizard-shell-v83-global-event';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260827-79-crown-store-final7',
-  '/src/main.js?v=20260827-79-crown-store-final7',
-  '/src/config.js?v=20260827-79-crown-store-final',
+  '/styles.css?v=20260827-83-global-event',
+  '/src/main.js?v=20260827-83-global-event',
+  '/src/config.js?v=20260827-83-global-event',
   '/src/engine.js?v=20260820-18',
-  '/src/input.js?v=20260820-26',
-  '/src/audio.js?v=20260827-79-crown-store-final',
-  '/src/game.js?v=20260827-79-crown-store-final',
+  '/src/input.js?v=20260827-82-input-release',
+  '/src/audio.js?v=20260827-83-global-event',
+  '/src/game.js?v=20260827-83-global-event',
+  '/src/boss-assault.js?v=20260827-83-global-event',
+  '/src/boss-network.js?v=20260827-83-global-event',
   '/src/economy.js?v=20260827-79-crown-store-final4',
   '/src/cosmetics.js?v=20260827-79-crown-store-final',
   '/src/leaderboard.js?v=20260824-45-cutover',
-  '/src/player-account.js?v=20260827-79-crown-store-final4',
+  '/src/player-account.js?v=20260827-83-global-event',
+  '/src/armory.js?v=20260827-83-global-event',
   '/src/account-presentation.js?v=20260826-73-cinematic-endings',
   '/src/rewarded-ad.js?v=20260824-45',
   '/src/pwa.js?v=20260827-79-crown-store-final6',
@@ -25,8 +28,16 @@ const APP_SHELL = [
   '/assets/icons/icon-512.png',
   '/assets/icons/apple-touch-icon.png',
   '/assets/runtime/sprites/crown-lizard-player-v1.png',
+  '/assets/weapons/blaster-mount-v1.png',
+  '/assets/weapons/spread-mount-v1.png',
+  '/assets/weapons/pulse-mount-v1.png',
+  '/assets/weapons/laser-mount-v1.png',
+  '/assets/weapons/tesla-mount-v1.png',
   '/assets/sprites/ship-gilded-viper-v1.png',
-  '/assets/sprites/ship-neon-basilisk-v1.png'
+  '/assets/sprites/ship-neon-basilisk-v1.png',
+  '/assets/sprites/global-warden-v1.png?v=82-opt',
+  '/assets/sprites/crown-relay-v1.png?v=82-opt',
+  '/assets/sprites/shield-pylon-v1.png?v=82-opt'
 ];
 
 self.addEventListener('install', event => {

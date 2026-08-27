@@ -16,10 +16,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260827-79-crown-store-final7">
+  <link rel="stylesheet" href="./styles.css?v=20260827-83-global-event">
 </head>
 <body>
-  <canvas id="game" aria-label="Crown Lizard game arena"></canvas>
+  <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
 
   <div id="hud" class="hud hidden" aria-live="polite">
     <div class="brand"><span class="crown">♛</span> CROWN LIZARD</div>
@@ -34,6 +34,12 @@
     <div class="status">
       <div class="hearts" id="hearts" aria-label="Lives">♥ ♥ ♥</div>
       <div class="dash-meter"><span>DASH</span><i><b id="dashFill"></b></i></div>
+    </div>
+    <div id="assaultHud" class="assault-hud hidden">
+      <div class="assault-clock"><span>ASSAULT TIME</span><strong id="assaultTime">01:30</strong></div>
+      <div class="assault-phase"><span id="assaultPhaseLabel">PHASE 1</span><strong id="assaultPhaseName">EXPOSED CORE</strong><b id="assaultPhaseRole">FOCUS WINDOW</b></div>
+      <div class="assault-damage"><span>LOCAL DAMAGE</span><strong id="assaultDamage">0</strong></div>
+      <div class="assault-global"><span>GLOBAL HP SNAPSHOT</span><strong id="assaultGlobalHp">68,420,000</strong></div>
     </div>
   </div>
 
@@ -60,6 +66,7 @@
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
         <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></button>
+        <button id="menuWarden" class="primary menu-choice menu-event" data-menu-choice="warden"><i>♛</i> GLOBAL WARDEN <em>NEW</em></button>
         <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
         <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
@@ -96,6 +103,27 @@
         <button id="watchAd" class="primary result-choice hidden" data-result-choice="sponsored" type="button"><i>♛</i> WATCH AD · OPEN CRATE</button>
         <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
         <button id="home" class="primary result-choice" data-result-choice="home"><i>♛</i> BACK TO MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="assaultResult" class="overlay assault-result hidden" aria-modal="true" role="dialog" aria-labelledby="assaultResultTitle">
+    <div class="panel assault-result-panel">
+      <div class="eyebrow" id="assaultResultEyebrow">CROWN NETWORK · VERIFYING STRIKE</div>
+      <h2 id="assaultResultTitle">ASSAULT COMPLETE</h2>
+      <div class="assault-result-damage"><span id="assaultDamageLabel">REPORTED DAMAGE</span><strong id="assaultFinalDamage">0</strong></div>
+      <div class="assault-result-grid">
+        <span><small>TIME IN SIGNAL</small><b id="assaultFinalTime">01:30</b></span>
+        <span><small>TARGETS DESTROYED</small><b id="assaultFinalTargets">0</b></span>
+        <span><small>ARSENAL RANK</small><b id="assaultFinalRank">00</b></span>
+        <span><small>ATTEMPT VALUE</small><b id="assaultFinalMultiplier">×1.00</b></span>
+        <span><small>GLOBAL HP</small><b id="assaultFinalGlobalHp">—</b></span>
+        <span><small>YOUR EVENT RANK</small><b id="assaultFinalEventRank">—</b></span>
+      </div>
+      <p id="assaultResultMessage">VERIFYING PHASE DAMAGE · KEEP THIS SCREEN OPEN</p>
+      <div class="assault-result-actions">
+        <button id="assaultRetry" class="primary result-selected" type="button"><i>♛</i> TRY AGAIN</button>
+        <button id="assaultArmory" class="primary" type="button"><i>♛</i> BACK TO ARMORY</button>
       </div>
     </div>
   </section>
@@ -305,6 +333,52 @@
     </div>
   </section>
 
+  <section id="wardenOverlay" class="overlay system-overlay warden-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="wardenTitle">
+    <div class="system-panel warden-panel">
+      <header class="warden-header">
+        <div>
+          <div class="eyebrow">CROWN NETWORK EVENT</div>
+          <h2 id="wardenTitle">GLOBAL WARDEN</h2>
+        </div>
+        <div class="warden-signal" aria-label="Event signal calibrating"><i></i><span id="wardenSignalLabel">WARDEN SIGNAL</span><b id="wardenSignalState">CALIBRATING</b></div>
+      </header>
+      <section class="warden-briefing" aria-labelledby="wardenBriefingTitle">
+        <div class="warden-silhouette" aria-hidden="true"><span>♛</span><i></i></div>
+        <div>
+          <small>INCOMING COOPERATIVE ASSAULT</small>
+          <h3 id="wardenBriefingTitle">THE CROWN STIRS</h3>
+          <p>PREPARE ONE BLUEPRINT. YOUR ARSENAL RANK WILL POWER EVERY VERIFIED STRIKE.</p>
+        </div>
+      </section>
+
+      <section class="armory-shell" aria-labelledby="armoryTitle">
+        <div class="armory-heading">
+          <div><span>CROWN ARMORY</span><h3 id="armoryTitle">CHOOSE YOUR BLUEPRINT</h3></div>
+          <div class="arsenal-rank"><span>ARSENAL RANK</span><strong id="armoryRank">00</strong><b id="armoryBonus">+0% BOSS DMG</b></div>
+        </div>
+        <div class="armory-progress" aria-label="Arsenal Rank progress"><div><span id="armoryXpLabel">0 / 100 XP</span><b id="armoryXpRemaining">100 TO RANK 1</b></div><i><em id="armoryXpFill"></em></i></div>
+        <div id="armorySelected" class="armory-selected" aria-live="polite">
+          <div class="armory-selected-mount"><span></span><img id="armorySelectedImage" src="./assets/weapons/blaster-mount-v1.png" alt=""></div>
+          <div><small>ACTIVE BOSS BLUEPRINT</small><strong id="armorySelectedName">STANDARD BLASTER</strong><b id="armorySelectedRole">RELIABLE ALL-ROUNDER</b><p id="armorySelectedDescription">ROYAL ISSUE ARMAMENT.</p></div>
+        </div>
+        <div class="warden-assault-entry">
+          <span>SELECTED LOADOUT READY</span>
+          <button id="wardenAssault" class="system-action warden-assault-cta" type="button" disabled aria-describedby="wardenAssaultHint"><i>♛</i> CONNECTING ARMORY</button>
+          <small id="wardenAssaultHint">90 SECOND STRIKE · TEST YOUR LOADOUT BEFORE THE LIVE EVENT</small>
+        </div>
+        <section class="boss-ranking" aria-labelledby="bossRankingTitle">
+          <header><div><span>GLOBAL DAMAGE</span><h3 id="bossRankingTitle">TOP PILOTS</h3></div><b id="bossEventHp">CONNECTING...</b></header>
+          <ol id="bossRankingList" aria-live="polite"><li class="empty">AWAITING VERIFIED STRIKES</li></ol>
+          <p id="bossPlayerRank">YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT</p>
+        </section>
+        <div class="armory-list-head"><span>BLUEPRINT ARCHIVE</span><b id="armoryOwned">1 / 11 AVAILABLE</b></div>
+        <div id="armoryGrid" class="armory-grid" aria-live="polite"></div>
+        <p id="armoryStatus" class="armory-status" role="status">CONNECTING TO CROWN ARMORY...</p>
+      </section>
+      <button id="closeWarden" class="system-action" type="button"><i>♛</i> BACK TO MENU</button>
+    </div>
+  </section>
+
   <div id="crateReveal" class="crate-reveal hidden" aria-live="assertive">
       <div class="reveal-panel">
         <div id="revealEyebrow" class="eyebrow">CRATE OPENED</div>
@@ -348,6 +422,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260827-79-crown-store-final7"></script>
+  <script type="module" src="./src/main.js?v=20260827-83-global-event"></script>
 </body>
 </html>
