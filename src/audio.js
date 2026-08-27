@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260827-83-global-event';
+import { CONFIG } from './config.js?v=20260827-84-warden-rewards';
 
 export class Music {
   constructor() {

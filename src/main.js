@@ -1,18 +1,18 @@
-import { CONFIG } from './config.js?v=20260827-83-global-event';
+import { CONFIG } from './config.js?v=20260827-84-warden-rewards';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
-import { Music, SoundFx } from './audio.js?v=20260827-83-global-event';
-import { Game } from './game.js?v=20260827-83-global-event';
+import { Music, SoundFx } from './audio.js?v=20260827-84-warden-rewards';
+import { Game } from './game.js?v=20260827-84-warden-rewards';
 import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260827-83-global-event';
+import { PlayerAccount } from './player-account.js?v=20260827-84-warden-rewards';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
-import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260827-83-global-event';
-import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260827-83-global-event';
-import { BossNetwork } from './boss-network.js?v=20260827-83-global-event';
+import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260827-84-warden-rewards';
+import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260827-84-warden-rewards';
+import { BossNetwork } from './boss-network.js?v=20260827-84-warden-rewards';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -36,8 +36,8 @@ const ui = {
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'),
   storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
   storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
-  wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
-  assaultHud: $('assaultHud'), assaultTime: $('assaultTime'), assaultPhaseLabel: $('assaultPhaseLabel'), assaultPhaseName: $('assaultPhaseName'), assaultPhaseRole: $('assaultPhaseRole'), assaultDamage: $('assaultDamage'), assaultGlobalHp: $('assaultGlobalHp'), assaultResultEyebrow: $('assaultResultEyebrow'), assaultDamageLabel: $('assaultDamageLabel'), assaultResultTitle: $('assaultResultTitle'), assaultFinalDamage: $('assaultFinalDamage'), assaultFinalTime: $('assaultFinalTime'), assaultFinalTargets: $('assaultFinalTargets'), assaultFinalRank: $('assaultFinalRank'), assaultFinalMultiplier: $('assaultFinalMultiplier'), assaultFinalGlobalHp: $('assaultFinalGlobalHp'), assaultFinalEventRank: $('assaultFinalEventRank'), assaultResultMessage: $('assaultResultMessage'), assaultRetry: $('assaultRetry'), assaultArmory: $('assaultArmory'),
+  wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenAssaultHint: $('wardenAssaultHint'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), wardenBriefingEyebrow: $('wardenBriefingEyebrow'), wardenBriefingTitle: $('wardenBriefingTitle'), wardenBriefingCopy: $('wardenBriefingCopy'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), bossRewardGrid: $('bossRewardGrid'), bossRewardProgress: $('bossRewardProgress'), bossRewardStatus: $('bossRewardStatus'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
+  assaultHud: $('assaultHud'), assaultTime: $('assaultTime'), assaultPhaseLabel: $('assaultPhaseLabel'), assaultPhaseName: $('assaultPhaseName'), assaultPhaseRole: $('assaultPhaseRole'), assaultDamage: $('assaultDamage'), assaultGlobalHp: $('assaultGlobalHp'), assaultResultEyebrow: $('assaultResultEyebrow'), assaultDamageLabel: $('assaultDamageLabel'), assaultResultTitle: $('assaultResultTitle'), assaultFinalDamage: $('assaultFinalDamage'), assaultFinalTime: $('assaultFinalTime'), assaultFinalTargets: $('assaultFinalTargets'), assaultFinalRank: $('assaultFinalRank'), assaultFinalMultiplier: $('assaultFinalMultiplier'), assaultFinalGlobalHp: $('assaultFinalGlobalHp'), assaultFinalEventRank: $('assaultFinalEventRank'), assaultMilestone: $('assaultMilestone'), assaultMilestoneLabel: $('assaultMilestoneLabel'), assaultMilestoneFill: $('assaultMilestoneFill'), assaultResultMessage: $('assaultResultMessage'), assaultRetry: $('assaultRetry'), assaultArmory: $('assaultArmory'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'),
@@ -124,6 +124,8 @@ const bossNetwork = new BossNetwork({
   preview: localPreview,
   accessToken: () => playerAccount.getAccessToken(),
   playerName: () => playerProfile?.displayName || 'YOU',
+  previewDamage: debugParams.has('rewards') ? 5_400 : 0,
+  previewStatus: debugParams.has('victory') ? 'victory' : debugParams.has('failed') ? 'failed' : 'active',
 });
 let profileStatus = localPreview ? 'ready' : 'loading';
 const accountPresentation = () => buildAccountPresentation({
@@ -230,10 +232,13 @@ let armoryLoading = false;
 let armorySelecting = '';
 let bossEvent = null;
 let bossRanking = { leaders: [], player: null };
+let bossRewardsState = { playerDamage: 0, qualified: false, rewards: [] };
 let bossEventLoading = false;
 let activeBossAssault = null;
 let bossAssaultStarting = false;
 let bossSettlementPending = false;
+let bossRewardClaiming = '';
+let bossRewardMessage = '';
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 const armoryBlueprintColor = blueprint => CONFIG.weapons[blueprint?.weaponKey]?.color || CONFIG.weapons.blaster.color;
@@ -243,18 +248,101 @@ const setArmoryStatus = (message = '', error = false) => {
   ui.armoryStatus.classList.toggle('error', error);
 };
 
+const nextBossMilestone = () => (bossRewardsState.rewards || [])
+  .filter(reward => reward.type === 'milestone' && !reward.earned)
+  .sort((a, b) => Number(a.threshold) - Number(b.threshold))[0] || null;
+
+const renderAssaultMilestone = () => {
+  const damage = Number(bossRewardsState.playerDamage) || 0;
+  const next = nextBossMilestone();
+  if (!next) {
+    ui.assaultMilestoneLabel.textContent = 'ALL PERSONAL MILESTONES COMPLETE';
+    ui.assaultMilestoneFill.style.width = '100%';
+    return;
+  }
+  ui.assaultMilestoneLabel.textContent = `${next.name} · ${damage.toLocaleString('en-US')} / ${Number(next.threshold).toLocaleString('en-US')}`;
+  ui.assaultMilestoneFill.style.width = `${Math.min(100, damage / Number(next.threshold) * 100)}%`;
+};
+
+const renderBossRewards = () => {
+  const damage = Number(bossRewardsState.playerDamage) || 0;
+  ui.bossRewardProgress.textContent = `${damage.toLocaleString('en-US')} VERIFIED DAMAGE`;
+  const cards = (bossRewardsState.rewards || []).map(reward => {
+    const card = document.createElement('article');
+    card.className = `boss-reward${reward.earned ? ' earned' : ''}${reward.claimed ? ' claimed' : ''}`;
+    const icon = document.createElement('span');
+    icon.className = 'boss-reward-icon';
+    icon.innerHTML = `<i>${reward.type === 'global_victory' ? '♛' : '◆'}</i>`;
+    const copy = document.createElement('div');
+    copy.className = 'boss-reward-copy';
+    const name = Object.assign(document.createElement('strong'), { textContent: reward.name });
+    const description = Object.assign(document.createElement('span'), { textContent: reward.description });
+    const prize = Object.assign(document.createElement('b'), { textContent: `◆ ${reward.shards} SHARDS${reward.badgeName ? ` · ${reward.badgeName} BADGE` : ''}` });
+    copy.append(name, description, prize);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.disabled = Boolean(bossRewardClaiming) || !reward.claimable;
+    button.textContent = reward.claimed ? 'CLAIMED' : bossRewardClaiming === reward.key ? 'CLAIMING...' : reward.claimable ? 'CLAIM' : reward.earned && reward.type === 'global_victory' ? 'AWAIT VICTORY' : 'LOCKED';
+    if (reward.claimable) button.addEventListener('click', () => claimBossReward(reward.key));
+    card.append(icon, copy, button);
+    return card;
+  });
+  if (!cards.length) cards.push(Object.assign(document.createElement('p'), { textContent: bossEventLoading ? 'SYNCING REWARDS...' : 'REWARD SIGNAL UNAVAILABLE' }));
+  ui.bossRewardGrid.replaceChildren(...cards);
+  ui.bossRewardStatus.textContent = bossRewardClaiming ? 'VERIFYING REWARD CLAIM...' : bossRewardMessage || 'REWARDS ARE COSMETIC OR SHARDS · NEVER GAMEPLAY POWER';
+  renderAssaultMilestone();
+};
+
+const claimBossReward = async rewardKey => {
+  if (!bossEvent || bossRewardClaiming) return;
+  bossRewardClaiming = rewardKey;
+  bossRewardMessage = '';
+  renderBossRewards();
+  try {
+    const payload = await bossNetwork.claimReward({ eventId: bossEvent.id, rewardKey });
+    bossRewardsState = payload.rewards || bossRewardsState;
+    if (localPreview) {
+      const state = shardWallet.getState();
+      if (!state.transactions.some(transaction => transaction.id === `boss:${bossEvent.id}:${rewardKey}`)) {
+        state.balance += Number(payload.claim?.shards) || 0;
+        state.transactions.push({ id: `boss:${bossEvent.id}:${rewardKey}`, kind: 'boss_reward', rewardKey, amount: Number(payload.claim?.shards) || 0, createdAt: new Date().toISOString() });
+        shardWallet.write(state);
+      }
+    } else if (payload.wallet) acceptServerWallet(payload);
+    renderShardBalance();
+    sfx.play('confirm');
+    if (hapticsEnabled) navigator.vibrate?.([20, 25, 45]);
+    bossRewardMessage = `${payload.claim?.badgeName ? `${payload.claim.badgeName} BADGE · ` : ''}+${payload.claim?.shards || 0} SHARDS CLAIMED`;
+  } catch (error) {
+    bossRewardMessage = String(error?.message || 'REWARD CLAIM FAILED').toUpperCase();
+  } finally {
+    bossRewardClaiming = '';
+    renderBossRewards();
+  }
+};
+
 const renderBossEvent = () => {
+  ui.wardenOverlay.classList.toggle('event-victory', bossEvent?.status === 'victory');
+  ui.wardenOverlay.classList.toggle('event-failed', bossEvent?.status === 'failed');
   if (!bossEvent) {
     ui.wardenSignalState.textContent = bossEventLoading ? 'CONNECTING' : 'OFFLINE';
     ui.bossEventHp.textContent = bossEventLoading ? 'CONNECTING...' : 'NO ACTIVE EVENT';
     ui.bossRankingList.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: bossEventLoading ? 'SYNCING GLOBAL DAMAGE...' : 'NO VERIFIED EVENT DATA' }));
     ui.bossPlayerRank.textContent = 'YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT';
+    renderBossRewards();
     return;
   }
   const remainingMs = Math.max(0, Date.parse(bossEvent.endsAt) - Date.now());
   const hours = Math.floor(remainingMs / 3_600_000);
   const minutes = Math.floor(remainingMs % 3_600_000 / 60_000);
-  ui.wardenSignalState.textContent = bossEvent.status === 'active' ? `LIVE · ${hours}H ${minutes}M` : bossEvent.status.toUpperCase();
+  ui.wardenSignalState.textContent = bossEvent.status === 'active' ? `LIVE · ${hours}H ${minutes}M` : bossEvent.status === 'victory' ? 'VICTORY' : 'SIGNAL LOST';
+  ui.wardenBriefingEyebrow.textContent = bossEvent.status === 'victory' ? 'GLOBAL EVENT COMPLETE' : bossEvent.status === 'failed' ? 'TRANSMISSION ENDED' : 'INCOMING COOPERATIVE ASSAULT';
+  ui.wardenBriefingTitle.textContent = bossEvent.status === 'victory' ? 'THE WARDEN HAS FALLEN' : bossEvent.status === 'failed' ? 'THE SIGNAL HAS FADED' : 'THE CROWN STIRS';
+  ui.wardenBriefingCopy.textContent = bossEvent.status === 'victory'
+    ? 'GLOBAL VICTORY CONFIRMED. QUALIFIED PILOTS MAY CLAIM THE FINAL EVENT REWARD.'
+    : bossEvent.status === 'failed'
+      ? 'THE EVENT HAS ENDED. EARNED PERSONAL MILESTONES REMAIN CLAIMABLE.'
+      : 'PREPARE ONE BLUEPRINT. YOUR ARSENAL RANK WILL POWER EVERY VERIFIED STRIKE.';
   ui.bossEventHp.textContent = `${Number(bossEvent.currentHp).toLocaleString('en-US')} / ${Number(bossEvent.maxHp).toLocaleString('en-US')} HP`;
   const rows = (bossRanking.leaders || []).map(entry => {
     const item = document.createElement('li');
@@ -272,6 +360,7 @@ const renderBossEvent = () => {
   ui.bossPlayerRank.textContent = bossRanking.player
     ? `YOUR RANK #${bossRanking.player.rank} · ${Number(bossRanking.player.damage).toLocaleString('en-US')} VERIFIED DAMAGE`
     : 'YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT';
+  renderBossRewards();
 };
 
 const loadBossEvent = async () => {
@@ -284,13 +373,16 @@ const loadBossEvent = async () => {
     if (recovered) {
       bossEvent = recovered.event || bossEvent;
       bossRanking = recovered.ranking || bossRanking;
+      bossRewardsState = recovered.rewards || bossRewardsState;
     }
     const payload = await bossNetwork.getEvent();
     bossEvent = payload.event || null;
     bossRanking = payload.ranking || { leaders: [], player: null };
+    bossRewardsState = payload.rewards || { playerDamage: 0, qualified: false, rewards: [] };
   } catch {
     bossEvent = null;
     bossRanking = { leaders: [], player: null };
+    bossRewardsState = { playerDamage: 0, qualified: false, rewards: [] };
   } finally {
     bossEventLoading = false;
     renderBossEvent();
@@ -319,7 +411,9 @@ const renderArmory = () => {
   const available = armory.blueprints.filter(item => item.access !== 'locked');
   const eventReady = bossEvent?.status === 'active' && Number(bossEvent.currentHp) > 0 && Date.parse(bossEvent.endsAt) > Date.now();
   ui.wardenAssault.disabled = Boolean(armorySelecting || armoryLoading || bossEventLoading || bossAssaultStarting || !selected || !eventReady);
-  ui.wardenAssault.innerHTML = `<i>♛</i> ${armorySelecting ? 'EQUIPPING...' : bossAssaultStarting ? 'OPENING SIGNAL...' : bossEventLoading ? 'CONNECTING EVENT...' : eventReady ? 'START BOSS ASSAULT' : 'EVENT OFFLINE'}`;
+  const eventButtonLabel = bossEvent?.status === 'victory' ? 'VICTORY CONFIRMED' : bossEvent?.status === 'failed' ? 'EVENT ENDED' : 'EVENT OFFLINE';
+  ui.wardenAssault.innerHTML = `<i>♛</i> ${armorySelecting ? 'EQUIPPING...' : bossAssaultStarting ? 'OPENING SIGNAL...' : bossEventLoading ? 'CONNECTING EVENT...' : eventReady ? 'START BOSS ASSAULT' : eventButtonLabel}`;
+  ui.wardenAssaultHint.textContent = eventReady ? '90 SECOND STRIKE · VERIFIED DAMAGE COUNTS TOWARD GLOBAL HP' : bossEvent?.status === 'victory' ? 'ASSAULTS CLOSED · CLAIM EARNED EVENT REWARDS BELOW' : 'ASSAULTS CLOSED · EARNED PERSONAL REWARDS REMAIN AVAILABLE';
   ui.armoryRank.textContent = String(progress.rank).padStart(2, '0');
   ui.armoryBonus.textContent = `+${Math.round((Number(armory.progression.damageBonus) || 0) * 100)}% BOSS DMG`;
   ui.armoryXpLabel.textContent = progress.rank >= 10 ? `${progress.xp} XP · MAX RANK` : `${progress.xp} / ${progress.ceiling} XP`;
@@ -491,6 +585,7 @@ const showAssaultResult = async result => {
   ui.assaultFinalMultiplier.textContent = 'VERIFYING';
   ui.assaultFinalGlobalHp.textContent = 'SYNCING';
   ui.assaultFinalEventRank.textContent = '—';
+  renderAssaultMilestone();
   ui.assaultResultMessage.textContent = 'VERIFYING PHASE DAMAGE · KEEP THIS SCREEN OPEN';
   ui.assaultRetry.disabled = true;
   ui.assaultRetry.innerHTML = '<i>♛</i> TRY AGAIN';
@@ -520,12 +615,14 @@ const showAssaultResult = async result => {
     const settlement = payload.settlement;
     bossEvent = payload.event || bossEvent;
     bossRanking = payload.ranking || bossRanking;
+    bossRewardsState = payload.rewards || bossRewardsState;
     ui.assaultResultEyebrow.textContent = 'CROWN NETWORK · STRIKE VERIFIED';
     ui.assaultDamageLabel.textContent = 'VERIFIED DAMAGE';
     ui.assaultFinalDamage.textContent = Number(settlement.effectiveDamage).toLocaleString('en-US');
     ui.assaultFinalMultiplier.textContent = `×${Number(settlement.attemptMultiplier).toFixed(2)}`;
     ui.assaultFinalGlobalHp.textContent = Number(settlement.globalHp).toLocaleString('en-US');
     ui.assaultFinalEventRank.textContent = bossRanking.player ? `#${bossRanking.player.rank}` : '—';
+    renderAssaultMilestone();
     ui.assaultResultMessage.textContent = settlement.eventDefeated
       ? 'THE GLOBAL WARDEN HAS FALLEN · EVENT VICTORY CONFIRMED'
       : `${Number(settlement.playerTotalDamage).toLocaleString('en-US')} TOTAL EVENT DAMAGE · ATOMIC SETTLEMENT COMPLETE`;

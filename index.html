@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
   <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260827-83-global-event">
+  <link rel="stylesheet" href="./styles.css?v=20260827-84-warden-rewards">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -119,6 +119,10 @@
         <span><small>ATTEMPT VALUE</small><b id="assaultFinalMultiplier">×1.00</b></span>
         <span><small>GLOBAL HP</small><b id="assaultFinalGlobalHp">—</b></span>
         <span><small>YOUR EVENT RANK</small><b id="assaultFinalEventRank">—</b></span>
+      </div>
+      <div id="assaultMilestone" class="assault-milestone">
+        <div><span>NEXT MILESTONE</span><b id="assaultMilestoneLabel">FIRST STRIKE · 0 / 1,000</b></div>
+        <i><em id="assaultMilestoneFill"></em></i>
       </div>
       <p id="assaultResultMessage">VERIFYING PHASE DAMAGE · KEEP THIS SCREEN OPEN</p>
       <div class="assault-result-actions">
@@ -345,9 +349,9 @@
       <section class="warden-briefing" aria-labelledby="wardenBriefingTitle">
         <div class="warden-silhouette" aria-hidden="true"><span>♛</span><i></i></div>
         <div>
-          <small>INCOMING COOPERATIVE ASSAULT</small>
+          <small id="wardenBriefingEyebrow">INCOMING COOPERATIVE ASSAULT</small>
           <h3 id="wardenBriefingTitle">THE CROWN STIRS</h3>
-          <p>PREPARE ONE BLUEPRINT. YOUR ARSENAL RANK WILL POWER EVERY VERIFIED STRIKE.</p>
+          <p id="wardenBriefingCopy">PREPARE ONE BLUEPRINT. YOUR ARSENAL RANK WILL POWER EVERY VERIFIED STRIKE.</p>
         </div>
       </section>
 
@@ -370,6 +374,11 @@
           <header><div><span>GLOBAL DAMAGE</span><h3 id="bossRankingTitle">TOP PILOTS</h3></div><b id="bossEventHp">CONNECTING...</b></header>
           <ol id="bossRankingList" aria-live="polite"><li class="empty">AWAITING VERIFIED STRIKES</li></ol>
           <p id="bossPlayerRank">YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT</p>
+        </section>
+        <section class="boss-rewards" aria-labelledby="bossRewardsTitle">
+          <header><div><span>EVENT REWARDS</span><h3 id="bossRewardsTitle">DAMAGE MILESTONES</h3></div><b id="bossRewardProgress">0 VERIFIED DAMAGE</b></header>
+          <div id="bossRewardGrid" class="boss-reward-grid" aria-live="polite"></div>
+          <p id="bossRewardStatus">REWARDS ARE COSMETIC OR SHARDS · NEVER GAMEPLAY POWER</p>
         </section>
         <div class="armory-list-head"><span>BLUEPRINT ARCHIVE</span><b id="armoryOwned">1 / 11 AVAILABLE</b></div>
         <div id="armoryGrid" class="armory-grid" aria-live="polite"></div>
@@ -422,6 +431,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260827-83-global-event"></script>
+  <script type="module" src="./src/main.js?v=20260827-84-warden-rewards"></script>
 </body>
 </html>

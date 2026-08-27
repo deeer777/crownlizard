@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -938,12 +938,16 @@ const bossEventRecord = async (config, eventId = '') => {
   });
   if (eventId) query.set('id', `eq.${eventId}`);
   else {
-    query.set('status', 'eq.active');
+    query.set('status', 'in.(active,victory,failed)');
     query.set('starts_at', `lte.${new Date().toISOString()}`);
-    query.set('ends_at', `gt.${new Date().toISOString()}`);
-    query.set('current_hp', 'gt.0');
   }
-  const rows = await supabaseFetch(config, `boss_events?${query}`);
+  let rows = await supabaseFetch(config, `boss_events?${query}`);
+  if (rows[0]?.status === 'active' && (Number(rows[0].current_hp) <= 0 || Date.parse(rows[0].ends_at) <= Date.now())) {
+    await supabaseFetch(config, 'rpc/refresh_boss_event_state', {
+      method: 'POST', body: JSON.stringify({ p_event_id: rows[0].id }),
+    });
+    rows = await supabaseFetch(config, `boss_events?${query}`);
+  }
   return rows[0] || null;
 };
 
@@ -958,11 +962,19 @@ const bossLeaderboard = async (config, eventId, userId = null, limit = 10) => su
   method: 'POST', body: JSON.stringify({ p_event_id: eventId, p_user_id: userId, p_limit: Math.max(1, Math.min(100, limit)) }),
 });
 
+const bossRewards = async (config, eventId, userId) => userId
+  ? supabaseFetch(config, 'rpc/boss_reward_status', { method: 'POST', body: JSON.stringify({ p_user_id: userId, p_event_id: eventId }) })
+  : { eventId, playerDamage: 0, qualified: false, rewards: [] };
+
 const getBossEvent = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   const event = await bossEventRecord(config);
   if (!event) return json({ event: null, ranking: { leaders: [], player: null } }, 200, 'public, max-age=5, s-maxage=5');
-  return json({ event: publicBossEvent(event), ranking: await bossLeaderboard(config, event.id, user?.id || null, 10) });
+  const [ranking, rewards] = await Promise.all([
+    bossLeaderboard(config, event.id, user?.id || null, 10),
+    bossRewards(config, event.id, user?.id || null),
+  ]);
+  return json({ event: publicBossEvent(event), ranking, rewards });
 };
 
 const getBossLeaderboard = async (request, config) => {
@@ -974,6 +986,28 @@ const getBossLeaderboard = async (request, config) => {
   const event = await bossEventRecord(config, eventId);
   if (!event) return json({ error: 'Event not found.' }, 404);
   return json({ event: publicBossEvent(event), ranking: await bossLeaderboard(config, event.id, user?.id || null, limit) });
+};
+
+const claimBossRewardRequest = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid reward request.' }, 400); }
+  const eventId = String(body.eventId || '');
+  const rewardKey = String(body.rewardKey || '');
+  const requestId = String(body.requestId || '');
+  if (!UUID_PATTERN.test(eventId) || !UUID_PATTERN.test(requestId) || !/^[a-z0-9_]{3,64}$/.test(rewardKey)) {
+    return json({ error: 'Invalid reward request.' }, 400);
+  }
+  const event = await bossEventRecord(config, eventId);
+  if (!event) return json({ error: 'Event not found.', code: 'EVENT_NOT_FOUND' }, 404);
+  const claim = await supabaseFetch(config, 'rpc/claim_boss_reward', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_event_id: eventId, p_reward_key: rewardKey, p_request_id: requestId }),
+  });
+  const statuses = { REWARD_NOT_FOUND: 404, MILESTONE_LOCKED: 409, EVENT_REWARD_LOCKED: 409 };
+  if (claim.error) return json({ error: 'This reward is not claimable yet.', code: claim.error }, statuses[claim.error] || 409);
+  const [rewards, wallet] = await Promise.all([bossRewards(config, eventId, user.id), walletSnapshot(config, user.id)]);
+  return json({ claim, rewards, wallet }, claim.duplicate ? 200 : 201);
 };
 
 const startBossAssaultRequest = async (request, config) => {
@@ -1030,7 +1064,7 @@ const settleBossAssaultRequest = async (request, config) => {
   if (settlement.error) return json({ error: 'Assault could not be verified.', code: settlement.error }, statuses[settlement.error] || 409);
   const event = await bossEventRecord(config, settlement.eventId);
   const ranking = await bossLeaderboard(config, settlement.eventId, user.id, 10);
-  return json({ settlement, event: publicBossEvent(event), ranking }, settlement.duplicate ? 200 : 201);
+  return json({ settlement, event: publicBossEvent(event), ranking, rewards: await bossRewards(config, settlement.eventId, user.id) }, settlement.duplicate ? 200 : 201);
 };
 
 const openCrownCrate = async (request, config) => {
@@ -1280,6 +1314,7 @@ export const onRequest = async context => {
     if (path === 'boss/leaderboard' && request.method === 'GET') return await getBossLeaderboard(request, config);
     if (path === 'boss/assault/start' && request.method === 'POST') return await startBossAssaultRequest(request, config);
     if (path === 'boss/assault/settle' && request.method === 'POST') return await settleBossAssaultRequest(request, config);
+    if (path === 'boss/rewards/claim' && request.method === 'POST') return await claimBossRewardRequest(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
     if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerShip(request, config);
     if (path === 'vault/store' && request.method === 'GET') return await getCrownStore(request, config);

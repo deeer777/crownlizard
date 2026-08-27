@@ -1,5 +1,11 @@
 const PREVIEW_EVENT_ID = '00000000-0000-4000-8000-000000000082';
 const PENDING_SETTLEMENT_KEY = 'cl:boss-pending-settlement:v1';
+export const BOSS_REWARD_DEFINITIONS = Object.freeze([
+  Object.freeze({ key: 'first_strike', type: 'milestone', name: 'FIRST STRIKE', description: 'DEAL 1,000 VERIFIED EVENT DAMAGE', threshold: 1000, shards: 25 }),
+  Object.freeze({ key: 'crown_vanguard', type: 'milestone', name: 'CROWN VANGUARD', description: 'DEAL 5,000 VERIFIED EVENT DAMAGE', threshold: 5000, shards: 50 }),
+  Object.freeze({ key: 'wardenbreaker', type: 'milestone', name: 'WARDENBREAKER', description: 'DEAL 15,000 VERIFIED EVENT DAMAGE', threshold: 15000, shards: 100, badgeId: 'wardenbreaker', badgeName: 'WARDENBREAKER' }),
+  Object.freeze({ key: 'sovereign_slayer', type: 'global_victory', name: 'SOVEREIGN SLAYER', description: 'QUALIFY WITH 1,000 DAMAGE AND DEFEAT THE GLOBAL WARDEN', threshold: 1000, shards: 150, badgeId: 'sovereign_slayer', badgeName: 'SOVEREIGN SLAYER' }),
+]);
 
 const requestJson = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -23,14 +29,26 @@ const previewEvent = () => ({
 });
 
 export class BossNetwork {
-  constructor({ preview = false, accessToken = async () => '', playerName = () => 'YOU' } = {}) {
+  constructor({ preview = false, accessToken = async () => '', playerName = () => 'YOU', previewDamage = 0, previewStatus = 'active' } = {}) {
     this.preview = preview;
     this.accessToken = accessToken;
     this.playerName = playerName;
-    this.event = previewEvent();
+    this.event = { ...previewEvent(), status: previewStatus };
     this.attempts = 0;
-    this.playerDamage = 0;
+    this.playerDamage = Math.max(0, Number(previewDamage) || 0);
     this.activeAssault = null;
+    this.claimedRewards = new Set();
+  }
+
+  previewRewards() {
+    return {
+      eventId: this.event.id, playerDamage: this.playerDamage, qualified: this.playerDamage >= 1000,
+      rewards: BOSS_REWARD_DEFINITIONS.map(reward => ({
+        ...reward, earned: this.playerDamage >= reward.threshold,
+        claimable: this.playerDamage >= reward.threshold && (reward.type === 'milestone' || this.event.status === 'victory') && !this.claimedRewards.has(reward.key),
+        claimed: this.claimedRewards.has(reward.key), claimedAt: null,
+      })),
+    };
   }
 
   previewRanking() {
@@ -49,7 +67,7 @@ export class BossNetwork {
   }
 
   async getEvent() {
-    if (this.preview) return { event: this.event, ranking: this.previewRanking() };
+    if (this.preview) return { event: this.event, ranking: this.previewRanking(), rewards: this.previewRewards() };
     return requestJson('/api/boss/event', { headers: await this.headers() });
   }
 
@@ -93,7 +111,20 @@ export class BossNetwork {
       eventDefeated: this.event.currentHp === 0, auditFlags: [],
     };
     this.activeAssault = null;
-    return { settlement, event: this.event, ranking: this.previewRanking() };
+    return { settlement, event: this.event, ranking: this.previewRanking(), rewards: this.previewRewards() };
+  }
+
+  async claimReward({ eventId, rewardKey, requestId = crypto.randomUUID() }) {
+    if (!this.preview) return requestJson('/api/boss/rewards/claim', {
+      method: 'POST', headers: await this.headers(), body: JSON.stringify({ eventId, rewardKey, requestId }),
+    });
+    const reward = this.previewRewards().rewards.find(item => item.key === rewardKey);
+    if (!reward?.claimable) throw Object.assign(new Error('This reward is not claimable yet.'), { status: 409 });
+    this.claimedRewards.add(rewardKey);
+    return {
+      claim: { duplicate: false, rewardKey, shards: reward.shards, badgeId: reward.badgeId || null, badgeName: reward.badgeName || null, playerDamage: this.playerDamage },
+      rewards: this.previewRewards(), wallet: null,
+    };
   }
 
   async resumePending() {

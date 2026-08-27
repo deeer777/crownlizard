@@ -400,6 +400,11 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .assault-result-grid span { display: grid; gap: 7px; padding: 10px 5px; border-bottom: 2px solid #29433c; background: rgba(4,16,16,.72); }
 .assault-result-grid small { color: #6d8580; font: 700 6px var(--font-pixel-ui); }
 .assault-result-grid b { color: var(--gold); font: 400 12px var(--font-pixel-display); }
+.assault-milestone { margin: 0 0 13px; padding: 9px; background: rgba(255,211,107,.05); border-left: 2px solid var(--gold); text-align: left; }
+.assault-milestone > div { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: #8b8065; font: 700 6px var(--font-pixel-ui); }
+.assault-milestone b { color: var(--gold); font: inherit; }
+.assault-milestone > i { display: block; height: 7px; padding: 2px; background: #010504; border: 1px solid #4d4329; }
+.assault-milestone em { display: block; width: 0; height: 100%; background: linear-gradient(90deg,#92732b,var(--gold),var(--mint)); transition: width .35s steps(10,end); }
 .assault-result-panel > p { margin: 0 auto 13px; color: #839a94; font: 700 8px/1.6 var(--font-pixel-ui); }
 .assault-result-actions { display: grid; justify-items: center; }
 .assault-result-actions .primary { min-width: 280px; min-height: 48px; color: #6d8580; background: transparent; border: 0; font: 400 11px var(--font-pixel-display); }
@@ -709,6 +714,28 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .boss-ranking li .attempts { color: #607a73; font-size: 6px; }
 .boss-ranking li.empty { display: block; padding-block: 10px; color: #607a73; text-align: center; }
 .boss-ranking > p { margin: 7px 0 0; color: #678079; font: 700 6px/1.5 var(--font-pixel-ui); }
+.boss-rewards { margin: 0 0 13px; padding: 10px 11px; border-block: 2px solid #665126; background: rgba(18,14,5,.5); text-align: left; }
+.boss-rewards header { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.boss-rewards header span { color: #8e7950; font: 700 6px var(--font-pixel-ui); letter-spacing: .12em; }
+.boss-rewards h3 { margin: 5px 0 0; color: var(--ink); font: 400 10px var(--font-pixel-display); }
+.boss-rewards header > b { color: var(--gold); font: 700 7px var(--font-pixel-ui); }
+.boss-reward-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+.boss-reward { --reward-color: #71857f; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 7px; align-items: center; min-height: 58px; padding: 7px; color: #71857f; border-left: 2px solid var(--reward-color); background: rgba(4,13,13,.76); }
+.boss-reward.earned { --reward-color: var(--gold); color: #ad9b70; background: rgba(255,211,107,.07); }
+.boss-reward.claimed { --reward-color: var(--mint); color: #789c91; }
+.boss-reward-icon { display: grid; place-items: center; width: 30px; height: 30px; color: var(--reward-color); border: 1px solid currentColor; font: 400 13px var(--font-pixel-display); transform: rotate(45deg); }
+.boss-reward-icon i { font-style: normal; transform: rotate(-45deg); }
+.boss-reward-copy { min-width: 0; }
+.boss-reward-copy strong { display: block; color: var(--ink); font: 700 7px/1.4 var(--font-pixel-ui); }
+.boss-reward-copy span { display: block; margin-top: 4px; color: inherit; font: 700 6px/1.45 var(--font-pixel-ui); }
+.boss-reward-copy b { display: block; margin-top: 4px; color: var(--gold); font: 700 6px var(--font-pixel-ui); }
+.boss-reward button { min-width: 76px; min-height: 38px; padding: 4px; color: var(--ink); border: 1px solid var(--gold); background: rgba(255,211,107,.1); font: 700 6px var(--font-pixel-ui); cursor: pointer; }
+.boss-reward button:disabled { color: #53665f; border-color: #34443f; background: transparent; cursor: default; }
+.boss-rewards > p { margin: 8px 0 0; color: #796e53; font: 700 6px/1.5 var(--font-pixel-ui); }
+.warden-overlay.event-victory .warden-briefing { border-color: var(--gold); background: linear-gradient(90deg,rgba(83,57,11,.78),rgba(11,35,29,.86)); }
+.warden-overlay.event-victory .warden-signal i { background: var(--mint); box-shadow: 0 0 10px var(--mint); animation: none; }
+.warden-overlay.event-failed .warden-briefing { filter: grayscale(.55); border-color: #4d5652; }
+.warden-overlay.event-failed .warden-signal i { background: #68736f; box-shadow: none; animation: none; }
 .warden-silhouette { position: relative; display: grid; place-items: center; width: 104px; height: 82px; color: #ff6b82; }
 .warden-silhouette span { position: relative; z-index: 2; font: 400 32px var(--font-pixel-display); opacity: .3; text-shadow: 0 0 16px currentColor; }
 .warden-silhouette::before,
@@ -1103,6 +1130,16 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .boss-ranking li { grid-template-columns: 27px minmax(0,1fr) auto; min-height: 31px; font-size: 8px; }
   .boss-ranking li .attempts { display: none; }
   .boss-ranking > p { font-size: 7px; }
+  .boss-rewards { padding: 9px 7px; }
+  .boss-rewards h3 { font-size: 9px; }
+  .boss-rewards header > b { max-width: 145px; font-size: 7px; text-align: right; }
+  .boss-reward-grid { grid-template-columns: 1fr; gap: 6px; }
+  .boss-reward { grid-template-columns: 38px minmax(0,1fr) 82px; min-height: 64px; }
+  .boss-reward-copy strong { font-size: 8px; }
+  .boss-reward-copy span,
+  .boss-reward-copy b { font-size: 7px; }
+  .boss-reward button { min-height: 44px; font-size: 7px; }
+  .boss-rewards > p { font-size: 7px; }
   .armory-shell { padding: 10px 8px; }
   .armory-heading { align-items: stretch; }
   .armory-heading span { font-size: 7px; }

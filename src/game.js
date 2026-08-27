@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js?v=20260827-83-global-event';
-import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260827-83-global-event';
+import { CONFIG } from './config.js?v=20260827-84-warden-rewards';
+import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260827-84-warden-rewards';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
