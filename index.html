@@ -11,12 +11,56 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Crown Lizard">
-  <meta name="description" content="Crown Lizard: Dash — survive, dodge and chase the high score.">
+  <meta name="description" content="Play Crown Lizard, a free endless pixel-art arcade shooter. Dash through enemy swarms, master ten weapon paths and chase the global high score.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="application-name" content="Crown Lizard">
+  <link rel="canonical" href="https://crownlizard.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Crown Lizard">
+  <meta property="og:title" content="Crown Lizard — Endless Pixel-Art Arcade Shooter">
+  <meta property="og:description" content="Dash, survive and master your weapons in a free endless arcade shooter built for mobile and desktop.">
+  <meta property="og:url" content="https://crownlizard.com/">
+  <meta property="og:image" content="https://crownlizard.com/assets/icons/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="Crown Lizard pixel-art crown emblem">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Crown Lizard — Endless Pixel-Art Arcade Shooter">
+  <meta name="twitter:description" content="Play free on mobile or desktop. Dash, survive and chase the crown.">
+  <meta name="twitter:image" content="https://crownlizard.com/assets/icons/icon-512.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
-  <title>Crown Lizard: Dash</title>
-  <link rel="stylesheet" href="./styles.css?v=20260828-87-retention-polish2">
+  <title>Crown Lizard — Free Endless Pixel-Art Arcade Shooter</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": ["VideoGame", "WebApplication"],
+    "name": "Crown Lizard",
+    "url": "https://crownlizard.com/",
+    "image": "https://crownlizard.com/assets/icons/icon-512.png",
+    "description": "A free endless pixel-art arcade shooter with mobile-first controls, weapon mastery, global high scores and cooperative boss events.",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Any operating system with a modern web browser",
+    "browserRequirements": "Requires JavaScript, Canvas and Web Audio support",
+    "genre": ["Arcade", "Shoot 'em up", "Action"],
+    "playMode": "SinglePlayer",
+    "inLanguage": "en",
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Crown Lizard",
+      "url": "https://crownlizard.com/"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="./styles.css?v=20260828-90-search-signal">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -174,6 +218,9 @@
       <h2>SETTINGS</h2>
       <div class="setting-list">
         <button id="openAccount" type="button"><span>PLAYER ACCOUNT</span><b id="accountBadge">GUEST</b></button>
+        <button id="openOwnProfile" class="hidden" type="button"><span>MY PILOT FILE</span><b>VIEW</b></button>
+        <button id="profileVisibility" class="hidden" type="button" aria-pressed="true"><span>PUBLIC PILOT PROFILE</span><b>ON</b></button>
+        <a href="/how-to-play/" target="_blank" rel="noopener"><span>GAME GUIDE &amp; INFO</span><b>OPEN</b></a>
         <button data-setting="music"><span>MUSIC</span><b>ON</b></button>
         <button data-setting="sfx"><span>SOUND FX</span><b>ON</b></button>
         <button data-setting="haptics"><span>VIBRATION</span><b>ON</b></button>
@@ -259,6 +306,41 @@
       <div id="leaderboardPlayerResult" class="leaderboard-player-result hidden" aria-live="polite"></div>
       <p id="leaderboardStatus" class="leaderboard-status" role="status">CONNECTING...</p>
       <button id="closeLeaderboard" class="system-action" type="button"><i>♛</i> BACK</button>
+    </div>
+  </section>
+
+  <section id="pilotProfileOverlay" class="overlay system-overlay pilot-profile-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="pilotProfileName">
+    <div class="system-panel pilot-profile-panel">
+      <div class="eyebrow">CROWN NETWORK · PILOT FILE</div>
+      <div id="pilotProfileLoading" class="pilot-profile-loading" role="status">LOCATING PILOT SIGNAL...</div>
+      <div id="pilotProfileContent" class="pilot-profile-content hidden">
+        <div class="pilot-profile-hero">
+          <div class="pilot-profile-ship"><span></span><img id="pilotProfileShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Pilot ship"></div>
+          <div class="pilot-profile-identity">
+            <small>REGISTERED PILOT</small>
+            <h2 id="pilotProfileName">CROWN PILOT</h2>
+            <span id="pilotProfileJoined">JOINED 2026-08</span>
+            <b id="pilotProfileArsenal">ARSENAL RANK 00</b>
+          </div>
+        </div>
+        <div class="pilot-profile-bests" aria-label="Personal best scores">
+          <div><span>CHILL</span><strong id="pilotBestChill">—</strong></div>
+          <div><span>ARCADE</span><strong id="pilotBestArcade">—</strong></div>
+          <div><span>CROWNED</span><strong id="pilotBestCrowned">—</strong></div>
+        </div>
+        <div class="pilot-profile-stats">
+          <div><span>HIGHEST ZONE</span><strong id="pilotHighestZone">00</strong></div>
+          <div><span>QUALIFIED RUNS</span><strong id="pilotQualifiedRuns">0</strong></div>
+          <div><span>BEST BOSS STRIKE</span><strong id="pilotBossBest">0</strong></div>
+          <div><span>TOTAL BOSS DAMAGE</span><strong id="pilotBossTotal">0</strong></div>
+        </div>
+      </div>
+      <p id="pilotProfileStatus" class="pilot-profile-status"></p>
+      <p id="pilotProfileShareStatus" class="pilot-profile-share-status" role="status"></p>
+      <div class="pilot-profile-actions">
+        <button id="sharePilotProfile" class="system-action" type="button"><i>♛</i> SHARE PILOT FILE</button>
+        <button id="closePilotProfile" class="system-action" type="button"><i>♛</i> BACK TO SCORES</button>
+      </div>
     </div>
   </section>
 
@@ -434,6 +516,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260828-87-retention-polish2"></script>
+  <script type="module" src="./src/main.js?v=20260828-90-search-signal"></script>
 </body>
 </html>

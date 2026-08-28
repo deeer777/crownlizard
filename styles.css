@@ -455,10 +455,14 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .tutorial-steps span { color: #819b95; font: 400 8px/1.55 var(--font-pixel-ui); }
 .pause-panel { width: min(440px,100%); }
 .setting-list { display: grid; width: min(390px,100%); margin: 0 auto 18px; }
-.setting-list button { display: flex; justify-content: space-between; align-items: center; min-height: 45px; padding: 8px 5px; color: #8da59f; background: transparent; border: 0; border-bottom: 1px solid #20332f; font: 700 9px var(--font-pixel-ui); letter-spacing: .08em; cursor: pointer; }
-.setting-list button b { color: var(--mint); font: inherit; }
+.setting-list button,
+.setting-list a { display: flex; justify-content: space-between; align-items: center; min-height: 45px; padding: 8px 5px; color: #8da59f; background: transparent; border: 0; border-bottom: 1px solid #20332f; font: 700 9px var(--font-pixel-ui); letter-spacing: .08em; text-decoration: none; cursor: pointer; }
+.setting-list button b,
+.setting-list a b { color: var(--mint); font: inherit; }
 .setting-list button[aria-pressed="false"] b { color: #65736f; }
-.setting-list button:hover span { color: var(--gold); }
+.setting-list button:hover span,
+.setting-list a:hover span,
+.setting-list a:focus-visible span { color: var(--gold); }
 .setting-list #installApp,
 .setting-list #updateApp { color: var(--ink); }
 .setting-list #installApp b { color: var(--gold); }
@@ -542,6 +546,10 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .leaderboard-list li.leaderboard-empty { color: #405650; text-shadow: none; }
 .leaderboard-list li.leaderboard-empty span:nth-child(2) { color: #405650; }
 .leaderboard-list li.leaderboard-highlight { outline: 1px solid rgba(111,255,210,.55); outline-offset: -1px; background: rgba(111,255,210,.11); animation: leaderboard-flash .8s steps(2,end) 3; }
+.pilot-profile-link { min-width: 0; padding: 5px 0; overflow: hidden; color: var(--mint); background: transparent; border: 0; border-bottom: 1px dotted #497d70; font: inherit; letter-spacing: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.pilot-profile-link::after { content: ' ›'; color: var(--gold); }
+.pilot-profile-link:hover,
+.pilot-profile-link:focus-visible { color: var(--gold); border-color: var(--gold); outline: none; }
 .leaderboard-player-result { display: grid; grid-template-columns: 48px 1fr auto auto; align-items: center; gap: 9px; width: min(560px,100%); min-height: 47px; margin: 9px auto 0; padding: 7px 10px; color: var(--ink); background: rgba(111,255,210,.1); border: 1px solid #3e7669; text-align: left; }
 .leaderboard-player-result b { color: var(--gold); font: 400 11px var(--font-pixel-display); }
 .leaderboard-player-result span { color: #78918b; font: 700 7px var(--font-pixel-ui); }
@@ -551,6 +559,34 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .personal-best-chase { width: min(360px,100%); margin: 8px auto 2px; padding: 8px 10px; color: var(--mint); border-top: 1px solid #1d4138; border-bottom: 1px solid #1d4138; font: 700 8px/1.5 var(--font-pixel-ui); letter-spacing: .07em; text-align: center; }
 .personal-best-chase.record { color: var(--gold); border-color: #8d6321; text-shadow: 0 0 6px rgba(255,211,107,.35); }
 @keyframes leaderboard-flash { 50% { color: var(--gold); background: rgba(255,211,107,.12); } }
+
+.pilot-profile-overlay { z-index: 72; overflow-y: auto; background: rgba(0,3,5,.96); }
+.pilot-profile-panel { width: min(590px,100%); padding: 20px 18px 18px; border-top-color: var(--gold); }
+.pilot-profile-panel > .eyebrow { color: var(--gold); }
+.pilot-profile-loading { display: grid; place-items: center; min-height: 330px; color: var(--mint); font: 700 9px var(--font-pixel-ui); letter-spacing: .1em; animation: menu-cursor .9s steps(2,end) infinite; }
+.pilot-profile-hero { display: grid; grid-template-columns: 174px 1fr; align-items: center; gap: 15px; width: min(520px,100%); margin: 10px auto 15px; padding: 10px 12px 12px; border-block: 2px solid #315b50; background: radial-gradient(circle at 23% 50%,rgba(111,255,210,.12),transparent 34%); }
+.pilot-profile-ship { position: relative; display: grid; place-items: center; width: 160px; height: 150px; image-rendering: pixelated; }
+.pilot-profile-ship span { position: absolute; width: 4px; height: 4px; color: var(--gold); background: currentColor; box-shadow: -66px -38px,64px -29px,-72px 27px,70px 39px,-41px 66px,44px 61px; opacity: .65; animation: crate-signal-pixels 1.4s steps(5,end) infinite; }
+.pilot-profile-ship img { position: relative; z-index: 1; width: 132px; height: 132px; object-fit: contain; image-rendering: pixelated; filter: saturate(1.08) drop-shadow(5px 6px #010504); }
+.pilot-profile-identity { min-width: 0; text-align: left; }
+.pilot-profile-identity small { color: #79918b; font: 700 7px var(--font-pixel-ui); letter-spacing: .13em; }
+.pilot-profile-identity h2 { margin: 10px 0 8px; overflow: hidden; color: var(--gold); font: 400 clamp(15px,4vw,22px)/1.35 var(--font-pixel-display); letter-spacing: .04em; text-overflow: ellipsis; text-shadow: 3px 3px #624011; white-space: nowrap; }
+.pilot-profile-identity span { display: block; color: #7f9992; font: 700 7px var(--font-pixel-ui); letter-spacing: .08em; }
+.pilot-profile-identity b { display: block; margin-top: 13px; color: var(--mint); font: 700 9px var(--font-pixel-ui); letter-spacing: .08em; }
+.pilot-profile-bests { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; width: min(520px,100%); margin: 0 auto 7px; }
+.pilot-profile-bests div { display: grid; gap: 8px; min-width: 0; padding: 10px 5px 9px; background: rgba(5,18,18,.82); border-bottom: 2px solid #28483f; }
+.pilot-profile-bests div:nth-child(2) { border-color: var(--gold); background: rgba(255,211,107,.06); }
+.pilot-profile-bests span,
+.pilot-profile-stats span { color: #78918b; font: 700 7px var(--font-pixel-ui); letter-spacing: .08em; }
+.pilot-profile-bests strong { overflow: hidden; color: var(--ink); font: 400 11px var(--font-pixel-display); text-overflow: ellipsis; }
+.pilot-profile-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 5px; width: min(520px,100%); margin: 0 auto 8px; }
+.pilot-profile-stats div { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 42px; padding: 8px 10px; background: rgba(3,13,13,.75); border-bottom: 1px solid #1d352f; text-align: left; }
+.pilot-profile-stats strong { color: var(--mint); font: 700 10px var(--font-pixel-ui); font-variant-numeric: tabular-nums; }
+.pilot-profile-status { min-height: 18px; margin: 9px auto 4px; color: #78918b; font: 700 7px/1.5 var(--font-pixel-ui); letter-spacing: .07em; }
+.pilot-profile-share-status { min-height: 17px; margin: 0 auto 2px; color: var(--gold); font: 700 8px/1.5 var(--font-pixel-ui); letter-spacing: .08em; }
+.pilot-profile-actions { display: grid; gap: 3px; width: min(360px,100%); margin: 0 auto; }
+.pilot-profile-actions .system-action { width: 100%; min-height: 50px; }
+.boss-ranking .pilot-profile-link { font-size: inherit; }
 
 .vault-overlay { overflow-y: auto; background: rgba(0,3,5,.96); }
 .vault-panel { width: min(780px,100%); padding-block: 18px; }
@@ -1107,6 +1143,24 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .leaderboard-list { grid-auto-rows: 36px; }
   .leaderboard-list li { min-height: 36px; padding-inline: 5px; font-size: 10px; }
   .leaderboard-player-result { grid-template-columns: 42px 1fr auto auto; gap: 6px; padding-inline: 6px; }
+  .pilot-profile-panel { align-self: start; padding: 14px 7px 17px; }
+  .pilot-profile-hero { grid-template-columns: 112px 1fr; gap: 8px; margin-top: 7px; padding: 7px; }
+  .pilot-profile-ship { width: 104px; height: 108px; }
+  .pilot-profile-ship img { width: 94px; height: 94px; }
+  .pilot-profile-ship span { box-shadow: -44px -29px,42px -23px,-47px 23px,45px 31px,-27px 45px,28px 43px; }
+  .pilot-profile-identity small,
+  .pilot-profile-identity span { font-size: 8px; }
+  .pilot-profile-identity h2 { margin-block: 8px 7px; font-size: clamp(13px,4.5vw,18px); }
+  .pilot-profile-identity b { margin-top: 10px; font-size: 9px; line-height: 1.45; }
+  .pilot-profile-bests { gap: 3px; }
+  .pilot-profile-bests div { gap: 7px; padding: 10px 2px 9px; }
+  .pilot-profile-bests span,
+  .pilot-profile-stats span { font-size: 8px; }
+  .pilot-profile-bests strong { font-size: clamp(8px,2.7vw,11px); }
+  .pilot-profile-stats { gap: 3px; }
+  .pilot-profile-stats div { min-height: 48px; padding-inline: 7px; }
+  .pilot-profile-stats strong { font-size: 9px; }
+  .pilot-profile-status { font-size: 8px; }
   .assault-result-panel { align-self: center; padding: 18px 7px; }
   .assault-result-panel .eyebrow { font-size: 8px; letter-spacing: .16em; }
   .assault-result-panel h2 { margin-block: 13px 15px; font-size: clamp(22px,7vw,30px); }
@@ -1368,7 +1422,8 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .personal-best-chase { padding-block: 9px; font-size: 10px; }
   .random-favorite-toggle { min-height: 44px; font-size: 9px; }
 
-  .setting-list button { min-height: 52px; font-size: 11px; }
+  .setting-list button,
+  .setting-list a { min-height: 52px; font-size: 11px; }
   .tutorial-steps b { font-size: 10px; }
   .tutorial-steps span,
   .pwa-install-steps p,

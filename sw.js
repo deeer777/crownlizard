@@ -1,24 +1,32 @@
-const CACHE_VERSION = 'crown-lizard-shell-v87-retention-polish';
+const CACHE_VERSION = 'crown-lizard-shell-v90-search-signal';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260828-87-retention-polish2',
-  '/src/main.js?v=20260828-87-retention-polish2',
-  '/src/config.js?v=20260828-87-retention-polish2',
+  '/styles.css?v=20260828-90-search-signal',
+  '/site.css?v=20260828-90-seo',
+  '/about/',
+  '/how-to-play/',
+  '/updates/',
+  '/privacy/',
+  '/terms/',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/src/main.js?v=20260828-90-search-signal',
+  '/src/config.js?v=20260828-90-search-signal',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
-  '/src/audio.js?v=20260828-87-retention-polish2',
-  '/src/game.js?v=20260828-87-retention-polish2',
-  '/src/boss-assault.js?v=20260828-87-retention-polish2',
-  '/src/boss-network.js?v=20260828-87-retention-polish2',
+  '/src/audio.js?v=20260828-90-search-signal',
+  '/src/game.js?v=20260828-90-search-signal',
+  '/src/boss-assault.js?v=20260828-90-search-signal',
+  '/src/boss-network.js?v=20260828-90-search-signal',
   '/src/economy.js?v=20260827-79-crown-store-final4',
   '/src/cosmetics.js?v=20260827-79-crown-store-final',
   '/src/leaderboard.js?v=20260824-45-cutover',
-  '/src/player-account.js?v=20260828-87-retention-polish2',
-  '/src/armory.js?v=20260828-87-retention-polish2',
-  '/src/cosmetic-preferences.js?v=20260828-87-retention-polish2',
+  '/src/player-account.js?v=20260828-90-search-signal',
+  '/src/armory.js?v=20260828-90-search-signal',
+  '/src/cosmetic-preferences.js?v=20260828-90-search-signal',
   '/src/account-presentation.js?v=20260826-73-cinematic-endings',
   '/src/rewarded-ad.js?v=20260824-45',
   '/src/pwa.js?v=20260827-79-crown-store-final6',
@@ -69,7 +77,7 @@ const networkNavigation = async request => {
   try {
     return await fetch(request);
   } catch {
-    return (await caches.match('/index.html')) || Response.error();
+    return (await caches.match(request, { ignoreSearch: true })) || (await caches.match('/index.html')) || Response.error();
   }
 };
 

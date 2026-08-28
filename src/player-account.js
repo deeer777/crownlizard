@@ -244,6 +244,17 @@ export class PlayerAccount {
     return this.authorizedRequest('/api/player/profile');
   }
 
+  getPublicProfile(publicId) {
+    return requestJson(`/api/profiles/${encodeURIComponent(String(publicId || ''))}`);
+  }
+
+  setProfileVisibility(isPublic) {
+    return this.authorizedRequest('/api/player/profile/visibility', {
+      method: 'PUT',
+      body: JSON.stringify({ isPublic: Boolean(isPublic) }),
+    });
+  }
+
   claimCallsign(callsign) {
     return this.authorizedRequest('/api/player/profile/callsign', {
       method: 'POST',

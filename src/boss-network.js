@@ -53,11 +53,11 @@ export class BossNetwork {
 
   previewRanking() {
     const leaders = [
-      { rank: 1, playerName: 'NOVA_KING', damage: 18420, assaults: 5 },
-      { rank: 2, playerName: 'VOIDLIZARD', damage: 15380, assaults: 4 },
-      { rank: 3, playerName: 'PIXELACE', damage: 12110, assaults: 4 },
+      { rank: 1, playerName: 'NOVA_KING', publicProfileId: 'preview:nova_king', damage: 18420, assaults: 5 },
+      { rank: 2, playerName: 'VOIDLIZARD', publicProfileId: 'preview:voidlizard', damage: 15380, assaults: 4 },
+      { rank: 3, playerName: 'PIXELACE', publicProfileId: 'preview:pixelace', damage: 12110, assaults: 4 },
     ];
-    if (this.playerDamage > 0) leaders.push({ rank: 4, playerName: this.playerName() || 'YOU', damage: this.playerDamage, assaults: this.attempts });
+    if (this.playerDamage > 0) leaders.push({ rank: 4, playerName: this.playerName() || 'YOU', publicProfileId: 'preview:you', isCurrent: true, damage: this.playerDamage, assaults: this.attempts });
     return { leaders, player: this.playerDamage > 0 ? leaders.at(-1) : null };
   }
 

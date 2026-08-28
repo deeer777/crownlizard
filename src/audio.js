@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-87-retention-polish2';
+import { CONFIG } from './config.js?v=20260828-90-search-signal';
 
 export class Music {
   constructor() {

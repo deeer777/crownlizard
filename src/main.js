@@ -1,19 +1,19 @@
-import { CONFIG } from './config.js?v=20260828-87-retention-polish2';
+import { CONFIG } from './config.js?v=20260828-90-search-signal';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
-import { Music, SoundFx } from './audio.js?v=20260828-87-retention-polish2';
-import { Game } from './game.js?v=20260828-87-retention-polish2';
+import { Music, SoundFx } from './audio.js?v=20260828-90-search-signal';
+import { Game } from './game.js?v=20260828-90-search-signal';
 import { ShardWallet } from './economy.js?v=20260827-79-crown-store-final4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260827-79-crown-store-final';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260828-87-retention-polish2';
+import { PlayerAccount } from './player-account.js?v=20260828-90-search-signal';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
-import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-87-retention-polish2';
-import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-87-retention-polish2';
-import { BossNetwork } from './boss-network.js?v=20260828-87-retention-polish2';
-import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-87-retention-polish2';
+import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-90-search-signal';
+import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-90-search-signal';
+import { BossNetwork } from './boss-network.js?v=20260828-90-search-signal';
+import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-90-search-signal';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
@@ -22,7 +22,14 @@ const cosmeticSpriteUrl = cosmetic => cosmetic.id === 'ship_default'
 const crateSpriteUrl = state => `./assets/runtime/sprites/crown-crate-${state}-v1.png`;
 const debugParams = new URLSearchParams(location.search);
 const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+const publicProfileIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const requestedPilotParam = String(debugParams.get('pilot') || '');
+const requestedPilotProfileId = publicProfileIdPattern.test(requestedPilotParam)
+  || (localPreview && /^preview:[a-z0-9_]{3,24}$/i.test(requestedPilotParam))
+  ? requestedPilotParam
+  : '';
 const callsignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('callsign');
+const profilePreviewMode = localPreview && debugParams.has('debug') && debugParams.has('profile');
 const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
 const serverEconomy = !localPreview;
 const ui = {
@@ -31,9 +38,10 @@ const ui = {
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
-  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
+  pilotProfileOverlay: $('pilotProfileOverlay'), pilotProfileLoading: $('pilotProfileLoading'), pilotProfileContent: $('pilotProfileContent'), pilotProfileShip: $('pilotProfileShip'), pilotProfileName: $('pilotProfileName'), pilotProfileJoined: $('pilotProfileJoined'), pilotProfileArsenal: $('pilotProfileArsenal'), pilotBestChill: $('pilotBestChill'), pilotBestArcade: $('pilotBestArcade'), pilotBestCrowned: $('pilotBestCrowned'), pilotHighestZone: $('pilotHighestZone'), pilotQualifiedRuns: $('pilotQualifiedRuns'), pilotBossBest: $('pilotBossBest'), pilotBossTotal: $('pilotBossTotal'), pilotProfileStatus: $('pilotProfileStatus'), pilotProfileShareStatus: $('pilotProfileShareStatus'), sharePilotProfile: $('sharePilotProfile'), closePilotProfile: $('closePilotProfile'),
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'),
   storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
   storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
@@ -93,6 +101,12 @@ let accountMode = 'secure';
 let accountBusy = false;
 let leaderboardReturn = 'menu';
 let leaderboardDifficulty = selectedDifficulty;
+let pilotProfileOrigin = 'leaderboard';
+let pilotProfileTrigger = null;
+let pilotProfileTriggerLabel = '';
+let pilotProfileGeneration = 0;
+let activePilotProfile = null;
+let pilotDeepLinkActive = false;
 let runGeneration = 0;
 let currentRunPromise = Promise.resolve(null);
 let pendingScore = null;
@@ -126,8 +140,8 @@ try {
   }
 } catch {}
 const playerAccount = new PlayerAccount();
-const currentAccountState = () => callsignPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
-let playerProfile = null;
+const currentAccountState = () => callsignPreviewMode || profilePreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
+let playerProfile = profilePreviewMode ? { publicId: 'preview:you', isPublic: true, displayName: 'PREVIEW' } : null;
 const bossNetwork = new BossNetwork({
   preview: localPreview,
   accessToken: () => playerAccount.getAccessToken(),
@@ -355,9 +369,12 @@ const renderBossEvent = () => {
   const rows = (bossRanking.leaders || []).map(entry => {
     const item = document.createElement('li');
     item.classList.toggle('top-three', Number(entry.rank) <= 3);
-    item.classList.toggle('own', bossRanking.player?.playerId && entry.playerId === bossRanking.player.playerId);
+    item.classList.toggle('own', Boolean(entry.isCurrent));
     const rank = Object.assign(document.createElement('span'), { className: 'rank', textContent: `#${entry.rank}` });
-    const name = Object.assign(document.createElement('strong'), { textContent: String(entry.playerName || 'CROWN PILOT').slice(0, 16) });
+    const name = document.createElement('strong');
+    const profileLink = createPilotProfileLink(entry, 'boss');
+    if (profileLink) name.append(profileLink);
+    else name.textContent = String(entry.playerName || 'CROWN PILOT').slice(0, 16);
     const damage = Object.assign(document.createElement('span'), { className: 'damage', textContent: Number(entry.damage).toLocaleString('en-US') });
     const attempts = Object.assign(document.createElement('span'), { className: 'attempts', textContent: `${entry.assaults} RUN${entry.assaults === 1 ? '' : 'S'}` });
     item.append(rank, name, damage, attempts);
@@ -1089,6 +1106,13 @@ const renderSettings = () => {
   ui.sound.classList.toggle('off', !music.enabled);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
   ui.accountBadge.textContent = accountPresentation().badge;
+  const profileVisibilityAvailable = currentAccountState() === 'signed-in' && Boolean(playerProfile?.publicId);
+  ui.openOwnProfile.classList.toggle('hidden', !profileVisibilityAvailable);
+  ui.openOwnProfile.querySelector('b').textContent = playerProfile?.isPublic === false ? 'PRIVATE' : 'VIEW';
+  ui.profileVisibility.classList.toggle('hidden', !profileVisibilityAvailable);
+  ui.profileVisibility.disabled = profileStatus === 'loading';
+  ui.profileVisibility.setAttribute('aria-pressed', String(playerProfile?.isPublic !== false));
+  ui.profileVisibility.querySelector('b').textContent = profileStatus === 'loading' ? 'SYNCING' : playerProfile?.isPublic === false ? 'OFF' : 'ON';
   ui.installApp.classList.toggle('hidden', !pwaManager?.installAvailable);
   ui.updateApp.classList.toggle('hidden', !pwaUpdateReady);
   renderMenuIdentity();
@@ -1136,6 +1160,184 @@ const selectLeaderboardDifficulty = difficulty => {
   });
 };
 
+const previewPilotProfile = publicProfileId => {
+  const slug = String(publicProfileId || '').split(':').at(-1).replace(/[^a-z0-9_]/gi, '').toUpperCase() || 'CROWN_PILOT';
+  const seeds = [...slug].reduce((total, character) => total + character.charCodeAt(0), 0);
+  const ships = ['ship_void_hunter', 'ship_solar_guard', 'ship_royal_vanguard', 'ship_rift_phantom', 'ship_crown_sovereign'];
+  return {
+    publicId: publicProfileId,
+    displayName: slug.slice(0, 10),
+    joined: '2026-08',
+    equippedShip: ships[seeds % ships.length],
+    arsenalRank: Math.min(10, 3 + seeds % 8),
+    stats: {
+      bestScores: {
+        chill: { score: 72000 + seeds * 31, zone: 5 },
+        arcade: { score: 118000 + seeds * 73, zone: 8 },
+        crowned: { score: 43000 + seeds * 19, zone: 4 },
+      },
+      highestZone: 8 + seeds % 5,
+      qualifiedRuns: 12 + seeds % 47,
+      bossBestDamage: 8000 + seeds * 17,
+      bossTotalDamage: 42000 + seeds * 89,
+    },
+  };
+};
+
+const renderPilotProfile = profile => {
+  activePilotProfile = profile;
+  const stats = profile.stats || {};
+  const bestScores = stats.bestScores || {};
+  const cosmetic = COSMETIC_BY_ID[profile.equippedShip] || COSMETIC_BY_ID.ship_default;
+  ui.pilotProfileShip.src = cosmeticSpriteUrl(cosmetic);
+  ui.pilotProfileShip.alt = `${profile.displayName} ship, ${cosmetic.name}`;
+  ui.pilotProfileName.textContent = profile.displayName || 'CROWN PILOT';
+  ui.pilotProfileJoined.textContent = profile.joined ? `JOINED ${profile.joined}` : 'REGISTERED PILOT';
+  ui.pilotProfileArsenal.textContent = `ARSENAL RANK ${String(Number(profile.arsenalRank) || 0).padStart(2, '0')}`;
+  [['chill', ui.pilotBestChill], ['arcade', ui.pilotBestArcade], ['crowned', ui.pilotBestCrowned]].forEach(([difficulty, element]) => {
+    const score = Number(bestScores[difficulty]?.score) || 0;
+    element.textContent = score ? score.toLocaleString('en-US') : '—';
+  });
+  ui.pilotHighestZone.textContent = String(Number(stats.highestZone) || 0).padStart(2, '0');
+  ui.pilotQualifiedRuns.textContent = Number(stats.qualifiedRuns || 0).toLocaleString('en-US');
+  ui.pilotBossBest.textContent = Number(stats.bossBestDamage || 0).toLocaleString('en-US');
+  ui.pilotBossTotal.textContent = Number(stats.bossTotalDamage || 0).toLocaleString('en-US');
+  ui.pilotProfileLoading.classList.add('hidden');
+  ui.pilotProfileContent.classList.remove('hidden');
+  ui.pilotProfileStatus.textContent = `${cosmetic.name} · VERIFIED CROWN NETWORK STATS`;
+  ui.pilotProfileShareStatus.textContent = '';
+  ui.sharePilotProfile.classList.toggle('hidden', !profile.publicId);
+};
+
+const closePilotProfile = () => {
+  pilotProfileGeneration += 1;
+  ui.pilotProfileOverlay.classList.add('hidden');
+  activePilotProfile = null;
+  if (pilotDeepLinkActive) {
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete('pilot');
+    history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
+    debugParams.delete('pilot');
+    pilotDeepLinkActive = false;
+  }
+  if (pilotProfileOrigin === 'settings') ui.settingsOverlay.classList.remove('hidden');
+  const triggerRoot = pilotProfileOrigin === 'boss' ? ui.bossRankingList : ui.leaderboardList;
+  const restoredTrigger = pilotProfileTrigger?.isConnected
+    ? pilotProfileTrigger
+    : pilotProfileOrigin === 'settings'
+      ? ui.openOwnProfile
+      : [...triggerRoot.querySelectorAll('.pilot-profile-link')].find(button => button.getAttribute('aria-label') === pilotProfileTriggerLabel);
+  if (restoredTrigger) requestAnimationFrame(() => restoredTrigger.focus({ preventScroll: true }));
+  pilotProfileTrigger = null;
+  pilotProfileTriggerLabel = '';
+};
+
+const openPilotProfile = async (publicProfileId, trigger, origin = 'leaderboard') => {
+  if (!publicProfileId) return;
+  const generation = ++pilotProfileGeneration;
+  pilotProfileOrigin = origin;
+  pilotProfileTrigger = trigger || null;
+  pilotProfileTriggerLabel = trigger?.getAttribute?.('aria-label') || '';
+  ui.pilotProfileContent.classList.add('hidden');
+  ui.pilotProfileLoading.classList.remove('hidden');
+  ui.pilotProfileLoading.textContent = 'LOCATING PILOT SIGNAL...';
+  ui.pilotProfileStatus.textContent = '';
+  ui.pilotProfileShareStatus.textContent = '';
+  ui.sharePilotProfile.classList.add('hidden');
+  ui.closePilotProfile.innerHTML = `<i>♛</i> ${origin === 'boss' ? 'BACK TO WARDEN' : origin === 'settings' ? 'BACK TO SETTINGS' : origin === 'direct' ? 'BACK TO MENU' : 'BACK TO SCORES'}`;
+  ui.pilotProfileOverlay.classList.remove('hidden');
+  try {
+    const payload = String(publicProfileId).startsWith('preview:')
+      ? { profile: previewPilotProfile(publicProfileId) }
+      : await playerAccount.getPublicProfile(publicProfileId);
+    if (generation !== pilotProfileGeneration) return;
+    renderPilotProfile(payload.profile);
+    triggerHaptic(18);
+  } catch {
+    if (generation !== pilotProfileGeneration) return;
+    ui.pilotProfileLoading.textContent = 'PILOT SIGNAL UNAVAILABLE';
+    ui.pilotProfileStatus.textContent = 'THE PROFILE IS PRIVATE OR TEMPORARILY OFFLINE';
+  }
+  ui.closePilotProfile.focus({ preventScroll: true });
+};
+
+const pilotProfileUrl = publicId => {
+  const url = new URL(location.origin + location.pathname);
+  url.searchParams.set('pilot', publicId);
+  return url.toString();
+};
+
+const copyPilotProfileUrl = async url => {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(url);
+  const field = document.createElement('textarea');
+  field.value = url;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.append(field);
+  field.select();
+  const copied = document.execCommand('copy');
+  field.remove();
+  if (!copied) throw new Error('Clipboard unavailable');
+};
+
+const sharePilotProfile = async () => {
+  if (!activePilotProfile?.publicId) return;
+  const url = pilotProfileUrl(activePilotProfile.publicId);
+  ui.sharePilotProfile.disabled = true;
+  try {
+    if (navigator.share && !localPreview) {
+      await navigator.share({ title: `${activePilotProfile.displayName} · Crown Lizard`, text: 'View my Crown Lizard Pilot File.', url });
+      ui.pilotProfileShareStatus.textContent = 'PILOT LINK SHARED';
+    } else {
+      await copyPilotProfileUrl(url);
+      ui.pilotProfileShareStatus.textContent = 'PILOT LINK COPIED';
+    }
+    triggerHaptic(18);
+  } catch (error) {
+    ui.pilotProfileShareStatus.textContent = error?.name === 'AbortError' ? '' : 'SHARING UNAVAILABLE · TRY AGAIN';
+  } finally {
+    ui.sharePilotProfile.disabled = false;
+  }
+};
+
+const pilotProfileIdFor = entry => entry?.publicProfileId
+  || (localPreview && String(entry?.playerName || entry?.initials || '').length > 3
+    ? `preview:${String(entry.playerName || entry.initials).toLowerCase()}`
+    : null);
+
+const createPilotProfileLink = (entry, origin) => {
+  const profileId = pilotProfileIdFor(entry);
+  if (!profileId) return null;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'pilot-profile-link';
+  button.textContent = entry.playerName || entry.initials || 'CROWN PILOT';
+  button.setAttribute('aria-label', `View ${button.textContent} pilot profile`);
+  button.addEventListener('click', () => openPilotProfile(profileId, button, origin));
+  return button;
+};
+
+const previewLeaderboardScores = difficulty => {
+  const multiplier = { chill: .72, arcade: 1, crowned: 1.38 }[difficulty] || 1;
+  return [
+    ['NOVA_KING', 'preview:nova_king', 248900, 14],
+    ['VOIDLIZARD', 'preview:voidlizard', 221450, 12],
+    ['PIXELACE', 'preview:pixelace', 194820, 11],
+    ['ACE', null, 172300, 10],
+    ['RIFTFOX', 'preview:riftfox', 149780, 9],
+  ].map(([playerName, publicProfileId, score, zone], index) => ({
+    id: `preview-${difficulty}-${index}`,
+    playerName,
+    initials: playerName,
+    publicProfileId,
+    score: Math.round(score * multiplier),
+    difficulty,
+    zone: Math.max(1, Math.round(zone * (.8 + multiplier * .2))),
+    wardens: Math.max(0, zone - 1),
+  }));
+};
+
 const renderLeaderboard = (scores, highlightId = '', personal = null) => {
   ui.leaderboardList.replaceChildren();
   Array.from({ length: 10 }, (_, index) => scores[index] || null).forEach((entry, index) => {
@@ -1150,7 +1352,9 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
       : [String(index + 1).padStart(2, '0'), '---', '------', '-'];
     values.forEach((value, cellIndex) => {
       const cell = document.createElement('span');
-      cell.textContent = value;
+      const profileLink = cellIndex === 1 && entry ? createPilotProfileLink(entry, 'leaderboard') : null;
+      if (profileLink) cell.append(profileLink);
+      else cell.textContent = value;
       if (cellIndex === 1 && entry?.id === highlightId) {
         const marker = document.createElement('small');
         marker.textContent = 'YOU';
@@ -1169,7 +1373,9 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
     const label = document.createElement('span');
     label.textContent = 'YOUR SCORE';
     const initials = document.createElement('strong');
-    initials.textContent = personal.entry.playerName || personal.entry.initials;
+    const personalProfileLink = createPilotProfileLink(personal.entry, 'leaderboard');
+    if (personalProfileLink) initials.append(personalProfileLink);
+    else initials.textContent = personal.entry.playerName || personal.entry.initials;
     const score = document.createElement('em');
     score.textContent = Number(personal.entry.score).toLocaleString('en-US');
     ui.leaderboardPlayerResult.append(rank, label, initials, score);
@@ -1196,6 +1402,12 @@ const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = fals
     if (difficulty === selectedDifficulty && result.scores?.length) ui.menuBest.textContent = String(result.scores[0].score).padStart(6, '0');
     return result;
   } catch {
+    if (localPreview) {
+      const scores = previewLeaderboardScores(difficulty);
+      if (difficulty === leaderboardDifficulty) renderLeaderboard(scores);
+      if (difficulty === selectedDifficulty) ui.menuBest.textContent = String(scores[0].score).padStart(6, '0');
+      return { difficulty, scores, preview: true };
+    }
     if (!silent && difficulty === leaderboardDifficulty) {
       renderLeaderboard([]);
       ui.leaderboardStatus.textContent = 'GLOBAL BOARD OFFLINE · LOCAL RECORD SAFE';
@@ -1727,7 +1939,7 @@ const returnToMenu = () => {
   game.stop();
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pilotProfileOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -1935,6 +2147,11 @@ ui.menuMode.addEventListener('click', () => { cycleDifficulty(1); sfx.play('conf
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.menuVault.addEventListener('click', openVault);
 ui.menuWarden.addEventListener('click', openWarden);
+ui.openOwnProfile.addEventListener('click', () => {
+  if (!playerProfile?.publicId) return;
+  ui.settingsOverlay.classList.add('hidden');
+  void openPilotProfile(playerProfile.publicId, ui.openOwnProfile, 'settings');
+});
 ui.closeWarden.addEventListener('click', closeWarden);
 ui.wardenAssault.addEventListener('click', startBossAssault);
 ui.assaultRetry.addEventListener('click', startBossAssault);
@@ -2068,6 +2285,8 @@ ui.accountRecovery.addEventListener('click', async () => {
   }
 });
 ui.closeLeaderboard.addEventListener('click', closeLeaderboard);
+ui.closePilotProfile.addEventListener('click', closePilotProfile);
+ui.sharePilotProfile.addEventListener('click', sharePilotProfile);
 ui.closeVault.addEventListener('click', closeVault);
 ui.vaultCratesTab.addEventListener('click', () => {
   vaultMode = 'crates';
@@ -2284,6 +2503,22 @@ ui.scoreEntry.addEventListener('submit', async event => {
   }
 });
 ui.sound.addEventListener('click', () => { music.toggle(); renderSettings(); });
+ui.profileVisibility.addEventListener('click', async () => {
+  if (ui.profileVisibility.disabled || !playerProfile?.publicId) return;
+  const nextVisibility = playerProfile.isPublic === false;
+  ui.profileVisibility.disabled = true;
+  ui.profileVisibility.querySelector('b').textContent = 'SAVING';
+  try {
+    const payload = await playerAccount.setProfileVisibility(nextVisibility);
+    playerProfile = payload.profile || { ...playerProfile, isPublic: nextVisibility };
+    triggerHaptic(18);
+  } catch {
+    ui.profileVisibility.querySelector('b').textContent = 'TRY AGAIN';
+    setTimeout(renderSettings, 1200);
+    return;
+  }
+  renderSettings();
+});
 ui.resetTutorial.addEventListener('click', () => {
   localStorage.removeItem(tutorialKey);
   ui.resetTutorial.textContent = 'TUTORIAL READY FOR NEXT RUN';
@@ -2319,7 +2554,8 @@ addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
   if (!ui.crateOpeningCinematic.classList.contains('hidden')) return;
-  if (!ui.pwaUpdateOverlay.classList.contains('hidden')) deferPwaUpdate();
+  if (!ui.pilotProfileOverlay.classList.contains('hidden')) closePilotProfile();
+  else if (!ui.pwaUpdateOverlay.classList.contains('hidden')) deferPwaUpdate();
   else if (!ui.pwaInstallOverlay.classList.contains('hidden')) closePwaInstallHelp();
   else if (!ui.rewardedAdOverlay.classList.contains('hidden')) rewardedAd.cancel();
   else if (!ui.storePurchaseReveal.classList.contains('hidden')) closeStorePurchaseReveal();
@@ -2394,7 +2630,7 @@ pwaManager = new PwaManager({
     pwaReleaseInfo = releaseInfo || pwaReleaseInfo;
     pwaUpdateReady = true;
     renderSettings();
-    if (!game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
+    if (!requestedPilotProfileId && !game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
   },
 });
 pwaManager.register();
@@ -2408,6 +2644,12 @@ if (pwaPreviewMode && debugParams.has('update')) {
   });
 }
 loadLeaderboard(selectedDifficulty, true);
+if (requestedPilotProfileId) {
+  void (serverEconomy ? playerReadyPromise : Promise.resolve()).finally(() => {
+    pilotDeepLinkActive = true;
+    openPilotProfile(requestedPilotProfileId, null, 'direct');
+  });
+}
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
 // Never let a query string enable test controls on the public site.

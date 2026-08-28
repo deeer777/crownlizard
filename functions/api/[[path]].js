@@ -833,16 +833,18 @@ const listScores = async (config, difficulty, limit = 10) => {
   const userIds = [...new Set(rows.map(row => row.user_id).filter(Boolean))];
   let currentNames = new Map();
   if (userIds.length) {
-    const profileQuery = new URLSearchParams({ select: 'user_id,display_name', user_id: `in.(${userIds.join(',')})` });
+    const profileQuery = new URLSearchParams({ select: 'user_id,display_name,public_id,is_public', user_id: `in.(${userIds.join(',')})` });
     const profiles = await supabaseFetch(config, `player_profiles?${profileQuery}`);
-    currentNames = new Map(profiles.map(profile => [profile.user_id, profile.display_name]));
+    currentNames = new Map(profiles.map(profile => [profile.user_id, profile]));
   }
   return rows.map(row => {
-    const playerName = String(currentNames.get(row.user_id) || row.player_name || row.initials || '---');
+    const currentProfile = currentNames.get(row.user_id);
+    const playerName = String(currentProfile?.display_name || row.player_name || row.initials || '---');
     return {
       id: row.id,
       playerName,
       initials: playerName,
+      publicProfileId: currentProfile?.is_public && UUID_PATTERN.test(String(currentProfile.public_id || '')) ? String(currentProfile.public_id) : null,
       score: row.score,
       difficulty: row.difficulty,
       zone: row.zone,
@@ -1156,7 +1158,7 @@ const profileRules = () => ({
 
 const playerProfileSnapshot = async (config, userId) => {
   const query = new URLSearchParams({
-    select: 'user_id,display_name,rename_count,last_renamed_at,created_at,updated_at',
+    select: 'user_id,public_id,is_public,display_name,rename_count,last_renamed_at,created_at,updated_at',
     user_id: `eq.${userId}`,
     limit: '1',
   });
@@ -1165,12 +1167,39 @@ const playerProfileSnapshot = async (config, userId) => {
   const row = rows[0];
   return {
     userId: String(row.user_id || ''),
+    publicId: UUID_PATTERN.test(String(row.public_id || '')) ? String(row.public_id) : null,
+    isPublic: row.is_public !== false,
     displayName: String(row.display_name || ''),
     renameCount: Number(row.rename_count) || 0,
     lastRenamedAt: row.last_renamed_at || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
+};
+
+const getPublicPlayerProfile = async (config, publicId) => {
+  if (!UUID_PATTERN.test(publicId)) return json({ error: 'Profile not found.' }, 404);
+  const profile = await supabaseFetch(config, 'rpc/public_player_profile', {
+    method: 'POST',
+    body: JSON.stringify({ p_public_id: publicId }),
+  });
+  if (!profile?.publicId) return json({ error: 'Profile not found.' }, 404);
+  return json({ profile }, 200, 'public, max-age=20, s-maxage=20');
+};
+
+const setPlayerProfileVisibility = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Permanent player account required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid profile request.' }, 400); }
+  if (typeof body.isPublic !== 'boolean') return json({ error: 'Invalid profile visibility.' }, 422);
+  const result = await supabaseFetch(config, 'rpc/set_player_profile_visibility', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_is_public: body.isPublic }),
+  });
+  if (result?.error === 'PROFILE_REQUIRED') return json({ error: 'Choose a callsign before changing profile visibility.', code: result.error }, 409);
+  if (result?.error) return json({ error: 'Profile visibility could not be changed.' }, 503);
+  return json({ profile: await playerProfileSnapshot(config, user.id) });
 };
 
 const getPlayerProfile = async (request, config) => {
@@ -1321,8 +1350,10 @@ export const onRequest = async context => {
     if (path === 'vault/store/purchase' && request.method === 'POST') return await purchaseCrownStoreItem(request, config);
     if (path === 'vault/inventory/seen' && request.method === 'POST') return await markPlayerInventorySeen(request, config);
     if (path === 'player/profile' && request.method === 'GET') return await getPlayerProfile(request, config);
+    if (path === 'player/profile/visibility' && request.method === 'PUT') return await setPlayerProfileVisibility(request, config);
     if (path === 'player/profile/callsign' && request.method === 'POST') return await claimPlayerCallsign(request, config);
     if (path === 'player/profile/callsign' && request.method === 'PUT') return await renamePlayerCallsign(request, config);
+    if (path.startsWith('profiles/') && request.method === 'GET') return await getPublicPlayerProfile(config, path.slice('profiles/'.length));
     if (path === 'runs' && request.method === 'POST') return await beginRun(request, config);
     if (path === 'scores' && request.method === 'GET') {
       const url = new URL(request.url);

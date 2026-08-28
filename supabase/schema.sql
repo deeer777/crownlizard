@@ -1756,3 +1756,183 @@ $$;
 
 revoke all on function public.claim_boss_reward(uuid, uuid, text, uuid) from public, anon, authenticated;
 grant execute on function public.claim_boss_reward(uuid, uuid, text, uuid) to service_role;
+
+-- Build 88: stable public pilot identities and server-computed profile stats.
+-- The public ID is deliberately separate from auth.users.id. Only the service
+-- role can execute these functions; the Pages Function remains the sole public
+-- boundary and never exposes email or the underlying account identifier.
+alter table public.player_profiles
+  add column if not exists public_id uuid default gen_random_uuid();
+update public.player_profiles set public_id = gen_random_uuid() where public_id is null;
+alter table public.player_profiles alter column public_id set not null;
+create unique index if not exists player_profiles_public_id_idx on public.player_profiles (public_id);
+alter table public.player_profiles
+  add column if not exists is_public boolean not null default true;
+
+create or replace function public.set_player_profile_visibility(
+  p_user_id uuid,
+  p_is_public boolean
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  profile public.player_profiles%rowtype;
+begin
+  if p_user_id is null or p_is_public is null then
+    return jsonb_build_object('error', 'INVALID_PROFILE_VISIBILITY');
+  end if;
+
+  update public.player_profiles
+     set is_public = p_is_public,
+         updated_at = now()
+   where user_id = p_user_id
+   returning * into profile;
+
+  if not found then return jsonb_build_object('error', 'PROFILE_REQUIRED'); end if;
+  return jsonb_build_object(
+    'publicId', profile.public_id,
+    'isPublic', profile.is_public,
+    'updatedAt', profile.updated_at
+  );
+end;
+$$;
+
+revoke all on function public.set_player_profile_visibility(uuid, boolean) from public, anon, authenticated;
+grant execute on function public.set_player_profile_visibility(uuid, boolean) to service_role;
+
+create or replace function public.public_player_profile(p_public_id uuid)
+returns jsonb
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+declare
+  profile public.player_profiles%rowtype;
+  best_scores jsonb := '{}'::jsonb;
+  highest_zone integer := 0;
+  qualified_runs integer := 0;
+  arsenal_rank integer := 0;
+  equipped_ship text := 'ship_default';
+  boss_total bigint := 0;
+  boss_best integer := 0;
+begin
+  select * into profile
+    from public.player_profiles
+   where public_id = p_public_id and is_public = true;
+  if not found then return null; end if;
+
+  select coalesce(jsonb_object_agg(best.difficulty, jsonb_build_object(
+           'score', best.score,
+           'zone', best.zone
+         )), '{}'::jsonb)
+    into best_scores
+    from (
+      select distinct on (score.difficulty)
+             score.difficulty, score.score, score.zone
+        from public.leaderboard_scores score
+       where score.user_id = profile.user_id and score.is_hidden = false
+       order by score.difficulty, score.score desc, score.created_at asc
+    ) best;
+
+  select coalesce(max(score.zone), 0)
+    into highest_zone
+    from public.leaderboard_scores score
+   where score.user_id = profile.user_id and score.is_hidden = false;
+
+  select count(*)::integer
+    into qualified_runs
+    from public.leaderboard_runs run
+   where run.user_id = profile.user_id and run.economy_settled_at is not null;
+
+  select coalesce(progression.arsenal_rank, 0)
+    into arsenal_rank
+    from public.player_progression progression
+   where progression.user_id = profile.user_id;
+  arsenal_rank := coalesce(arsenal_rank, 0);
+
+  select coalesce(wallet.equipped_ship, 'ship_default')
+    into equipped_ship
+    from public.player_wallets wallet
+   where wallet.user_id = profile.user_id;
+  equipped_ship := coalesce(equipped_ship, 'ship_default');
+
+  select coalesce(sum(contribution.effective_damage), 0),
+         coalesce(max(contribution.effective_damage), 0)
+    into boss_total, boss_best
+    from public.boss_contributions contribution
+   where contribution.user_id = profile.user_id;
+
+  return jsonb_build_object(
+    'publicId', profile.public_id,
+    'displayName', profile.display_name,
+    'joined', to_char(profile.created_at at time zone 'UTC', 'YYYY-MM'),
+    'equippedShip', equipped_ship,
+    'arsenalRank', arsenal_rank,
+    'stats', jsonb_build_object(
+      'bestScores', best_scores,
+      'highestZone', highest_zone,
+      'qualifiedRuns', qualified_runs,
+      'bossBestDamage', boss_best,
+      'bossTotalDamage', boss_total
+    )
+  );
+end;
+$$;
+
+revoke all on function public.public_player_profile(uuid) from public, anon, authenticated;
+grant execute on function public.public_player_profile(uuid) to service_role;
+
+-- Replace the legacy event ranking response after public profile columns exist.
+-- Internal auth IDs are no longer serialized to browsers.
+create or replace function public.boss_event_leaderboard(p_event_id uuid, p_user_id uuid, p_limit integer default 10)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with totals as (
+    select contribution.user_id,
+           sum(contribution.effective_damage)::bigint as total_damage,
+           count(*)::integer as assaults,
+           min(contribution.created_at) as first_contribution_at
+      from public.boss_contributions contribution
+     where contribution.event_id = p_event_id and contribution.effective_damage > 0
+     group by contribution.user_id
+  ), ranked as (
+    select totals.*,
+           row_number() over (order by totals.total_damage desc, totals.first_contribution_at asc, totals.user_id asc)::integer as rank
+      from totals
+  ), decorated as (
+    select ranked.rank, ranked.user_id,
+           coalesce(profile.display_name, 'CROWN PILOT') as player_name,
+           case when profile.is_public then profile.public_id else null end as public_profile_id,
+           (ranked.user_id = p_user_id) as is_current,
+           ranked.total_damage, ranked.assaults
+      from ranked
+      left join public.player_profiles profile on profile.user_id = ranked.user_id
+  )
+  select jsonb_build_object(
+    'leaders', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'rank', entry.rank, 'playerName', entry.player_name,
+        'publicProfileId', entry.public_profile_id, 'isCurrent', entry.is_current,
+        'damage', entry.total_damage, 'assaults', entry.assaults
+      ) order by entry.rank)
+      from (select * from decorated order by rank limit greatest(1, least(coalesce(p_limit, 10), 100))) entry
+    ), '[]'::jsonb),
+    'player', (
+      select jsonb_build_object(
+        'rank', own.rank, 'playerName', own.player_name,
+        'publicProfileId', own.public_profile_id, 'isCurrent', true,
+        'damage', own.total_damage, 'assaults', own.assaults
+      ) from decorated own where own.user_id = p_user_id
+    )
+  );
+$$;
+
+revoke all on function public.boss_event_leaderboard(uuid, uuid, integer) from public, anon, authenticated;
+grant execute on function public.boss_event_leaderboard(uuid, uuid, integer) to service_role;
