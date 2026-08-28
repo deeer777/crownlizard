@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -9,6 +9,8 @@ const COSMETIC_IDS = new Set([
   'ship_verdant_scout', 'ship_ember_runner', 'ship_crystal_dart', 'ship_void_hunter',
   'ship_solar_guard', 'ship_royal_vanguard', 'ship_rift_phantom', 'ship_crown_sovereign',
   'ship_gilded_viper', 'ship_neon_basilisk',
+  'weapon_tesla_verdant_chain', 'weapon_tesla_storm_crown', 'weapon_laser_void_lance',
+  'weapon_pulse_sovereign_eclipse', 'weapon_laser_royal_prism', 'weapon_pulse_solar_core',
 ]);
 const LEGACY_BALANCE_CAP = 50_000;
 const AUTH_BOOTSTRAP_LIMIT = 60;
@@ -363,7 +365,7 @@ const ensureWallet = async (config, userId) => {
 
 const walletSnapshot = async (config, userId) => {
   await ensureWallet(config, userId);
-  const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,equipped_ship,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
+  const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,equipped_ship,equipped_weapon_skins,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
   const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at,seen_at', user_id: `eq.${userId}`, order: 'acquired_at.asc' });
   const [wallets, inventory] = await Promise.all([
     supabaseFetch(config, `player_wallets?${walletQuery}`),
@@ -376,6 +378,7 @@ const walletSnapshot = async (config, userId) => {
     opens: wallet.opens,
     sinceSovereign: wallet.since_sovereign,
     equippedShip: wallet.equipped_ship,
+    equippedWeapons: wallet.equipped_weapon_skins || {},
     legacyImported: Boolean(wallet.legacy_imported_at),
     updatedAt: wallet.updated_at,
     inventory: inventory.map(item => ({ cosmeticId: item.cosmetic_id, source: item.source, acquiredAt: item.acquired_at, seenAt: item.seen_at || null })),
@@ -1133,14 +1136,15 @@ const markPlayerInventorySeen = async (request, config) => {
   return json({ marked: true, cosmeticId });
 };
 
-const equipPlayerShip = async (request, config) => {
+const equipPlayerCosmetic = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
   let body;
   try { body = await readJson(request); } catch { return json({ error: 'Invalid equip request.' }, 400); }
   const cosmeticId = String(body.cosmeticId || '');
-  if (cosmeticId !== 'ship_default' && !COSMETIC_IDS.has(cosmeticId)) return json({ error: 'Invalid cosmetic.' }, 400);
-  const equipped = await supabaseFetch(config, 'rpc/equip_player_ship', {
+  const defaultIds = new Set(['ship_default', 'weapon_laser_default', 'weapon_tesla_default', 'weapon_pulse_default']);
+  if (!defaultIds.has(cosmeticId) && !COSMETIC_IDS.has(cosmeticId)) return json({ error: 'Invalid cosmetic.' }, 400);
+  const equipped = await supabaseFetch(config, 'rpc/equip_player_cosmetic', {
     method: 'POST',
     body: JSON.stringify({ p_user_id: user.id, p_cosmetic_id: cosmeticId }),
   });
@@ -1345,7 +1349,7 @@ export const onRequest = async context => {
     if (path === 'boss/assault/settle' && request.method === 'POST') return await settleBossAssaultRequest(request, config);
     if (path === 'boss/rewards/claim' && request.method === 'POST') return await claimBossRewardRequest(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
-    if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerShip(request, config);
+    if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerCosmetic(request, config);
     if (path === 'vault/store' && request.method === 'GET') return await getCrownStore(request, config);
     if (path === 'vault/store/purchase' && request.method === 'POST') return await purchaseCrownStoreItem(request, config);
     if (path === 'vault/inventory/seen' && request.method === 'POST') return await markPlayerInventorySeen(request, config);

@@ -663,10 +663,11 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-cosmetic > span { display: grid; align-self: stretch; align-content: center; gap: 5px; min-width: 0; }
 .vault-cosmetic b { display: -webkit-box; overflow: hidden; color: var(--ink); font: 700 7px/1.35 var(--font-pixel-ui); white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .vault-cosmetic small { color: var(--tier-color); font: 700 6px var(--font-pixel-ui); }
-.vault-cosmetic.locked { opacity: .38; filter: grayscale(1); }
-.vault-cosmetic.locked img { filter: brightness(.2); }
-.vault-cosmetic.locked.store-exclusive { opacity: .68; }
-.vault-cosmetic.locked.store-exclusive img { filter: brightness(.58) saturate(.7) drop-shadow(2px 3px #010504); }
+.vault-cosmetic.locked { background: rgba(3,11,12,.88); border-color: color-mix(in srgb, var(--tier-color) 58%, #20302c); }
+.vault-cosmetic.locked::before { content: 'LOCKED'; position: absolute; z-index: 3; left: 4px; top: 4px; padding: 4px 5px 3px; color: #d9e5e1; background: rgba(3,9,10,.92); border: 1px solid color-mix(in srgb, var(--tier-color) 62%, #3c4b47); font: 700 5px var(--font-pixel-ui); letter-spacing: .06em; box-shadow: 2px 2px #010504; }
+.vault-cosmetic.locked img { opacity: .72; filter: brightness(.72) saturate(.72) drop-shadow(2px 3px #010504); }
+.vault-cosmetic.locked b { color: #9aaea8; }
+.vault-cosmetic.locked.store-exclusive img { opacity: .82; filter: brightness(.82) saturate(.86) drop-shadow(2px 3px #010504); }
 .vault-cosmetic.locked.store-exclusive small { color: var(--gold); }
 .vault-cosmetic.equipped { outline: 2px solid var(--gold); outline-offset: -2px; background: rgba(255,211,107,.08); }
 .vault-cosmetic.equipped::after { content: '♛'; position: absolute; right: 5px; top: 5px; color: var(--gold); font: 700 9px var(--font-pixel-ui); text-shadow: 1px 1px #2b1a08; }
@@ -889,7 +890,16 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
 .cosmetic-detail-tier { margin-top: 13px; color: var(--tier-color); font: 700 10px var(--font-pixel-ui); letter-spacing: .15em; }
 .cosmetic-detail-preview { position: relative; display: grid; place-items: center; width: 160px; height: 145px; margin: 0 auto; }
 .cosmetic-detail-preview::before { content: ''; position: absolute; inset: 25px; border: 2px solid color-mix(in srgb, var(--tier-color) 48%, transparent); transform: rotate(45deg); }
-.cosmetic-detail-preview img { position: relative; z-index: 2; width: 108px; height: 108px; object-fit: contain; image-rendering: pixelated; filter: brightness(.22) grayscale(1) drop-shadow(4px 5px #010304); }
+.cosmetic-detail-preview img { position: relative; z-index: 2; width: 108px; height: 108px; object-fit: contain; image-rendering: pixelated; filter: saturate(1.08) drop-shadow(4px 5px #010304) drop-shadow(0 0 7px var(--tier-color)); }
+.cosmetic-detail-preview > i { display: none; }
+.cosmetic-detail-preview.weapon-preview { --weapon-primary: #63e8ff; --weapon-core: #fff; --weapon-glow: #b9f7ff; height: 174px; overflow: hidden; }
+.cosmetic-detail-preview.weapon-preview::before { inset: 36px; border-color: color-mix(in srgb,var(--weapon-glow) 58%,transparent); }
+.cosmetic-detail-preview.weapon-preview img { width: 116px; height: 116px; margin-top: 45px; }
+.cosmetic-detail-preview.weapon-preview > i { position: absolute; z-index: 3; left: 50%; top: 56px; display: block; width: 6px; height: 24px; margin-left: -3px; background: var(--weapon-primary); box-shadow: 0 0 8px var(--weapon-glow), inset 0 0 0 2px var(--weapon-core); transform: translateY(56px); opacity: 0; animation: weapon-preview-fire 1.18s steps(7,end) infinite; }
+.cosmetic-detail-preview.weapon-preview > i:nth-of-type(2) { animation-delay: .38s; }
+.cosmetic-detail-preview.weapon-preview > i:nth-of-type(3) { animation-delay: .76s; }
+.cosmetic-detail-preview.weapon-preview[data-weapon="pulse"] > i { width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; box-shadow: 0 0 10px var(--weapon-glow), inset 0 0 0 3px var(--weapon-core); }
+.cosmetic-detail-preview.weapon-preview[data-weapon="tesla"] > i { width: 4px; height: 35px; margin-left: -2px; background: linear-gradient(105deg,transparent 0 22%,var(--weapon-core) 23% 38%,var(--weapon-primary) 39% 58%,transparent 59% 72%,var(--weapon-primary) 73% 88%,transparent 89%); box-shadow: 0 0 9px var(--weapon-glow); }
 .cosmetic-detail.detail-owned .cosmetic-detail-preview img { filter: saturate(1.08) drop-shadow(4px 5px #010304) drop-shadow(0 0 7px var(--tier-color)); }
 .cosmetic-detail.detail-store .cosmetic-detail-preview img { filter: saturate(1.1) drop-shadow(4px 5px #010304) drop-shadow(0 0 8px var(--tier-color)); }
 .cosmetic-detail.detail-store #cosmeticDetailStatus { color: var(--gold); }
@@ -902,6 +912,7 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
 .cosmetic-detail-panel .cosmetic-favorite { color: #ffe399; }
 .cosmetic-detail-panel .cosmetic-equip:disabled { color: var(--mint); cursor: default; }
 .cosmetic-detail-panel .cosmetic-equip:disabled i { animation: none; }
+@keyframes weapon-preview-fire { 0% { transform: translateY(58px); opacity: 0; } 12% { opacity: 1; } 78% { opacity: 1; } 100% { transform: translateY(-78px); opacity: 0; } }
 @keyframes crate-shake { 20% { transform: translate(-5px,2px) rotate(-2deg); } 45% { transform: translate(5px,-3px) rotate(2deg); filter: brightness(1.4); } 70% { transform: translate(-3px,-5px); } 90% { transform: translate(3px,0); } }
 @keyframes reveal-pop { from { transform: scale(.45); filter: brightness(3); } }
 @keyframes reveal-orbit { to { transform: rotate(405deg); } }

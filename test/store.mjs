@@ -10,11 +10,13 @@ class MemoryStorage {
   setItem(key, value) { this.values.set(key, String(value)); }
 }
 
-assert.equal(STORE_COSMETICS.length, 2, 'Pass 1 launches with two permanent store-exclusive chassis');
+assert.equal(STORE_COSMETICS.filter(cosmetic => cosmetic.slot === 'ship').length, 2, 'the two permanent store-exclusive chassis remain available');
+assert.equal(STORE_COSMETICS.filter(cosmetic => cosmetic.slot.startsWith('weapon_')).length, 2, 'the weapon-skin MVP adds two direct-sale weapon skins');
 assert.equal(STORE_PRODUCTS.filter(product => product.type === 'service').length, 1, 'the callsign change is a separate player service');
 STORE_COSMETICS.forEach(cosmetic => {
   assert.deepEqual(cosmetic.source, ['store'], `${cosmetic.name} is explicitly store-only`);
-  assert.equal(existsSync(new URL(`../assets/sprites/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
+  const folder = cosmetic.slot.startsWith('weapon_') ? 'weapons' : 'sprites';
+  assert.equal(existsSync(new URL(`../assets/${folder}/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
 });
 for (const tier of ['uncommon', 'rare', 'royal', 'mythic', 'sovereign']) {
   assert.equal(STORE_COSMETICS.some(item => item.id === chooseCosmetic(tier, () => 0).id), false, `${tier} crate rolls exclude store items`);
@@ -33,6 +35,23 @@ assert.ok(wallet.markCosmeticSeen(product.cosmeticId).inventory.cosmetics[produc
 assert.throws(() => wallet.purchaseStoreItem(product.sku), error => error.code === 'ALREADY_OWNED', 'an owned product cannot be purchased twice');
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const game = readFileSync(new URL('../src/game.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+for (const projectile of ['laser', 'tesla', 'pulse']) {
+  assert.equal(existsSync(new URL(`../assets/weapons/projectile-${projectile}-v1.png`, import.meta.url)), true, `${projectile} has a dedicated pixel projectile sprite`);
+}
+assert.match(game, /projectileLaser:[\s\S]*projectileTesla:[\s\S]*projectilePulse:/, 'the engine preloads all three premium projectile silhouettes');
+assert.match(game, /drawImage\(sprite, -length - 5, -9, width, 18\)/, 'laser fire renders its authored sprite instead of a plain rectangle');
+assert.match(main, /name\.textContent = cosmetic\.name/, 'locked collection cards still reveal the cosmetic name');
+assert.match(styles, /\.vault-cosmetic\.locked img \{ opacity: \.72; filter: brightness\(\.72\) saturate\(\.72\)/, 'locked cosmetics remain visible while visibly subdued');
+assert.match(styles, /\.vault-cosmetic\.locked::before \{ content: 'LOCKED'/, 'a dedicated badge communicates ownership instead of hiding the art');
+assert.match(styles, /\.cosmetic-detail-preview img \{[^}]*filter: saturate\(1\.08\)[^}]*drop-shadow\(0 0 7px var\(--tier-color\)\)/, 'locked detail previews show the full-color cosmetic art');
+assert.match(index, /ONE RANDOM COSMETIC · SHIPS &amp; WEAPONS/, 'the crate explains that its pool contains both cosmetic categories');
+assert.match(main, /weaponSkin \? 'NEW WEAPON SKIN ACQUIRED' : 'NEW CHASSIS ACQUIRED'/, 'crate reveal identifies the unlocked cosmetic type');
+assert.match(schema, /equipped_weapon_skins jsonb not null default '\{\}'::jsonb/, 'equipped weapon skins persist independently in the server wallet');
+assert.match(schema, /slot in \('ship', 'weapon_laser', 'weapon_tesla', 'weapon_pulse'\)/, 'the server catalog constrains every supported cosmetic slot');
 assert.match(schema, /create table if not exists public\.store_catalog[\s\S]*price integer not null/, 'the database owns the store catalog and price');
 assert.match(schema, /create or replace function public\.purchase_store_cosmetic[\s\S]*for update;/, 'store purchase locks the authoritative wallet');
 assert.match(schema, /wallet\.balance < product\.price[\s\S]*balance = balance - product\.price/, 'the database resolves and deducts its own price');
@@ -89,7 +108,7 @@ try {
     params: { path: ['vault', 'store'] },
   });
   assert.equal(catalogResponse.status, 200, 'an authenticated player can load the server catalog');
-  assert.equal((await catalogResponse.json()).products.length, 3, 'the server returns the complete Pass 1 catalog');
+  assert.equal((await catalogResponse.json()).products.length, 5, 'the server returns ships, weapon skins and the callsign service');
 
   const purchaseRequest = () => onRequest({
     request: new Request('https://crownlizard.com/api/vault/store/purchase', {

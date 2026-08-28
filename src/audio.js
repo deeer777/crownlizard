@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-90-search-signal';
+import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
 
 export class Music {
   constructor() {

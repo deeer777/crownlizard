@@ -1,4 +1,5 @@
 import {
+  COSMETIC_BY_ID,
   COSMETICS,
   CROWN_CRATE_COST,
   STORE_PRODUCTS,
@@ -7,7 +8,7 @@ import {
   chooseCosmetic,
   rollTier,
   secureRandom,
-} from './cosmetics.js?v=20260827-79-crown-store-final';
+} from './cosmetics.js?v=20260828-91-weapon-skins4';
 
 export const SHARD_RULES = Object.freeze({
   version: 1,
@@ -66,7 +67,7 @@ const emptyState = () => ({
   version: SHARD_RULES.version,
   balance: 0,
   transactions: [],
-  inventory: { cosmetics: {}, equipped: { ship: 'ship_default' } },
+  inventory: { cosmetics: {}, equipped: { ship: 'ship_default', weapons: { laser: 'weapon_laser_default', tesla: 'weapon_tesla_default', pulse: 'weapon_pulse_default' } } },
   vault: { opens: 0, sinceSovereign: 0, pendingReward: null },
   sponsored: { pendingRunId: '' },
 });
@@ -104,6 +105,12 @@ const normalizeState = value => {
   }
   const requestedShip = typeof value.inventory?.equipped?.ship === 'string' ? value.inventory.equipped.ship : 'ship_default';
   const equippedShip = requestedShip === 'ship_default' || cosmetics[requestedShip] ? requestedShip : 'ship_default';
+  const equippedWeapons = Object.fromEntries(['laser', 'tesla', 'pulse'].map(weaponKey => {
+    const defaultId = `weapon_${weaponKey}_default`;
+    const requestedId = typeof value.inventory?.equipped?.weapons?.[weaponKey] === 'string' ? value.inventory.equipped.weapons[weaponKey] : defaultId;
+    const cosmetic = COSMETIC_BY_ID[requestedId];
+    return [weaponKey, cosmetic?.slot === `weapon_${weaponKey}` && (requestedId === defaultId || cosmetics[requestedId]) ? requestedId : defaultId];
+  }));
   const transactions = Array.isArray(value.transactions)
     ? value.transactions.filter(transaction => transaction && typeof transaction.id === 'string').slice(-250)
     : [];
@@ -121,7 +128,7 @@ const normalizeState = value => {
     transactions,
     inventory: {
       cosmetics,
-      equipped: { ship: equippedShip },
+      equipped: { ship: equippedShip, weapons: equippedWeapons },
     },
     vault: {
       opens: safeInteger(value.vault?.opens),
@@ -166,10 +173,13 @@ export class ShardWallet {
   equipCosmetic(cosmeticId) {
     if (typeof cosmeticId !== 'string' || !cosmeticId) throw new TypeError('A cosmetic id is required.');
     const state = this.read();
-    if (cosmeticId !== 'ship_default' && !state.inventory.cosmetics[cosmeticId]) throw walletError('COSMETIC_LOCKED', 'This cosmetic is not owned.');
-    const cosmetic = cosmeticId === 'ship_default' ? { slot: 'ship' } : COSMETICS.find(item => item.id === cosmeticId);
-    if (!cosmetic || cosmetic.slot !== 'ship') throw walletError('INVALID_COSMETIC', 'This cosmetic cannot be equipped as a ship.');
-    state.inventory.equipped.ship = cosmeticId;
+    const cosmetic = COSMETIC_BY_ID[cosmeticId];
+    const isDefault = cosmetic?.source?.includes('default');
+    if (!isDefault && !state.inventory.cosmetics[cosmeticId]) throw walletError('COSMETIC_LOCKED', 'This cosmetic is not owned.');
+    if (!cosmetic) throw walletError('INVALID_COSMETIC', 'This cosmetic cannot be equipped.');
+    if (cosmetic.slot === 'ship') state.inventory.equipped.ship = cosmeticId;
+    else if (cosmetic.slot.startsWith('weapon_') && cosmetic.weaponKey) state.inventory.equipped.weapons[cosmetic.weaponKey] = cosmeticId;
+    else throw walletError('INVALID_COSMETIC', 'This cosmetic cannot be equipped.');
     return this.write(state);
   }
 

@@ -55,7 +55,8 @@ assert.equal(rollTier(() => .58).key, 'rare', 'rare begins at its published boun
 assert.equal(rollTier(() => .995).key, 'sovereign', 'sovereign occupies the final half percent');
 assert.equal(new Set(COLLECTION_COSMETICS.map(cosmetic => cosmetic.sprite)).size, COLLECTION_COSMETICS.length, 'every ship cosmetic uses a distinct sprite asset');
 COLLECTION_COSMETICS.forEach(cosmetic => {
-  assert.equal(existsSync(new URL(`../assets/sprites/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
+  const folder = cosmetic.slot.startsWith('weapon_') ? 'weapons' : 'sprites';
+  assert.equal(existsSync(new URL(`../assets/${folder}/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
 });
 ['closed', 'signal', 'open'].forEach(state => {
   assert.equal(existsSync(new URL(`../assets/sprites/crown-crate-${state}-v1.png`, import.meta.url)), true, `the Crown Crate ${state} state has a production sprite`);
@@ -76,6 +77,11 @@ assert.equal(vaultWallet.equipCosmetic('ship_verdant_scout').inventory.equipped.
 assert.throws(() => vaultWallet.equipCosmetic('ship_void_hunter'), error => error.code === 'COSMETIC_LOCKED', 'a locked cosmetic cannot be equipped');
 assert.equal(new ShardWallet(vaultStorage).getState().inventory.equipped.ship, 'ship_verdant_scout', 'the equipped ship survives a reload');
 assert.equal(vaultWallet.equipCosmetic('ship_default').inventory.equipped.ship, 'ship_default', 'the original Crown Lizard can always be re-equipped');
+const weaponState = vaultWallet.getState();
+weaponState.inventory.cosmetics.weapon_tesla_verdant_chain = { acquiredAt: new Date().toISOString(), source: 'crate' };
+vaultWallet.write(weaponState);
+assert.equal(vaultWallet.equipCosmetic('weapon_tesla_verdant_chain').inventory.equipped.weapons.tesla, 'weapon_tesla_verdant_chain', 'an owned weapon skin can be equipped independently');
+assert.equal(vaultWallet.equipCosmetic('weapon_tesla_default').inventory.equipped.weapons.tesla, 'weapon_tesla_default', 'standard weapon visuals can always be restored');
 
 const duplicateOpen = vaultWallet.openCrate(() => 0);
 assert.equal(duplicateOpen.outcome.duplicate, true, 'a repeated cosmetic becomes a duplicate');

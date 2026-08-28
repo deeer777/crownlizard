@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js?v=20260828-90-search-signal';
-import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-90-search-signal';
+import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
+import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-91-weapon-skins4';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -57,6 +57,7 @@ export class Game {
     this.sprites = this.loadSprites();
     this.environmentSprites = new Map();
     this.weaponFxSprites = new Map();
+    this.weaponSkins = {};
     this.enemyDeathSprites = new Map();
     this.width = 0;
     this.height = 0;
@@ -100,6 +101,9 @@ export class Game {
       globalWarden: 'sprites/global-warden-v1.png?v=82-opt',
       assaultRelay: 'sprites/crown-relay-v1.png?v=82-opt',
       assaultPylon: 'sprites/shield-pylon-v1.png?v=82-opt',
+      projectileLaser: 'weapons/projectile-laser-v1.png',
+      projectileTesla: 'weapons/projectile-tesla-v1.png',
+      projectilePulse: 'weapons/projectile-pulse-v1.png',
     };
     return Object.fromEntries(Object.entries(files).map(([key, filename]) => {
       const image = new Image();
@@ -116,6 +120,20 @@ export class Game {
     const directory = filename === 'crown-lizard-player-v1.png' ? 'runtime/sprites' : 'sprites';
     image.src = new URL(`../assets/${directory}/${filename}`, import.meta.url).href;
     this.sprites.player = image;
+  }
+
+  setWeaponSkins(skins = {}) {
+    this.weaponSkins = { ...skins };
+    this.weaponFxSprites.clear();
+  }
+
+  weaponSkin(weapon) {
+    return this.weaponSkins?.[weapon] || null;
+  }
+
+  weaponPalette(weapon) {
+    const fallback = CONFIG.weapons[weapon]?.color || '#ffffff';
+    return this.weaponSkin(weapon)?.palette || { primary: fallback, core: '#ffffff', glow: fallback };
   }
 
   loadEnvironmentSprites(zone) {
@@ -157,8 +175,11 @@ export class Game {
 
   loadWeaponFx(weapon) {
     if (typeof Image === 'undefined') return [];
-    if (this.weaponFxSprites.has(weapon)) return this.weaponFxSprites.get(weapon);
-    const [mountFile, impactFile] = WEAPON_ASSET_FILES[weapon];
+    const skin = this.weaponSkin(weapon);
+    const cacheKey = `${weapon}:${skin?.id || 'default'}`;
+    if (this.weaponFxSprites.has(cacheKey)) return this.weaponFxSprites.get(cacheKey);
+    const [defaultMountFile, impactFile] = WEAPON_ASSET_FILES[weapon];
+    const mountFile = skin?.sprite || defaultMountFile;
     const sprites = [
       ['weapons', mountFile],
       ['impacts', impactFile],
@@ -168,7 +189,7 @@ export class Game {
       image.src = new URL(`../assets/${folder}/${filename}`, import.meta.url).href;
       return image;
     });
-    this.weaponFxSprites.set(weapon, sprites);
+    this.weaponFxSprites.set(cacheKey, sprites);
     return sprites;
   }
 
@@ -2245,19 +2266,58 @@ export class Game {
 
   drawProjectiles(ctx) {
     for (const bullet of this.bullets) {
+      const palette = this.weaponPalette(bullet.weapon);
       const angle = Math.atan2(bullet.vy, bullet.vx);
-      ctx.save(); ctx.translate(bullet.x, bullet.y); ctx.rotate(angle); ctx.fillStyle = bullet.color; ctx.shadowBlur = bullet.weapon === 'pulse' ? 22 : 12; ctx.shadowColor = bullet.color;
+      ctx.save(); ctx.translate(bullet.x, bullet.y); ctx.rotate(angle); ctx.fillStyle = palette.primary; ctx.shadowBlur = bullet.weapon === 'pulse' ? 22 : 12; ctx.shadowColor = palette.glow;
       if (bullet.weapon === 'pulse') {
-        ctx.beginPath(); ctx.arc(0, 0, bullet.radius + 3, 0, TAU); ctx.fill();
-        ctx.strokeStyle = '#fff0fb'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, bullet.radius + 7 + Math.sin(this.time * 14) * 2, 0, TAU); ctx.stroke();
+        const sprite = this.sprites.projectilePulse;
+        const size = Math.max(28, bullet.radius * 3.4);
+        ctx.rotate(this.time * 2.4);
+        if (sprite?.complete && sprite.naturalWidth) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+        } else {
+          ctx.beginPath(); ctx.arc(0, 0, bullet.radius + 3, 0, TAU); ctx.fill();
+        }
+        ctx.rotate(-this.time * 4.8);
+        ctx.globalAlpha = .82;
+        ctx.strokeStyle = palette.primary;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size * .31, -size * .31, size * .62, size * .62);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = palette.core;
+        ctx.fillRect(-2, -2, 4, 4);
       } else if (bullet.weapon === 'laser') {
         const length = bullet.beamLength || 34;
-        ctx.fillStyle = 'rgba(217,251,255,.45)'; ctx.fillRect(-length, -4, length + 10, 8);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(-length, -1.5, length + 12, 3);
+        const sprite = this.sprites.projectileLaser;
+        const width = length + 18;
+        if (sprite?.complete && sprite.naturalWidth) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(sprite, -length - 5, -9, width, 18);
+        } else {
+          ctx.globalAlpha = .48; ctx.fillStyle = palette.glow; ctx.fillRect(-length, -4, length + 10, 8);
+          ctx.globalAlpha = 1; ctx.fillStyle = palette.core; ctx.fillRect(-length, -1.5, length + 12, 3);
+        }
+        ctx.globalAlpha = .9;
+        ctx.fillStyle = palette.primary;
+        ctx.fillRect(-length + 5, -5, 4, 2);
+        ctx.fillRect(-length + 14, 3, 6, 2);
+        ctx.fillStyle = palette.core;
+        ctx.fillRect(5, -1, 8, 2);
       } else if (bullet.weapon === 'tesla') {
-        ctx.strokeStyle = bullet.color; ctx.lineWidth = 4; ctx.lineJoin = 'miter';
-        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-8, -5); ctx.lineTo(-2, 4); ctx.lineTo(4, -4); ctx.lineTo(11, 2); ctx.lineTo(16, 0); ctx.stroke();
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(-2, -2, 4, 4);
+        const sprite = this.sprites.projectileTesla;
+        if (sprite?.complete && sprite.naturalWidth) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(sprite, -18, -18, 36, 36);
+        } else {
+          ctx.strokeStyle = palette.primary; ctx.lineWidth = 4; ctx.lineJoin = 'miter';
+          ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-8, -5); ctx.lineTo(-2, 4); ctx.lineTo(4, -4); ctx.lineTo(11, 2); ctx.lineTo(16, 0); ctx.stroke();
+        }
+        ctx.fillStyle = palette.primary;
+        ctx.fillRect(-12, -7, 3, 3);
+        ctx.fillRect(8, 6, 3, 3);
+        ctx.fillStyle = palette.core;
+        ctx.fillRect(-2, -2, 4, 4);
       } else if (bullet.weapon === 'spread') {
         ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5, -4); ctx.lineTo(-3, 0); ctx.lineTo(-5, 4); ctx.closePath(); ctx.fill();
       } else {
@@ -2532,6 +2592,13 @@ export class Game {
       if (sprite?.complete && sprite.naturalWidth) {
         const height = size / (sprite.naturalWidth / sprite.naturalHeight);
         ctx.drawImage(sprite, -size / 2, -height / 2, size, height);
+        const skin = this.weaponSkin(impact.type);
+        if (skin?.palette) {
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.globalAlpha *= .42;
+          ctx.fillStyle = skin.palette.primary;
+          ctx.fillRect(-size / 2, -height / 2, size, height);
+        }
       } else {
         ctx.fillStyle = CONFIG.weapons[impact.type].color;
         ctx.fillRect(-size / 2, -2, size, 4);
@@ -2646,6 +2713,7 @@ export class Game {
   }
 
   drawTeslaArcs(ctx) {
+    const palette = this.weaponPalette('tesla');
     for (const arc of this.teslaArcs) {
       const fromEnemy = arc.fromId ? this.enemies.find(enemy => enemy.id === arc.fromId && !enemy.dead) : null;
       const toEnemy = this.enemies.find(enemy => enemy.id === arc.toId && !enemy.dead);
@@ -2671,8 +2739,8 @@ export class Game {
         ctx.lineTo(x2, y2); ctx.stroke();
       };
       ctx.save();
-      ctx.globalAlpha = alpha * .68; ctx.strokeStyle = '#7d55ff'; ctx.shadowBlur = 11; ctx.shadowColor = '#b99cff'; trace(4);
-      ctx.globalAlpha = alpha; ctx.strokeStyle = '#f8f2ff'; ctx.shadowBlur = 0; trace(1.5);
+      ctx.globalAlpha = alpha * .68; ctx.strokeStyle = palette.primary; ctx.shadowBlur = 11; ctx.shadowColor = palette.glow; trace(4);
+      ctx.globalAlpha = alpha; ctx.strokeStyle = palette.core; ctx.shadowBlur = 0; trace(1.5);
       ctx.restore();
     }
   }

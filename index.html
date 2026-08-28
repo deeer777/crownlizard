@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260828-90-search-signal">
+  <link rel="stylesheet" href="./styles.css?v=20260828-91-weapon-skins5">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -358,7 +358,7 @@
         <div class="vault-crate-column">
           <div class="crown-crate" aria-hidden="true"><span></span><img id="crownCrateSprite" alt=""></div>
           <h3>CROWN CRATE</h3>
-          <p>ONE RANDOM SHIP CHASSIS · COSMETICS ONLY</p>
+          <p>ONE RANDOM COSMETIC · SHIPS &amp; WEAPONS</p>
           <div class="crate-open-options">
             <button id="openCrate" class="system-action vault-open" type="button"><i>♛</i> OPEN WITH ◆ 150</button>
             <div id="vaultSponsoredSignal" class="vault-sponsored-signal hidden">
@@ -373,13 +373,13 @@
         <div class="vault-info-column">
           <button id="vaultOddsToggle" class="vault-section-title vault-odds-toggle" type="button" aria-expanded="false" aria-controls="vaultOdds"><span>DROP ODDS</span><b>VIEW · ▼</b></button>
           <div id="vaultOdds" class="vault-odds hidden"></div>
-          <div class="vault-section-title collection-title"><span>SHIP COLLECTION</span><b id="vaultOwned">0 / 10</b></div>
+          <div class="vault-section-title collection-title"><span id="vaultCollectionTitle">SHIP COLLECTION</span><b id="vaultOwned">0 / 10</b></div>
           <button id="randomFavoriteToggle" class="random-favorite-toggle" type="button" role="switch" aria-checked="false"><span>RANDOM FAVORITE EACH RUN</span><b>OFF</b></button>
           <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
             <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship">SHIPS</button>
             <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
             <button type="button" role="tab" aria-selected="false" disabled>DASH FX <small>SOON</small></button>
-            <button type="button" role="tab" aria-selected="false" disabled>WEAPONS <small>SOON</small></button>
+            <button type="button" role="tab" aria-selected="false" data-cosmetic-category="weapon">WEAPONS <small>6 SKINS</small></button>
           </div>
           <div id="vaultCollection" class="vault-collection"></div>
         </div>
@@ -412,7 +412,7 @@
       <div class="store-purchase-panel">
         <div class="store-purchase-seal">♛</div>
         <div class="eyebrow">ACQUISITION COMPLETE</div>
-        <div class="store-purchase-ship"><span></span><img id="storePurchaseImage" alt="Purchased ship chassis"></div>
+        <div class="store-purchase-ship"><span></span><img id="storePurchaseImage" alt="Purchased cosmetic"></div>
         <div id="storePurchaseTier" class="store-purchase-tier">ROYAL · STORE EXCLUSIVE</div>
         <h3 id="storePurchaseName">GILDED VIPER</h3>
         <p>ADDED TO YOUR COLLECTION</p>
@@ -476,7 +476,7 @@
       <div class="reveal-panel">
         <div id="revealEyebrow" class="eyebrow">CRATE OPENED</div>
         <div id="revealTier" class="reveal-tier">UNCOMMON</div>
-        <div class="reveal-ship"><span></span><img id="revealShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Unlocked ship chassis"></div>
+        <div class="reveal-ship"><span></span><img id="revealShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Unlocked cosmetic"></div>
         <h3 id="revealName">VERDANT SCOUT</h3>
         <p id="revealMessage">NEW CHASSIS ACQUIRED</p>
         <button id="revealContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
@@ -491,7 +491,7 @@
       <div class="cosmetic-detail-panel">
         <div class="eyebrow">COLLECTION FILE</div>
         <div id="cosmeticDetailTier" class="cosmetic-detail-tier">UNCOMMON</div>
-        <div class="cosmetic-detail-preview"><span></span><img id="cosmeticDetailImage" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Ship cosmetic preview"></div>
+        <div id="cosmeticDetailPreview" class="cosmetic-detail-preview"><span></span><img id="cosmeticDetailImage" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Cosmetic preview"><i></i><i></i><i></i></div>
         <h3 id="cosmeticDetailName">VERDANT SCOUT</h3>
         <strong id="cosmeticDetailStatus">LOCKED</strong>
         <p id="cosmeticDetailHint">AVAILABLE IN CROWN CRATES</p>
@@ -516,6 +516,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260828-90-search-signal"></script>
+  <script type="module" src="./src/main.js?v=20260828-91-weapon-skins4"></script>
 </body>
 </html>

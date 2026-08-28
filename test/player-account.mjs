@@ -151,8 +151,8 @@ assert.match(schema, /revoke all on function public\.claim_player_callsign[\s\S]
 assert.match(schema, /create or replace function public\.rename_player_callsign[\s\S]*for update;[\s\S]*balance = balance - 500/, 'callsign rename locks and debits the authoritative wallet');
 assert.match(schema, /external_id = 'rename:' \|\| p_request_id::text/, 'callsign rename retries are idempotent');
 assert.match(schema, /revoke all on function public\.rename_player_callsign[\s\S]*from public, anon, authenticated/, 'callsign renaming is service-role only');
-assert.match(schema, /create or replace function public\.equip_player_ship[\s\S]*join public\.cosmetic_catalog/, 'equip verifies ownership against the server catalog');
-assert.match(schema, /revoke all on function public\.equip_player_ship[\s\S]*from public, anon, authenticated/, 'equip is service-role only');
+assert.match(schema, /create or replace function public\.equip_player_cosmetic[\s\S]*join public\.cosmetic_catalog/, 'equip verifies cosmetic ownership against the server catalog');
+assert.match(schema, /revoke all on function public\.equip_player_cosmetic[\s\S]*from public, anon, authenticated/, 'cosmetic equip is service-role only');
 for (let index = 0; index < 32; index += 1) assert.ok(secureServerInt(10_000) >= 0 && secureServerInt(10_000) < 10_000, 'server crate rolls stay inside the published odds range');
 
 const normalRun = { durationMs: 120_000, enemies: 40, zone: 2, wardens: 1 };
@@ -261,7 +261,7 @@ globalThis.fetch = async (url, options = {}) => {
       },
     });
   }
-  if (String(url).endsWith('/rest/v1/rpc/equip_player_ship')) return Response.json(equipOwned);
+  if (String(url).endsWith('/rest/v1/rpc/equip_player_cosmetic')) return Response.json(equipOwned);
   throw new Error(`Unexpected test request: ${url}`);
 };
 
