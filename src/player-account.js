@@ -164,6 +164,33 @@ export class PlayerAccount {
     try { this.storage?.removeItem(this.storageKey); } catch {}
   }
 
+  async logout() {
+    const accessToken = this.session?.accessToken;
+    const revokeRequest = accessToken
+      ? requestJson('/api/player/account/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: '{}',
+      })
+      : Promise.resolve(null);
+    let serverRevoked = false;
+    this.clearSession();
+    try {
+      await revokeRequest;
+      serverRevoked = Boolean(accessToken);
+    } catch {
+      // A player must still be able to leave the account on an offline device.
+    } finally {
+      try {
+        this.storage?.removeItem(PASSWORD_SETUP_KEY);
+        this.storage?.removeItem(PENDING_CRATE_KEY);
+        this.storage?.removeItem(PENDING_SETTLEMENT_KEY);
+        this.storage?.removeItem(PENDING_STORE_KEY);
+      } catch {}
+    }
+    return { signedOut: true, serverRevoked };
+  }
+
   getPlayer() { return this.session?.player || null; }
 
   getAccountState() {
@@ -437,6 +464,35 @@ export class PlayerAccount {
     return this.authorizedRequest('/api/vault/inventory/seen', {
       method: 'POST',
       body: JSON.stringify({ cosmeticId }),
+    });
+  }
+
+  getAdminSession() {
+    return this.authorizedRequest('/api/admin/session');
+  }
+
+  getRewardCodes() {
+    return this.authorizedRequest('/api/admin/codes');
+  }
+
+  createRewardCode(campaign) {
+    return this.authorizedRequest('/api/admin/codes', {
+      method: 'POST',
+      body: JSON.stringify(campaign),
+    });
+  }
+
+  setRewardCodeStatus(codeId, status) {
+    return this.authorizedRequest(`/api/admin/codes/${encodeURIComponent(String(codeId || ''))}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  redeemRewardCode(code) {
+    return this.authorizedRequest('/api/player/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
     });
   }
 

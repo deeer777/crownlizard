@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,6 +14,11 @@ const COSMETIC_IDS = new Set([
 ]);
 const LEGACY_BALANCE_CAP = 50_000;
 const AUTH_BOOTSTRAP_LIMIT = 60;
+const PROMO_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const PROMO_SHARD_MIN = 25;
+const PROMO_SHARD_MAX = 2500;
+const PROMO_CRATE_MIN = 1;
+const PROMO_CRATE_MAX = 5;
 const CALLSIGN_RENAME_COST = 500;
 const CALLSIGN_RENAME_COOLDOWN_DAYS = 7;
 const RESERVED_CALLSIGNS = new Set(['ADMIN', 'CROWNLIZARD', 'CROWN_LIZARD', 'DEVELOPER', 'GUEST', 'MOD', 'MODERATOR', 'STAFF', 'SUPPORT', 'SYSTEM']);
@@ -169,6 +174,49 @@ const hashIp = async (request, salt) => {
 const normalizeInt = (value, min, max) => {
   const number = Number(value);
   return Number.isInteger(number) && number >= min && number <= max ? number : null;
+};
+
+const sha256Hex = async value => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value)));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+export const normalizeRewardCode = value => {
+  const compact = String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!compact.startsWith('CROWN')) return '';
+  const token = compact.slice(5);
+  if (token.length !== 12 || [...token].some(character => !PROMO_CODE_ALPHABET.includes(character))) return '';
+  return `CROWN-${token.slice(0, 4)}-${token.slice(4, 8)}-${token.slice(8)}`;
+};
+
+export const generateRewardCode = () => {
+  let token = '';
+  for (let index = 0; index < 12; index += 1) token += PROMO_CODE_ALPHABET[secureServerInt(PROMO_CODE_ALPHABET.length)];
+  return normalizeRewardCode(`CROWN${token}`);
+};
+
+export const validatePromoCreation = (body, now = Date.now()) => {
+  const campaignName = String(body?.campaignName || '').trim().toUpperCase();
+  const rewardType = String(body?.rewardType || '');
+  const rewardAmount = normalizeInt(body?.rewardAmount, 1, 1_000_000);
+  const maxRedemptions = normalizeInt(body?.maxRedemptions, 1, 100_000);
+  const note = String(body?.note || '').trim();
+  const startsMs = body?.startsAt ? Date.parse(String(body.startsAt)) : now;
+  const expiresMs = Date.parse(String(body?.expiresAt || ''));
+  const validReward = rewardType === 'shards'
+    ? rewardAmount !== null && rewardAmount >= PROMO_SHARD_MIN && rewardAmount <= PROMO_SHARD_MAX
+    : rewardType === 'crate_credit' && rewardAmount !== null && rewardAmount >= PROMO_CRATE_MIN && rewardAmount <= PROMO_CRATE_MAX;
+  if (campaignName.length < 3 || campaignName.length > 48 || note.length > 160 || !validReward || maxRedemptions === null
+      || !Number.isFinite(startsMs) || !Number.isFinite(expiresMs) || startsMs < now - 300_000
+      || expiresMs <= startsMs || expiresMs > startsMs + 90 * 86_400_000) {
+    return { error: 'Invalid campaign settings.' };
+  }
+  return {
+    value: {
+      campaignName, rewardType, rewardAmount, maxRedemptions, note,
+      startsAt: new Date(startsMs).toISOString(), expiresAt: new Date(expiresMs).toISOString(),
+    },
+  };
 };
 
 export const normalizeCallsign = value => String(value || '').trim().toUpperCase();
@@ -355,6 +403,22 @@ const refreshPlayerSession = async (request, config) => {
   } catch { return json({ error: 'Player session expired.' }, 401); }
 };
 
+const logoutPlayer = async (request, config) => {
+  const token = bearerToken(request);
+  if (!token) return json({ error: 'Player session required.' }, 401);
+  try {
+    await authFetch(config, 'logout?scope=local', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: '{}',
+    });
+    return json({ status: 'signed_out', scope: 'local' });
+  } catch (error) {
+    if (error.status === 401 || error.status === 403) return json({ status: 'signed_out', scope: 'local' });
+    throw error;
+  }
+};
+
 const ensureWallet = async (config, userId) => {
   await supabaseFetch(config, 'player_wallets?on_conflict=user_id', {
     method: 'POST',
@@ -365,7 +429,7 @@ const ensureWallet = async (config, userId) => {
 
 const walletSnapshot = async (config, userId) => {
   await ensureWallet(config, userId);
-  const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,equipped_ship,equipped_weapon_skins,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
+  const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,free_crate_credits,equipped_ship,equipped_weapon_skins,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
   const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at,seen_at', user_id: `eq.${userId}`, order: 'acquired_at.asc' });
   const [wallets, inventory] = await Promise.all([
     supabaseFetch(config, `player_wallets?${walletQuery}`),
@@ -377,6 +441,7 @@ const walletSnapshot = async (config, userId) => {
     balance: wallet.balance,
     opens: wallet.opens,
     sinceSovereign: wallet.since_sovereign,
+    freeCrateCredits: Number(wallet.free_crate_credits) || 0,
     equippedShip: wallet.equipped_ship,
     equippedWeapons: wallet.equipped_weapon_skins || {},
     legacyImported: Boolean(wallet.legacy_imported_at),
@@ -1088,8 +1153,109 @@ const openCrownCrate = async (request, config) => {
       p_cosmetic_roll: secureServerInt(1_000_000),
     }),
   });
-  if (result.error === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards.', code: result.error, balance: result.balance }, 409);
+  if (result.error === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards or free opens.', code: result.error, balance: result.balance, freeCrateCredits: result.freeCrateCredits || 0 }, 409);
   return json(result, result.duplicateRequest ? 200 : 201);
+};
+
+const requireCrownAdmin = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return null;
+  const admin = await supabaseFetch(config, 'rpc/is_crown_admin', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id }),
+  });
+  return admin === true ? user : null;
+};
+
+const adminPromoView = row => ({
+  id: String(row.id), codeHint: String(row.code_hint), campaignName: String(row.campaign_name),
+  rewardType: String(row.reward_type), rewardAmount: Number(row.reward_amount) || 0,
+  startsAt: row.starts_at, expiresAt: row.expires_at,
+  maxRedemptions: Number(row.max_redemptions) || 0, redeemedCount: Number(row.redeemed_count) || 0,
+  status: String(row.status), note: String(row.note || ''), createdAt: row.created_at, updatedAt: row.updated_at,
+});
+
+const getAdminSession = async (request, config) => {
+  const admin = await requireCrownAdmin(request, config);
+  if (!admin) return json({ admin: false }, 403);
+  return json({ admin: true, role: 'owner' });
+};
+
+const listAdminRewardCodes = async (request, config) => {
+  const admin = await requireCrownAdmin(request, config);
+  if (!admin) return json({ error: 'Admin access required.' }, 403);
+  const query = new URLSearchParams({
+    select: 'id,code_hint,campaign_name,reward_type,reward_amount,starts_at,expires_at,max_redemptions,redeemed_count,status,note,created_at,updated_at',
+    order: 'created_at.desc', limit: '100',
+  });
+  const rows = await supabaseFetch(config, `promo_codes?${query}`);
+  return json({ codes: rows.map(adminPromoView) });
+};
+
+const createAdminRewardCode = async (request, config) => {
+  const admin = await requireCrownAdmin(request, config);
+  if (!admin) return json({ error: 'Admin access required.' }, 403);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid campaign request.' }, 400); }
+  const validation = validatePromoCreation(body);
+  if (validation.error) return json({ error: validation.error }, 422);
+  const value = validation.value;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = generateRewardCode();
+    const codeHash = await sha256Hex(code);
+    const codeHint = `CROWN-****-****-${code.slice(-4)}`;
+    const promo = await supabaseFetch(config, 'rpc/create_reward_code', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_admin_user_id: admin.id, p_code_hash: codeHash, p_code_hint: codeHint,
+        p_campaign_name: value.campaignName, p_reward_type: value.rewardType,
+        p_reward_amount: value.rewardAmount, p_starts_at: value.startsAt,
+        p_expires_at: value.expiresAt, p_max_redemptions: value.maxRedemptions, p_note: value.note,
+      }),
+    });
+    if (promo.error === 'CODE_COLLISION') continue;
+    if (promo.error) return json({ error: 'Campaign code could not be created.', code: promo.error }, promo.error === 'ADMIN_REQUIRED' ? 403 : 422);
+    console.log(JSON.stringify({ event: 'admin_promo_created', adminUserId: admin.id, promoId: promo.id, rewardType: value.rewardType, maxRedemptions: value.maxRedemptions }));
+    return json({ code, promo }, 201);
+  }
+  return json({ error: 'Secure code generation failed. Try again.' }, 503);
+};
+
+const setAdminRewardCodeStatus = async (request, config, codeId) => {
+  const admin = await requireCrownAdmin(request, config);
+  if (!admin) return json({ error: 'Admin access required.' }, 403);
+  if (!UUID_PATTERN.test(codeId)) return json({ error: 'Invalid campaign.' }, 400);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid campaign request.' }, 400); }
+  const status = String(body.status || '');
+  if (!['active', 'paused', 'revoked'].includes(status)) return json({ error: 'Invalid campaign status.' }, 422);
+  const result = await supabaseFetch(config, 'rpc/set_reward_code_status', {
+    method: 'POST', body: JSON.stringify({ p_admin_user_id: admin.id, p_code_id: codeId, p_status: status }),
+  });
+  if (result.error === 'PROMO_NOT_FOUND') return json({ error: 'Campaign not found.' }, 404);
+  if (result.error === 'PROMO_FINAL') return json({ error: 'A revoked or exhausted campaign cannot be changed.', code: result.error }, 409);
+  if (result.error) return json({ error: 'Campaign status could not be changed.', code: result.error }, 409);
+  console.log(JSON.stringify({ event: 'admin_promo_status_changed', adminUserId: admin.id, promoId: codeId, status }));
+  return json({ promo: result });
+};
+
+const redeemPlayerRewardCode = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Crown account required.', code: 'ACCOUNT_REQUIRED' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Code could not be redeemed.', code: 'INVALID_CODE' }, 400); }
+  const code = normalizeRewardCode(body.code);
+  if (!code) return json({ error: 'Code could not be redeemed.', code: 'INVALID_CODE' }, 400);
+  const result = await supabaseFetch(config, 'rpc/redeem_reward_code', {
+    method: 'POST',
+    body: JSON.stringify({ p_user_id: user.id, p_code_hash: await sha256Hex(code), p_ip_hash: await hashIp(request, config.salt) }),
+  });
+  if (result.error === 'RATE_LIMITED') return json({ error: 'Too many attempts. Try again later.', code: result.error }, 429);
+  if (result.error === 'ALREADY_REDEEMED') return json({ error: 'This code was already redeemed by this account.', code: result.error }, 409);
+  if (result.error === 'ACCOUNT_REQUIRED') return json({ error: 'Crown account required.', code: result.error }, 401);
+  if (result.error) return json({ error: 'Code could not be redeemed.', code: 'INVALID_CODE' }, 400);
+  console.log(JSON.stringify({ event: 'promo_redeemed', userId: user.id, rewardType: result.rewardType, rewardAmount: result.rewardAmount }));
+  return json({ redemption: result, wallet: await walletSnapshot(config, user.id) }, 201);
 };
 
 const getCrownStore = async (request, config) => {
@@ -1330,6 +1496,7 @@ export const onRequest = async context => {
     if (path === 'player/session' && request.method === 'POST') return await beginAnonymousSession(request, config);
     if (path === 'player/bootstrap' && request.method === 'POST') return await bootstrapPlayerWallet(request, config);
     if (path === 'player/refresh' && request.method === 'POST') return await refreshPlayerSession(request, config);
+    if (path === 'player/account/logout' && request.method === 'POST') return await logoutPlayer(request, config);
     if (path === 'player/wallet' && request.method === 'GET') return await getPlayerWallet(request, config);
     if (path === 'player/account/link-email' && request.method === 'POST') return await linkPlayerEmail(request, config);
     if (path === 'player/account/callback' && (request.method === 'GET' || request.method === 'POST')) return await playerAccountCallback(request, config);
@@ -1357,6 +1524,13 @@ export const onRequest = async context => {
     if (path === 'player/profile/visibility' && request.method === 'PUT') return await setPlayerProfileVisibility(request, config);
     if (path === 'player/profile/callsign' && request.method === 'POST') return await claimPlayerCallsign(request, config);
     if (path === 'player/profile/callsign' && request.method === 'PUT') return await renamePlayerCallsign(request, config);
+    if (path === 'player/redeem' && request.method === 'POST') return await redeemPlayerRewardCode(request, config);
+    if (path === 'admin/session' && request.method === 'GET') return await getAdminSession(request, config);
+    if (path === 'admin/codes' && request.method === 'GET') return await listAdminRewardCodes(request, config);
+    if (path === 'admin/codes' && request.method === 'POST') return await createAdminRewardCode(request, config);
+    if (path.startsWith('admin/codes/') && path.endsWith('/status') && request.method === 'PUT') {
+      return await setAdminRewardCodeStatus(request, config, path.slice('admin/codes/'.length, -'/status'.length));
+    }
     if (path.startsWith('profiles/') && request.method === 'GET') return await getPublicPlayerProfile(config, path.slice('profiles/'.length));
     if (path === 'runs' && request.method === 'POST') return await beginRun(request, config);
     if (path === 'scores' && request.method === 'GET') {

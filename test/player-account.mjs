@@ -172,6 +172,7 @@ let equipOwned = true;
 let mockedAuthUser = { id: userId, is_anonymous: true, email: '' };
 globalThis.fetch = async (url, options = {}) => {
   calls.push({ url: String(url), options });
+  if (String(url).endsWith('/api/player/account/logout')) return Response.json({ status: 'signed_out', scope: 'local' });
   if (String(url).endsWith('/api/player/account/login')) return Response.json({
     contract: 'player-session-v1',
     session: {
@@ -217,6 +218,7 @@ globalThis.fetch = async (url, options = {}) => {
     user: { id: userId, is_anonymous: false, email: 'pilot@example.com' },
   });
   if (String(url).includes('/auth/v1/recover')) return Response.json({});
+  if (String(url).includes('/auth/v1/logout?scope=local')) return new Response(null, { status: 204 });
   if (String(url).includes('/auth/v1/user')) {
     if (options.method === 'PUT') {
       const body = JSON.parse(options.body || '{}');
@@ -293,6 +295,18 @@ assert.equal(walletResponse.status, 200, 'an authenticated player can read the s
 const walletPayload = await walletResponse.json();
 assert.equal(walletPayload.wallet.balance, 420, 'the browser receives the server balance');
 assert.equal(walletPayload.wallet.inventory[0].cosmeticId, 'ship_void_hunter', 'the browser receives server-owned inventory only');
+
+const logoutResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/player/account/logout', {
+    method: 'POST', headers: { Authorization: 'Bearer header.payload.signature-access', 'Content-Type': 'application/json' }, body: '{}',
+  }),
+  env,
+  params: { path: ['player', 'account', 'logout'] },
+});
+assert.equal(logoutResponse.status, 200, 'a player can end only the current server session');
+assert.deepEqual(await logoutResponse.json(), { status: 'signed_out', scope: 'local' }, 'logout reports its device-local scope explicitly');
+const supabaseLogoutCall = calls.find(call => call.url.includes('/auth/v1/logout?scope=local'));
+assert.equal(supabaseLogoutCall.options.headers.Authorization, 'Bearer header.payload.signature-access', 'the current authenticated session is the only session revoked');
 
 const linkEmailResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/link-email', {
@@ -401,11 +415,15 @@ assert.equal(loginPayload.session.player.anonymous, false, 'restored sessions ar
 assert.equal(loginPayload.session.player.id, userId, 'sign-in returns an explicit normalized session contract');
 assert.equal(Object.hasOwn(loginPayload, 'accessToken'), false, 'sign-in does not duplicate session credentials at the response root');
 assert.equal(loginPayload.wallet.balance, 420, 'sign-in returns the existing server-owned Vault atomically');
-const clientLoginStorage = { value: null, getItem() { return this.value; }, setItem(key, value) { if (key === 'cl:player-session:v1') this.value = value; }, removeItem() {} };
+const clientLoginStorage = { value: null, getItem() { return this.value; }, setItem(key, value) { if (key === 'cl:player-session:v1') this.value = value; }, removeItem(key) { if (key === 'cl:player-session:v1') this.value = null; } };
 const clientLoginAccount = new PlayerAccount(clientLoginStorage);
 const clientLoginPayload = await clientLoginAccount.login('pilot@example.com', 'correct-horse-crown');
 assert.equal(clientLoginAccount.getPlayer().id, userId, 'the browser accepts and stores the explicit nested sign-in session');
 assert.equal(clientLoginPayload.wallet.balance, 420, 'session normalization preserves the restored server Vault payload');
+const clientLogoutResult = await clientLoginAccount.logout();
+assert.equal(clientLogoutResult.signedOut, true, 'the browser confirms local logout');
+assert.equal(clientLoginAccount.getPlayer(), null, 'logout removes the permanent identity from browser memory');
+assert.equal(clientLoginStorage.value, null, 'logout removes the stored player session');
 
 const serverRenderedLoginResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/login/complete', {

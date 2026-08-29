@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v91-weapon-skins5';
+const CACHE_VERSION = 'crown-lizard-shell-v93-crown-control';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260828-91-weapon-skins5',
+  '/styles.css?v=20260828-93-crown-control',
   '/site.css?v=20260828-90-seo',
   '/about/',
   '/how-to-play/',
@@ -13,8 +13,8 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/main.js?v=20260828-91-weapon-skins4',
-  '/src/config.js?v=20260828-91-weapon-skins4',
+  '/src/main.js?v=20260828-93-crown-control',
+  '/src/config.js?v=20260828-93-crown-control',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
   '/src/audio.js?v=20260828-91-weapon-skins4',
@@ -24,7 +24,7 @@ const APP_SHELL = [
   '/src/economy.js?v=20260828-91-weapon-skins4',
   '/src/cosmetics.js?v=20260828-91-weapon-skins4',
   '/src/leaderboard.js?v=20260824-45-cutover',
-  '/src/player-account.js?v=20260828-91-weapon-skins4',
+  '/src/player-account.js?v=20260828-93-crown-control',
   '/src/armory.js?v=20260828-91-weapon-skins4',
   '/src/cosmetic-preferences.js?v=20260828-91-weapon-skins4',
   '/src/account-presentation.js?v=20260826-73-cinematic-endings',

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
+import { CONFIG } from './config.js?v=20260828-93-crown-control';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
@@ -6,7 +6,7 @@ import { Game } from './game.js?v=20260828-91-weapon-skins4';
 import { ShardWallet } from './economy.js?v=20260828-91-weapon-skins4';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260828-91-weapon-skins4';
+import { PlayerAccount } from './player-account.js?v=20260828-93-crown-control';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
@@ -33,14 +33,17 @@ const requestedPilotProfileId = publicProfileIdPattern.test(requestedPilotParam)
 const callsignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('callsign');
 const profilePreviewMode = localPreview && debugParams.has('debug') && debugParams.has('profile');
 const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
+const campaignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('admin');
 const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
-  settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'),
+  settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'), openRedeem: $('openRedeem'), openAdmin: $('openAdmin'),
   menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
-  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'),
+  accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'), accountSignedInActions: $('accountSignedInActions'), accountLogout: $('accountLogout'), accountLogoutConfirm: $('accountLogoutConfirm'), confirmAccountLogout: $('confirmAccountLogout'), cancelAccountLogout: $('cancelAccountLogout'),
+  redeemOverlay: $('redeemOverlay'), redeemForm: $('redeemForm'), redeemCode: $('redeemCode'), redeemSubmit: $('redeemSubmit'), redeemReward: $('redeemReward'), redeemRewardAmount: $('redeemRewardAmount'), redeemRewardCampaign: $('redeemRewardCampaign'), redeemStatus: $('redeemStatus'), closeRedeem: $('closeRedeem'),
+  adminOverlay: $('adminOverlay'), adminCreateTab: $('adminCreateTab'), adminCampaignsTab: $('adminCampaignsTab'), adminCreatePanel: $('adminCreatePanel'), adminCampaignsPanel: $('adminCampaignsPanel'), adminCodeForm: $('adminCodeForm'), adminCampaignName: $('adminCampaignName'), adminRewardType: $('adminRewardType'), adminRewardAmount: $('adminRewardAmount'), adminMaxRedemptions: $('adminMaxRedemptions'), adminExpiresAt: $('adminExpiresAt'), adminNote: $('adminNote'), adminCreateCode: $('adminCreateCode'), adminCodeReveal: $('adminCodeReveal'), adminCreatedCode: $('adminCreatedCode'), adminCopyCode: $('adminCopyCode'), adminCampaignCount: $('adminCampaignCount'), adminCampaignList: $('adminCampaignList'), adminStatus: $('adminStatus'), closeAdmin: $('closeAdmin'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   pilotProfileOverlay: $('pilotProfileOverlay'), pilotProfileLoading: $('pilotProfileLoading'), pilotProfileContent: $('pilotProfileContent'), pilotProfileShip: $('pilotProfileShip'), pilotProfileName: $('pilotProfileName'), pilotProfileJoined: $('pilotProfileJoined'), pilotProfileArsenal: $('pilotProfileArsenal'), pilotBestChill: $('pilotBestChill'), pilotBestArcade: $('pilotBestArcade'), pilotBestCrowned: $('pilotBestCrowned'), pilotHighestZone: $('pilotHighestZone'), pilotQualifiedRuns: $('pilotQualifiedRuns'), pilotBossBest: $('pilotBossBest'), pilotBossTotal: $('pilotBossTotal'), pilotProfileStatus: $('pilotProfileStatus'), pilotProfileShareStatus: $('pilotProfileShareStatus'), sharePilotProfile: $('sharePilotProfile'), closePilotProfile: $('closePilotProfile'),
@@ -101,6 +104,20 @@ let pwaOverlayReturn = 'menu';
 let pwaReleaseInfo = null;
 let accountMode = 'secure';
 let accountBusy = false;
+let logoutConfirming = false;
+let adminAccess = campaignPreviewMode;
+let adminAccessChecked = campaignPreviewMode;
+let adminAccessLoading = false;
+let adminMode = 'create';
+let adminBusy = false;
+let adminCampaigns = campaignPreviewMode ? [{
+  id: 'preview-launch-code', codeHint: 'CROWN-****-****-7K9M', campaignName: 'LAUNCH REWARD',
+  rewardType: 'shards', rewardAmount: 250, startsAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 6 * 86_400_000).toISOString(), maxRedemptions: 500,
+  redeemedCount: 142, status: 'active', note: 'Preview campaign', createdAt: new Date().toISOString(),
+}] : [];
+let lastCreatedRewardCode = '';
+let redeemBusy = false;
 let leaderboardReturn = 'menu';
 let leaderboardDifficulty = selectedDifficulty;
 let pilotProfileOrigin = 'leaderboard';
@@ -142,8 +159,9 @@ try {
   }
 } catch {}
 const playerAccount = new PlayerAccount();
-const currentAccountState = () => callsignPreviewMode || profilePreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
-let playerProfile = profilePreviewMode ? { publicId: 'preview:you', isPublic: true, displayName: 'PREVIEW' } : null;
+let accountPreviewSignedOut = false;
+const currentAccountState = () => (profilePreviewMode || campaignPreviewMode) && accountPreviewSignedOut ? 'guest' : callsignPreviewMode || profilePreviewMode || campaignPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
+let playerProfile = profilePreviewMode || campaignPreviewMode ? { publicId: 'preview:you', isPublic: true, displayName: campaignPreviewMode ? 'OWNER' : 'PREVIEW' } : null;
 const bossNetwork = new BossNetwork({
   preview: localPreview,
   accessToken: () => playerAccount.getAccessToken(),
@@ -179,7 +197,7 @@ const emptyWalletView = () => ({
   balance: 0,
   transactions: [],
   inventory: { cosmetics: {}, equipped: { ship: 'ship_default', weapons: { laser: 'weapon_laser_default', tesla: 'weapon_tesla_default', pulse: 'weapon_pulse_default' } } },
-  vault: { opens: 0, sinceSovereign: 0, pendingReward: null },
+  vault: { opens: 0, sinceSovereign: 0, freeCrateCredits: 0, pendingReward: null },
   sponsored: { pendingRunId: '' },
 });
 const serverWalletView = wallet => ({
@@ -196,7 +214,7 @@ const serverWalletView = wallet => ({
       },
     },
   },
-  vault: { opens: Number(wallet?.opens) || 0, sinceSovereign: Number(wallet?.sinceSovereign) || 0, pendingReward: null },
+  vault: { opens: Number(wallet?.opens) || 0, sinceSovereign: Number(wallet?.sinceSovereign) || 0, freeCrateCredits: Math.max(0, Number(wallet?.freeCrateCredits) || 0), pendingReward: null },
   sponsored: { pendingRunId: '' },
 });
 const walletState = () => localPreview ? shardWallet.getState() : serverWallet || emptyWalletView();
@@ -226,6 +244,35 @@ const refreshPlayerProfile = async () => {
     renderMenuIdentity();
     throw error;
   }
+};
+const refreshAdminAccess = async () => {
+  if (currentAccountState() !== 'signed-in') {
+    adminAccess = false;
+    adminAccessChecked = false;
+    adminAccessLoading = false;
+    renderSettings();
+    return false;
+  }
+  if (campaignPreviewMode) {
+    adminAccess = true;
+    adminAccessChecked = true;
+    renderSettings();
+    return true;
+  }
+  if (adminAccessLoading) return adminAccess;
+  adminAccessLoading = true;
+  const playerId = playerAccount.getPlayer()?.id;
+  try {
+    const payload = await playerAccount.getAdminSession();
+    adminAccess = Boolean(payload?.admin) && playerAccount.getPlayer()?.id === playerId;
+  } catch {
+    adminAccess = false;
+  } finally {
+    adminAccessChecked = true;
+    adminAccessLoading = false;
+    renderSettings();
+  }
+  return adminAccess;
 };
 const renderShardBalance = () => {
   if (serverEconomy && !serverEconomyReady) {
@@ -583,7 +630,7 @@ const startBossAssault = async () => {
   }
   bossAssaultStarting = false;
   input.clear();
-  [ui.menu, ui.gameover, ui.assaultResult, ui.wardenOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.vaultOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.menu, ui.gameover, ui.assaultResult, ui.wardenOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.redeemOverlay, ui.adminOverlay, ui.vaultOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
   ui.hud.classList.remove('hidden');
   ui.assaultHud.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
@@ -867,13 +914,19 @@ const renderVault = () => {
   ui.randomFavoriteToggle.setAttribute('aria-checked', String(preferences.randomFavorite));
   ui.randomFavoriteToggle.querySelector('b').textContent = preferences.randomFavorite ? 'ON' : 'OFF';
   ui.randomFavoriteToggle.disabled = !preferences.favorites.some(id => id === 'ship_default' || Boolean(state.inventory.cosmetics[id]));
+  const freeCrateCredits = Math.max(0, Number(state.vault.freeCrateCredits) || 0);
+  const hasFreeCrate = freeCrateCredits > 0;
   const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
-  ui.openCrate.disabled = crateOpening || (serverEconomy && !serverEconomyReady) || Boolean(state.vault.pendingReward) || missing > 0;
-  ui.openCrate.innerHTML = missing
-    ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
-    : `<i>♛</i> OPEN WITH ◆ ${CROWN_CRATE_COST}`;
+  ui.openCrate.disabled = crateOpening || (serverEconomy && !serverEconomyReady) || Boolean(state.vault.pendingReward) || (!hasFreeCrate && missing > 0);
+  ui.openCrate.innerHTML = hasFreeCrate
+    ? `<i>♛</i> OPEN FREE CRATE · ${freeCrateCredits} SAVED`
+    : missing
+      ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
+      : `<i>♛</i> OPEN WITH ◆ ${CROWN_CRATE_COST}`;
   ui.vaultStatus.textContent = serverEconomy && !serverEconomyReady
     ? 'PLAYER WALLET CONNECTING'
+    : hasFreeCrate
+    ? 'REWARD CREDIT READY · STANDARD ODDS AND PITY'
     : missing
     ? 'EARN SHARDS BY COMPLETING QUALIFIED RUNS'
     : state.vault.opens === 0
@@ -1035,7 +1088,7 @@ const showCrateReveal = outcome => {
     ? 'DUPLICATE DETECTED'
     : outcome.guaranteedSovereign
       ? 'SOVEREIGN GUARANTEE'
-      : outcome.source === 'sponsored' ? 'SPONSORED CRATE' : 'CRATE OPENED';
+      : outcome.freeCredit ? 'REWARD CRATE' : outcome.source === 'sponsored' ? 'SPONSORED CRATE' : 'CRATE OPENED';
   ui.revealTier.textContent = tier.name;
   ui.revealName.textContent = cosmetic.name;
   ui.revealMessage.textContent = outcome.duplicate
@@ -1148,6 +1201,9 @@ const renderSettings = () => {
   ui.profileVisibility.disabled = profileStatus === 'loading';
   ui.profileVisibility.setAttribute('aria-pressed', String(playerProfile?.isPublic !== false));
   ui.profileVisibility.querySelector('b').textContent = profileStatus === 'loading' ? 'SYNCING' : playerProfile?.isPublic === false ? 'OFF' : 'ON';
+  const permanentAccount = currentAccountState() === 'signed-in';
+  ui.openRedeem.classList.toggle('hidden', !permanentAccount);
+  ui.openAdmin.classList.toggle('hidden', !permanentAccount || !adminAccess);
   ui.installApp.classList.toggle('hidden', !pwaManager?.installAvailable);
   ui.updateApp.classList.toggle('hidden', !pwaUpdateReady);
   renderMenuIdentity();
@@ -1859,7 +1915,7 @@ const bootstrapServerEconomy = async () => {
   await authRedirectReady;
   const snapshot = await playerAccount.bootstrapWallet();
   acceptServerWallet(snapshot);
-  await refreshPlayerProfile().catch(() => null);
+  await Promise.allSettled([refreshPlayerProfile(), refreshAdminAccess()]);
   renderShardBalance();
   renderVault();
   applyEquippedCosmetics();
@@ -1982,7 +2038,7 @@ const returnToMenu = () => {
   game.stop();
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pilotProfileOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.redeemOverlay, ui.adminOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pilotProfileOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -2005,6 +2061,7 @@ const returnToMenu = () => {
 const openSettings = origin => {
   settingsReturn = origin;
   renderSettings();
+  if (currentAccountState() === 'signed-in' && !adminAccessChecked && !adminAccessLoading) void refreshAdminAccess();
   if (origin === 'pause') ui.pauseOverlay.classList.add('hidden');
   ui.settingsOverlay.classList.remove('hidden');
 };
@@ -2012,6 +2069,196 @@ const openSettings = origin => {
 const closeSettings = () => {
   ui.settingsOverlay.classList.add('hidden');
   if (settingsReturn === 'pause' && game.paused) ui.pauseOverlay.classList.remove('hidden');
+};
+
+const setRedeemStatus = (message = '', kind = '') => {
+  ui.redeemStatus.textContent = message;
+  ui.redeemStatus.className = `redeem-status${kind ? ` ${kind}` : ''}`;
+};
+
+const formatRewardCodeInput = value => {
+  const compact = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17);
+  const token = compact.startsWith('CROWN') ? compact.slice(5) : compact;
+  const groups = [token.slice(0, 4), token.slice(4, 8), token.slice(8, 12)].filter(Boolean);
+  return `${compact.startsWith('CROWN') ? 'CROWN-' : ''}${groups.join('-')}`;
+};
+
+const openRedeem = () => {
+  if (currentAccountState() !== 'signed-in') return;
+  ui.settingsOverlay.classList.add('hidden');
+  ui.redeemOverlay.classList.remove('hidden');
+  ui.redeemReward.classList.add('hidden');
+  ui.redeemCode.value = '';
+  setRedeemStatus();
+  ui.redeemCode.focus({ preventScroll: true });
+};
+
+const closeRedeem = () => {
+  if (redeemBusy) return;
+  ui.redeemOverlay.classList.add('hidden');
+  ui.settingsOverlay.classList.remove('hidden');
+  ui.redeemCode.value = '';
+  ui.redeemReward.classList.add('hidden');
+  setRedeemStatus();
+  ui.openRedeem.focus({ preventScroll: true });
+};
+
+const setAdminStatus = (message = '', kind = '') => {
+  ui.adminStatus.textContent = message;
+  ui.adminStatus.className = `admin-status${kind ? ` ${kind}` : ''}`;
+};
+
+const localDateTimeValue = timestamp => {
+  const date = new Date(timestamp);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
+const resetAdminForm = () => {
+  ui.adminCampaignName.value = '';
+  ui.adminRewardType.value = 'shards';
+  ui.adminRewardAmount.min = '25';
+  ui.adminRewardAmount.max = '2500';
+  ui.adminRewardAmount.value = '100';
+  ui.adminMaxRedemptions.value = '100';
+  ui.adminExpiresAt.min = localDateTimeValue(Date.now() + 60_000);
+  ui.adminExpiresAt.max = localDateTimeValue(Date.now() + 90 * 86_400_000);
+  ui.adminExpiresAt.value = localDateTimeValue(Date.now() + 7 * 86_400_000);
+  ui.adminNote.value = '';
+};
+
+const renderAdminCampaigns = () => {
+  ui.adminCampaignCount.textContent = String(adminCampaigns.length);
+  if (!adminCampaigns.length) {
+    ui.adminCampaignList.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'admin-campaign-empty', textContent: adminBusy ? 'SYNCING SERVER CAMPAIGNS...' : 'NO CAMPAIGNS CREATED YET',
+    }));
+    return;
+  }
+  ui.adminCampaignList.replaceChildren(...adminCampaigns.map(campaign => {
+    const card = document.createElement('article');
+    card.className = `admin-campaign ${campaign.status}`;
+    const copy = document.createElement('div');
+    copy.className = 'admin-campaign-copy';
+    const title = Object.assign(document.createElement('strong'), { textContent: campaign.campaignName });
+    const reward = campaign.rewardType === 'crate_credit'
+      ? `${campaign.rewardAmount} FREE CRATE${campaign.rewardAmount === 1 ? '' : 'S'}`
+      : `◆ ${Number(campaign.rewardAmount).toLocaleString('en-US')} SHARDS`;
+    const expires = new Date(campaign.expiresAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+    const detail = Object.assign(document.createElement('span'), {
+      textContent: `${campaign.codeHint} · ${reward}\n${campaign.redeemedCount} / ${campaign.maxRedemptions} USED · EXPIRES ${expires}`,
+    });
+    copy.append(title, detail);
+    const state = Object.assign(document.createElement('b'), { className: 'admin-campaign-state', textContent: String(campaign.status).toUpperCase() });
+    card.append(copy, state);
+    if (!['revoked', 'exhausted'].includes(campaign.status)) {
+      const actions = document.createElement('div');
+      actions.className = 'admin-campaign-actions';
+      const toggle = Object.assign(document.createElement('button'), {
+        type: 'button', textContent: campaign.status === 'paused' ? 'ACTIVATE' : 'PAUSE',
+      });
+      toggle.disabled = adminBusy;
+      toggle.addEventListener('click', () => void changeAdminCampaignStatus(campaign.id, campaign.status === 'paused' ? 'active' : 'paused'));
+      const revoke = Object.assign(document.createElement('button'), { type: 'button', className: 'danger-link', textContent: 'REVOKE' });
+      revoke.disabled = adminBusy;
+      revoke.addEventListener('click', () => {
+        if (revoke.dataset.confirm !== 'true') {
+          revoke.dataset.confirm = 'true';
+          revoke.textContent = 'CONFIRM REVOKE';
+          setAdminStatus('REVOKE IS FINAL · PRESS AGAIN TO CONFIRM', 'error');
+          return;
+        }
+        void changeAdminCampaignStatus(campaign.id, 'revoked');
+      });
+      actions.append(toggle, revoke);
+      card.append(actions);
+    }
+    return card;
+  }));
+};
+
+const renderAdminMode = () => {
+  const campaignsSelected = adminMode === 'campaigns';
+  ui.adminCreateTab.classList.toggle('selected', !campaignsSelected);
+  ui.adminCreateTab.setAttribute('aria-selected', String(!campaignsSelected));
+  ui.adminCampaignsTab.classList.toggle('selected', campaignsSelected);
+  ui.adminCampaignsTab.setAttribute('aria-selected', String(campaignsSelected));
+  ui.adminCreatePanel.classList.toggle('hidden', campaignsSelected);
+  ui.adminCampaignsPanel.classList.toggle('hidden', !campaignsSelected);
+  renderAdminCampaigns();
+};
+
+const loadAdminCampaigns = async () => {
+  if (!adminAccess || adminBusy) return;
+  if (campaignPreviewMode) {
+    renderAdminCampaigns();
+    return;
+  }
+  adminBusy = true;
+  setAdminStatus('SYNCING SERVER CAMPAIGNS...');
+  renderAdminCampaigns();
+  try {
+    const payload = await playerAccount.getRewardCodes();
+    adminCampaigns = Array.isArray(payload?.codes) ? payload.codes : [];
+    setAdminStatus(`${adminCampaigns.length} CAMPAIGN${adminCampaigns.length === 1 ? '' : 'S'} LOADED`, 'success');
+  } catch (error) {
+    setAdminStatus(String(error?.message || 'CAMPAIGN LINK FAILED').toUpperCase(), 'error');
+  } finally {
+    adminBusy = false;
+    renderAdminCampaigns();
+  }
+};
+
+const changeAdminCampaignStatus = async (campaignId, status) => {
+  if (!adminAccess || adminBusy) return;
+  adminBusy = true;
+  setAdminStatus(`${status === 'revoked' ? 'REVOKING' : 'UPDATING'} CAMPAIGN...`);
+  renderAdminCampaigns();
+  try {
+    if (campaignPreviewMode) await wait(260);
+    else await playerAccount.setRewardCodeStatus(campaignId, status);
+    adminCampaigns = adminCampaigns.map(campaign => campaign.id === campaignId ? { ...campaign, status } : campaign);
+    setAdminStatus(`CAMPAIGN ${status.toUpperCase()}`, 'success');
+    sfx.play('confirm');
+  } catch (error) {
+    setAdminStatus(String(error?.message || 'CAMPAIGN UPDATE FAILED').toUpperCase(), 'error');
+  } finally {
+    adminBusy = false;
+    renderAdminCampaigns();
+  }
+};
+
+const openAdmin = async () => {
+  if (!adminAccess || currentAccountState() !== 'signed-in') return;
+  adminMode = 'create';
+  lastCreatedRewardCode = '';
+  ui.adminCodeReveal.classList.add('hidden');
+  resetAdminForm();
+  setAdminStatus();
+  ui.settingsOverlay.classList.add('hidden');
+  ui.adminOverlay.classList.remove('hidden');
+  renderAdminMode();
+  ui.adminCampaignName.focus({ preventScroll: true });
+  await loadAdminCampaigns();
+};
+
+const closeAdmin = () => {
+  if (adminBusy) return;
+  lastCreatedRewardCode = '';
+  ui.adminCreatedCode.textContent = 'CROWN-XXXX-XXXX-XXXX';
+  ui.adminCodeReveal.classList.add('hidden');
+  ui.adminOverlay.classList.add('hidden');
+  ui.settingsOverlay.classList.remove('hidden');
+  setAdminStatus();
+  ui.openAdmin.focus({ preventScroll: true });
+};
+
+const previewRewardCode = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const token = [...bytes].map(value => alphabet[value % alphabet.length]).join('');
+  return `CROWN-${token.slice(0, 4)}-${token.slice(4, 8)}-${token.slice(8)}`;
 };
 
 const openPwaInstallHelp = () => {
@@ -2062,6 +2309,7 @@ const setAccountStatus = (message = '', kind = '') => {
 const renderAccount = () => {
   const presentation = accountPresentation();
   const passwordSetup = presentation.state === 'setup';
+  const signedIn = presentation.state === 'signed-in';
   ui.accountStatePanel.dataset.state = presentation.state;
   ui.accountTitle.textContent = presentation.title;
   ui.accountIdentity.textContent = presentation.identity;
@@ -2069,6 +2317,8 @@ const renderAccount = () => {
   ui.accountTabs.classList.toggle('hidden', !presentation.showTabs);
   ui.accountForm.classList.toggle('hidden', !presentation.showForm);
   ui.callsignForm.classList.toggle('hidden', !presentation.showCallsign);
+  ui.accountSignedInActions.classList.toggle('hidden', !signedIn || logoutConfirming);
+  ui.accountLogoutConfirm.classList.toggle('hidden', !signedIn || !logoutConfirming);
   ui.accountEmailField.classList.toggle('hidden', !presentation.showEmail);
   ui.accountPasswordField.classList.toggle('hidden', !presentation.showPassword);
   ui.accountWarning.classList.toggle('hidden', !presentation.showWarning);
@@ -2083,11 +2333,15 @@ const renderAccount = () => {
   ui.accountSubmit.disabled = accountBusy || localPreview;
   ui.callsignSubmit.disabled = accountBusy || (localPreview && !callsignPreviewMode);
   ui.accountRecovery.disabled = accountBusy || localPreview;
+  ui.accountLogout.disabled = accountBusy || (localPreview && !profilePreviewMode);
+  ui.confirmAccountLogout.disabled = accountBusy || (localPreview && !profilePreviewMode);
+  ui.cancelAccountLogout.disabled = accountBusy;
   ui.accountSubmit.innerHTML = `<i>♛</i> ${presentation.action}`;
   renderSettings();
 };
 
 const openAccount = (mode = 'secure') => {
+  logoutConfirming = false;
   accountMode = mode === 'login' || currentAccountState() === 'expired' ? 'login' : 'secure';
   setAccountStatus(playerAccount.redirectResult?.error || '');
   ui.settingsOverlay.classList.add('hidden');
@@ -2099,6 +2353,7 @@ const openAccount = (mode = 'secure') => {
 
 const closeAccount = () => {
   if (accountBusy) return;
+  logoutConfirming = false;
   ui.accountOverlay.classList.add('hidden');
   ui.settingsOverlay.classList.remove('hidden');
   ui.accountPassword.value = '';
@@ -2151,7 +2406,7 @@ const start = async () => {
   rewardedAdViewing = false;
   lastSponsoredClaimedRunId = '';
   closeRewardedAdOverlay();
-  [ui.menu, ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
+  [ui.menu, ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.redeemOverlay, ui.adminOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pwaUpdateOverlay, ui.pwaInstallOverlay].forEach(element => element.classList.add('hidden'));
   ui.assaultHud.classList.add('hidden');
   document.documentElement.classList.remove('assault-active');
   ui.crateReveal.classList.add('hidden');
@@ -2212,6 +2467,144 @@ ui.assaultArmory.addEventListener('click', () => {
 });
 ui.pauseSettings.addEventListener('click', () => openSettings('pause'));
 ui.closeSettings.addEventListener('click', closeSettings);
+ui.openRedeem.addEventListener('click', openRedeem);
+ui.closeRedeem.addEventListener('click', closeRedeem);
+ui.redeemCode.addEventListener('input', () => {
+  const formatted = formatRewardCodeInput(ui.redeemCode.value);
+  if (ui.redeemCode.value !== formatted) ui.redeemCode.value = formatted;
+  ui.redeemReward.classList.add('hidden');
+  setRedeemStatus();
+});
+ui.redeemForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (redeemBusy || currentAccountState() !== 'signed-in') return;
+  const code = formatRewardCodeInput(ui.redeemCode.value);
+  if (!/^CROWN-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+    setRedeemStatus('ENTER THE COMPLETE CROWN CODE', 'error');
+    ui.redeemCode.focus({ preventScroll: true });
+    return;
+  }
+  redeemBusy = true;
+  ui.redeemSubmit.disabled = true;
+  ui.redeemSubmit.innerHTML = '<i>♛</i> VERIFYING CODE...';
+  ui.redeemReward.classList.add('hidden');
+  setRedeemStatus('CONTACTING CROWN NETWORK...');
+  try {
+    let payload;
+    if (campaignPreviewMode) {
+      await wait(420);
+      const state = shardWallet.getState();
+      state.balance += 250;
+      state.transactions.push({ id: `promo-preview:${Date.now()}`, kind: 'promo_shards', amount: 250, createdAt: new Date().toISOString() });
+      shardWallet.write(state);
+      payload = { redemption: { campaignName: 'LAUNCH REWARD', rewardType: 'shards', rewardAmount: 250 } };
+    } else payload = await playerAccount.redeemRewardCode(code);
+    if (payload.wallet) acceptServerWallet(payload);
+    const reward = payload.redemption || {};
+    ui.redeemRewardAmount.textContent = reward.rewardType === 'crate_credit'
+      ? `+${reward.rewardAmount} FREE CRATE${reward.rewardAmount === 1 ? '' : 'S'}`
+      : `+◆ ${Number(reward.rewardAmount).toLocaleString('en-US')} SHARDS`;
+    ui.redeemRewardCampaign.textContent = `${reward.campaignName || 'CROWN NETWORK'} · DELIVERY COMPLETE`;
+    ui.redeemReward.classList.remove('hidden');
+    ui.redeemCode.value = '';
+    setRedeemStatus('REWARD ADDED TO YOUR SECURE VAULT', 'success');
+    renderShardBalance();
+    renderVault();
+    sfx.play('confirm');
+    triggerHaptic([25, 35, 55]);
+  } catch (error) {
+    setRedeemStatus(String(error?.message || 'CODE COULD NOT BE REDEEMED').toUpperCase(), 'error');
+  } finally {
+    redeemBusy = false;
+    ui.redeemSubmit.disabled = false;
+    ui.redeemSubmit.innerHTML = '<i>♛</i> CLAIM REWARD';
+  }
+});
+ui.openAdmin.addEventListener('click', () => void openAdmin());
+ui.closeAdmin.addEventListener('click', closeAdmin);
+ui.adminCreateTab.addEventListener('click', () => {
+  adminMode = 'create';
+  setAdminStatus();
+  renderAdminMode();
+  ui.adminCampaignName.focus({ preventScroll: true });
+});
+ui.adminCampaignsTab.addEventListener('click', () => {
+  adminMode = 'campaigns';
+  setAdminStatus();
+  renderAdminMode();
+  ui.adminCampaignList.querySelector('button')?.focus({ preventScroll: true });
+});
+ui.adminRewardType.addEventListener('change', () => {
+  const crate = ui.adminRewardType.value === 'crate_credit';
+  ui.adminRewardAmount.min = crate ? '1' : '25';
+  ui.adminRewardAmount.max = crate ? '5' : '2500';
+  ui.adminRewardAmount.value = crate ? '1' : '100';
+});
+ui.adminCodeForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!adminAccess || adminBusy) return;
+  const expiryMs = Date.parse(ui.adminExpiresAt.value);
+  if (!Number.isFinite(expiryMs)) {
+    setAdminStatus('CHOOSE A VALID EXPIRY TIME', 'error');
+    ui.adminExpiresAt.focus({ preventScroll: true });
+    return;
+  }
+  adminBusy = true;
+  ui.adminCreateCode.disabled = true;
+  ui.adminCreateCode.innerHTML = '<i>♛</i> GENERATING...';
+  ui.adminCodeReveal.classList.add('hidden');
+  setAdminStatus('CREATING SERVER CAMPAIGN...');
+  const campaign = {
+    campaignName: ui.adminCampaignName.value,
+    rewardType: ui.adminRewardType.value,
+    rewardAmount: Number(ui.adminRewardAmount.value),
+    maxRedemptions: Number(ui.adminMaxRedemptions.value),
+    expiresAt: new Date(expiryMs).toISOString(),
+    note: ui.adminNote.value,
+  };
+  try {
+    let payload;
+    if (campaignPreviewMode) {
+      await wait(420);
+      const code = previewRewardCode();
+      payload = {
+        code,
+        promo: {
+          id: crypto.randomUUID(), codeHint: `CROWN-****-****-${code.slice(-4)}`,
+          ...campaign, campaignName: campaign.campaignName.trim().toUpperCase(),
+          startsAt: new Date().toISOString(), redeemedCount: 0, status: 'active', createdAt: new Date().toISOString(),
+        },
+      };
+    } else payload = await playerAccount.createRewardCode(campaign);
+    lastCreatedRewardCode = String(payload.code || '');
+    ui.adminCreatedCode.textContent = lastCreatedRewardCode;
+    ui.adminCodeReveal.classList.remove('hidden');
+    if (payload.promo) adminCampaigns.unshift(payload.promo);
+    setAdminStatus('CAMPAIGN LIVE · CODE WILL NOT BE SHOWN AGAIN AFTER YOU LEAVE', 'success');
+    resetAdminForm();
+    renderAdminCampaigns();
+    sfx.play('confirm');
+    triggerHaptic([25, 30, 45]);
+    ui.adminCopyCode.focus({ preventScroll: true });
+  } catch (error) {
+    lastCreatedRewardCode = '';
+    setAdminStatus(String(error?.message || 'CODE COULD NOT BE CREATED').toUpperCase(), 'error');
+  } finally {
+    adminBusy = false;
+    ui.adminCreateCode.disabled = false;
+    ui.adminCreateCode.innerHTML = '<i>♛</i> GENERATE CODE';
+  }
+});
+ui.adminCopyCode.addEventListener('click', async () => {
+  if (!lastCreatedRewardCode) return;
+  try {
+    await navigator.clipboard.writeText(lastCreatedRewardCode);
+    setAdminStatus('CODE COPIED · STORE IT SOMEWHERE SAFE', 'success');
+    ui.adminCopyCode.innerHTML = '<i>♛</i> CODE COPIED';
+  } catch {
+    setAdminStatus('COPY BLOCKED · SELECT THE CODE ABOVE', 'error');
+  }
+});
 ui.installApp.addEventListener('click', async () => {
   const result = await pwaManager?.install();
   if (result === 'instructions') openPwaInstallHelp();
@@ -2231,6 +2624,65 @@ ui.applyPwaUpdate.addEventListener('click', async () => {
 });
 ui.openAccount.addEventListener('click', () => openAccount());
 ui.closeAccount.addEventListener('click', closeAccount);
+ui.accountLogout.addEventListener('click', () => {
+  if (accountBusy || (localPreview && !profilePreviewMode) || currentAccountState() !== 'signed-in') return;
+  logoutConfirming = true;
+  setAccountStatus();
+  renderAccount();
+  ui.confirmAccountLogout.focus({ preventScroll: true });
+});
+ui.cancelAccountLogout.addEventListener('click', () => {
+  if (accountBusy) return;
+  logoutConfirming = false;
+  renderAccount();
+  ui.accountLogout.focus({ preventScroll: true });
+});
+ui.confirmAccountLogout.addEventListener('click', async () => {
+  if (accountBusy || (localPreview && !profilePreviewMode) || currentAccountState() !== 'signed-in') return;
+  accountBusy = true;
+  setAccountStatus('LOGGING OUT ON THIS DEVICE...');
+  renderAccount();
+  if (profilePreviewMode) {
+    await wait(320);
+    accountPreviewSignedOut = true;
+    playerProfile = null;
+    profileStatus = 'ready';
+    logoutConfirming = false;
+    accountBusy = false;
+    setAccountStatus('SIGNED OUT · YOUR CLOUD VAULT IS SAFE', 'success');
+    renderAccount();
+    return;
+  }
+  const logoutPromise = playerAccount.logout();
+  playerProfile = null;
+  profileStatus = 'ready';
+  serverWallet = null;
+  serverEconomyReady = false;
+  armory = null;
+  storeCatalog = [];
+  storeCatalogLoaded = false;
+  adminAccess = false;
+  adminAccessChecked = false;
+  adminCampaigns = [];
+  lastCreatedRewardCode = '';
+  logoutConfirming = false;
+  renderShardBalance();
+  renderVault();
+  applyEquippedCosmetics();
+  renderSettings();
+  renderAccount();
+  try {
+    await logoutPromise;
+    if (serverEconomy) await connectServerEconomy();
+    setAccountStatus('SIGNED OUT · YOUR CLOUD VAULT IS SAFE', 'success');
+    sfx.play('confirm');
+  } catch {
+    setAccountStatus('SIGNED OUT · GUEST VAULT TEMPORARILY OFFLINE', 'error');
+  } finally {
+    accountBusy = false;
+    renderAccount();
+  }
+});
 ui.accountSecureTab.addEventListener('click', () => {
   accountMode = 'secure';
   ui.accountPassword.value = '';
@@ -2254,14 +2706,14 @@ ui.accountForm.addEventListener('submit', async event => {
     const passwordSetup = currentAccountState() === 'setup';
     if (passwordSetup) {
       await playerAccount.setPassword(ui.accountPassword.value);
-      await refreshPlayerProfile().catch(() => null);
+      await Promise.allSettled([refreshPlayerProfile(), refreshAdminAccess()]);
       ui.accountPassword.value = '';
       setAccountStatus(profileStatus === 'error' ? 'ACCOUNT SECURED · PLAYER ID TEMPORARILY OFFLINE' : accountPresentation().showCallsign ? 'ACCOUNT SECURED · CHOOSE YOUR CALLSIGN' : 'ACCOUNT SECURED · PASSWORD SAVED', profileStatus === 'error' ? 'error' : 'success');
     } else if (accountMode === 'login') {
       const snapshot = await playerAccount.login(ui.accountEmail.value, ui.accountPassword.value);
       acceptServerWallet(snapshot);
       serverEconomyReady = true;
-      await refreshPlayerProfile().catch(() => null);
+      await Promise.allSettled([refreshPlayerProfile(), refreshAdminAccess()]);
       ui.accountPassword.value = '';
       renderShardBalance();
       renderVault();
@@ -2616,6 +3068,8 @@ addEventListener('keydown', event => {
   else if (!ui.wardenOverlay.classList.contains('hidden')) closeWarden();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
   else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
+  else if (!ui.adminOverlay.classList.contains('hidden')) closeAdmin();
+  else if (!ui.redeemOverlay.classList.contains('hidden')) closeRedeem();
   else if (!ui.accountOverlay.classList.contains('hidden')) closeAccount();
   else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
@@ -2650,7 +3104,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.redeemOverlay.classList.contains('hidden') || !ui.adminOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();

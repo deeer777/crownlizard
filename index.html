@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260828-91-weapon-skins5">
+  <link rel="stylesheet" href="./styles.css?v=20260828-93-crown-control">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -220,6 +220,8 @@
         <button id="openAccount" type="button"><span>PLAYER ACCOUNT</span><b id="accountBadge">GUEST</b></button>
         <button id="openOwnProfile" class="hidden" type="button"><span>MY PILOT FILE</span><b>VIEW</b></button>
         <button id="profileVisibility" class="hidden" type="button" aria-pressed="true"><span>PUBLIC PILOT PROFILE</span><b>ON</b></button>
+        <button id="openRedeem" class="hidden" type="button"><span>REDEEM CODE</span><b>ACCOUNT</b></button>
+        <button id="openAdmin" class="hidden owner-setting" type="button"><span>CROWN CONTROL</span><b>OWNER</b></button>
         <a href="/how-to-play/" target="_blank" rel="noopener"><span>GAME GUIDE &amp; INFO</span><b>OPEN</b></a>
         <button data-setting="music"><span>MUSIC</span><b>ON</b></button>
         <button data-setting="sfx"><span>SOUND FX</span><b>ON</b></button>
@@ -286,9 +288,79 @@
         <p>3–10 CHARACTERS · A–Z · 0–9 · _</p>
         <button id="callsignSubmit" class="system-action" type="submit"><i>♛</i> CLAIM CALLSIGN</button>
       </form>
+      <div id="accountSignedInActions" class="account-signed-in-actions hidden">
+        <button id="accountLogout" class="system-action danger-link" type="button"><i>♛</i> LOG OUT</button>
+      </div>
+      <div id="accountLogoutConfirm" class="account-logout-confirm hidden" role="alert">
+        <strong>LOG OUT ON THIS DEVICE?</strong>
+        <p>YOUR CALLSIGN, SHARDS AND COLLECTION STAY SAFE IN THE CLOUD.</p>
+        <button id="confirmAccountLogout" class="system-action danger-link" type="button"><i>♛</i> LOG OUT</button>
+        <button id="cancelAccountLogout" class="system-link" type="button">CANCEL</button>
+      </div>
       <p id="accountFormStatus" class="account-form-status" role="status"></p>
       <p id="accountWarning" class="account-warning hidden">SIGNING IN LOADS THAT ACCOUNT'S VAULT. GUEST PROGRESS IS NOT MERGED.</p>
       <button id="closeAccount" class="system-link" type="button">BACK TO SETTINGS</button>
+    </div>
+  </section>
+
+  <section id="redeemOverlay" class="overlay system-overlay redeem-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="redeemTitle">
+    <div class="system-panel redeem-panel">
+      <div class="eyebrow">CROWN NETWORK · SECURE SIGNAL</div>
+      <h2 id="redeemTitle">REDEEM CODE</h2>
+      <div class="redeem-intro">
+        <i aria-hidden="true">◆</i>
+        <p>ENTER A CROWN CODE TO CLAIM ITS REWARD. EACH CODE CAN BE USED ONCE PER ACCOUNT.</p>
+      </div>
+      <form id="redeemForm" class="redeem-form">
+        <label for="redeemCode">CROWN CODE</label>
+        <input id="redeemCode" name="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="22" placeholder="CROWN-XXXX-XXXX-XXXX" required>
+        <button id="redeemSubmit" class="system-action" type="submit"><i>♛</i> CLAIM REWARD</button>
+      </form>
+      <div id="redeemReward" class="redeem-reward hidden" aria-live="polite">
+        <span aria-hidden="true">♛</span>
+        <small>REWARD VERIFIED</small>
+        <strong id="redeemRewardAmount">+◆ 0 SHARDS</strong>
+        <p id="redeemRewardCampaign">CROWN NETWORK DELIVERY COMPLETE</p>
+      </div>
+      <p id="redeemStatus" class="redeem-status" role="status"></p>
+      <button id="closeRedeem" class="system-action" type="button"><i>♛</i> BACK TO SETTINGS</button>
+    </div>
+  </section>
+
+  <section id="adminOverlay" class="overlay system-overlay admin-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="adminTitle">
+    <div class="system-panel admin-panel">
+      <div class="eyebrow">OWNER CONSOLE · SERVER VERIFIED</div>
+      <h2 id="adminTitle">CROWN CONTROL</h2>
+      <div class="admin-tabs" role="tablist" aria-label="Crown Control section">
+        <button id="adminCreateTab" class="selected" type="button" role="tab" aria-selected="true"><i>♛</i> CREATE CODE</button>
+        <button id="adminCampaignsTab" type="button" role="tab" aria-selected="false"><i>♛</i> CAMPAIGNS</button>
+      </div>
+      <div id="adminCreatePanel" class="admin-tab-panel" role="tabpanel">
+        <form id="adminCodeForm" class="admin-code-form">
+          <label>CAMPAIGN NAME<input id="adminCampaignName" type="text" maxlength="48" placeholder="LAUNCH REWARD" required></label>
+          <div class="admin-field-row">
+            <label>REWARD<select id="adminRewardType"><option value="shards">SHARDS</option><option value="crate_credit">FREE CRATE</option></select></label>
+            <label>AMOUNT<input id="adminRewardAmount" type="number" inputmode="numeric" min="25" max="2500" value="100" required></label>
+          </div>
+          <div class="admin-field-row">
+            <label>TOTAL USES<input id="adminMaxRedemptions" type="number" inputmode="numeric" min="1" max="100000" value="100" required></label>
+            <label>EXPIRES<input id="adminExpiresAt" type="datetime-local" required></label>
+          </div>
+          <label>PRIVATE NOTE · OPTIONAL<input id="adminNote" type="text" maxlength="160" placeholder="WHY THIS CODE EXISTS"></label>
+          <button id="adminCreateCode" class="system-action" type="submit"><i>♛</i> GENERATE CODE</button>
+        </form>
+        <div id="adminCodeReveal" class="admin-code-reveal hidden" aria-live="polite">
+          <small>CODE SHOWN ONCE · COPY IT NOW</small>
+          <strong id="adminCreatedCode">CROWN-XXXX-XXXX-XXXX</strong>
+          <button id="adminCopyCode" class="system-action" type="button"><i>♛</i> COPY CODE</button>
+        </div>
+      </div>
+      <div id="adminCampaignsPanel" class="admin-tab-panel hidden" role="tabpanel">
+        <div class="admin-campaign-heading"><span>SERVER CAMPAIGNS</span><b id="adminCampaignCount">0</b></div>
+        <div id="adminCampaignList" class="admin-campaign-list"></div>
+      </div>
+      <p id="adminStatus" class="admin-status" role="status"></p>
+      <button id="closeAdmin" class="system-action" type="button"><i>♛</i> BACK TO SETTINGS</button>
     </div>
   </section>
 
@@ -516,6 +588,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260828-91-weapon-skins4"></script>
+  <script type="module" src="./src/main.js?v=20260828-93-crown-control"></script>
 </body>
 </html>
