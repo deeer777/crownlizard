@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260829-94-market-mvp';
+import { CONFIG } from './config.js?v=20260830-95-score-fix';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
 import { Game } from './game.js?v=20260828-91-weapon-skins4';
-import { ShardWallet } from './economy.js?v=20260829-94-market-mvp';
+import { ShardWallet } from './economy.js?v=20260830-95-score-fix';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260829-94-market-mvp';
+import { PlayerAccount } from './player-account.js?v=20260830-95-score-fix';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
@@ -48,8 +48,9 @@ const ui = {
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   pilotProfileOverlay: $('pilotProfileOverlay'), pilotProfileLoading: $('pilotProfileLoading'), pilotProfileContent: $('pilotProfileContent'), pilotProfileShip: $('pilotProfileShip'), pilotProfileName: $('pilotProfileName'), pilotProfileJoined: $('pilotProfileJoined'), pilotProfileArsenal: $('pilotProfileArsenal'), pilotBestChill: $('pilotBestChill'), pilotBestArcade: $('pilotBestArcade'), pilotBestCrowned: $('pilotBestCrowned'), pilotHighestZone: $('pilotHighestZone'), pilotQualifiedRuns: $('pilotQualifiedRuns'), pilotBossBest: $('pilotBossBest'), pilotBossTotal: $('pilotBossTotal'), pilotProfileStatus: $('pilotProfileStatus'), pilotProfileShareStatus: $('pilotProfileShareStatus'), sharePilotProfile: $('sharePilotProfile'), closePilotProfile: $('closePilotProfile'),
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultCollectionTitle: $('vaultCollectionTitle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultMarketTab: $('vaultMarketTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), vaultMarket: $('vaultMarket'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'), cosmeticCategoryTabs: [...document.querySelectorAll('[data-cosmetic-category]')],
-  marketBrowseTab: $('marketBrowseTab'), marketSellTab: $('marketSellTab'), marketMineTab: $('marketMineTab'), marketCatalog: $('marketCatalog'), marketStatus: $('marketStatus'), marketConfirm: $('marketConfirm'), marketConfirmForm: $('marketConfirmForm'), marketConfirmImage: $('marketConfirmImage'), marketConfirmTitle: $('marketConfirmTitle'), marketConfirmCopy: $('marketConfirmCopy'), marketPriceLabel: $('marketPriceLabel'), marketPriceInput: $('marketPriceInput'), marketConfirmHint: $('marketConfirmHint'), marketConfirmStatus: $('marketConfirmStatus'), marketConfirmSubmit: $('marketConfirmSubmit'), closeMarketConfirm: $('closeMarketConfirm'),
+  marketBrowseTab: $('marketBrowseTab'), marketSellTab: $('marketSellTab'), marketMineTab: $('marketMineTab'), marketActivityTab: $('marketActivityTab'), marketCatalog: $('marketCatalog'), marketActivity: $('marketActivity'), marketStatus: $('marketStatus'), marketConfirm: $('marketConfirm'), marketConfirmForm: $('marketConfirmForm'), marketConfirmImage: $('marketConfirmImage'), marketConfirmTitle: $('marketConfirmTitle'), marketConfirmCopy: $('marketConfirmCopy'), marketPriceLabel: $('marketPriceLabel'), marketPriceInput: $('marketPriceInput'), marketConfirmHint: $('marketConfirmHint'), marketConfirmStatus: $('marketConfirmStatus'), marketConfirmSubmit: $('marketConfirmSubmit'), closeMarketConfirm: $('closeMarketConfirm'),
   marketFilters: $('marketFilters'), marketCategoryFilter: $('marketCategoryFilter'), marketRarityFilter: $('marketRarityFilter'), marketSortFilter: $('marketSortFilter'), marketHideOwned: $('marketHideOwned'),
+  marketSignalBadge: $('marketSignalBadge'), marketSaleSignal: $('marketSaleSignal'), marketSaleSignalImage: $('marketSaleSignalImage'), marketSaleSignalTitle: $('marketSaleSignalTitle'), marketSaleSignalCopy: $('marketSaleSignalCopy'), marketSaleSignalAmount: $('marketSaleSignalAmount'), acknowledgeMarketSignal: $('acknowledgeMarketSignal'),
   storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
   storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
   wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenAssaultHint: $('wardenAssaultHint'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), wardenBriefingEyebrow: $('wardenBriefingEyebrow'), wardenBriefingTitle: $('wardenBriefingTitle'), wardenBriefingCopy: $('wardenBriefingCopy'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), bossRewardGrid: $('bossRewardGrid'), bossRewardProgress: $('bossRewardProgress'), bossRewardStatus: $('bossRewardStatus'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
@@ -301,7 +302,7 @@ let storeCatalogLoaded = localPreview;
 let storeCatalogLoading = false;
 let storeBusySku = '';
 let storeMessage = '';
-let marketData = { rules: { feePercent: 10, maxActiveListings: 5 }, listings: [], myListings: [] };
+let marketData = { rules: { feePercent: 10, maxActiveListings: 5, listingDays: 7 }, listings: [], myListings: [], activity: [], signals: [] };
 let marketLoaded = false;
 let marketLoading = false;
 let marketMode = 'browse';
@@ -864,15 +865,85 @@ const loadCrownStore = async () => {
 };
 
 const marketBounds = rarity => ({ uncommon: [50, 750], rare: [100, 1500], royal: [200, 3000], mythic: [400, 6000], sovereign: [1000, 15000] }[rarity] || [50, 15000]);
-const previewMarket = () => ({
-  rules: { feePercent: 10, maxActiveListings: 5 },
-  listings: [
-    { id: 'preview-1', cosmeticId: 'ship_void_hunter', price: 430, rarity: 'rare', sellerName: 'NOVA_7', createdAt: new Date().toISOString() },
-    { id: 'preview-2', cosmeticId: 'weapon_laser_void_lance', price: 3250, rarity: 'mythic', sellerName: 'RIFTKING', createdAt: new Date().toISOString() },
-    { id: 'preview-3', cosmeticId: 'ship_royal_vanguard', price: 1750, rarity: 'royal', sellerName: 'PIXELFOX', createdAt: new Date().toISOString() },
-  ],
-  myListings: [],
-});
+const previewMarket = () => {
+  const now = Date.now();
+  const expiresAt = new Date(now + 7 * 86400000).toISOString();
+  return {
+    rules: { feePercent: 10, maxActiveListings: 5, listingDays: 7 },
+    listings: [
+      { id: 'preview-1', cosmeticId: 'ship_void_hunter', price: 430, rarity: 'rare', sellerName: 'NOVA_7', createdAt: new Date(now - 3200000).toISOString(), expiresAt },
+      { id: 'preview-2', cosmeticId: 'weapon_laser_void_lance', price: 3250, rarity: 'mythic', sellerName: 'RIFTKING', createdAt: new Date(now - 7300000).toISOString(), expiresAt },
+      { id: 'preview-3', cosmeticId: 'ship_royal_vanguard', price: 1750, rarity: 'royal', sellerName: 'PIXELFOX', createdAt: new Date(now - 9200000).toISOString(), expiresAt },
+    ],
+    myListings: [],
+    activity: [
+      { id: 'preview-activity-1', kind: 'sold', cosmeticId: 'ship_ember_runner', amount: 675, fee: 75, counterparty: 'BYTEFOX', occurredAt: new Date(now - 5400000).toISOString() },
+      { id: 'preview-activity-2', kind: 'bought', cosmeticId: 'weapon_tesla_storm_crown', amount: -980, fee: 0, counterparty: 'NOVA_7', occurredAt: new Date(now - 86400000).toISOString() },
+      { id: 'preview-activity-3', kind: 'expired', cosmeticId: 'ship_crystal_dart', amount: 0, fee: 0, counterparty: null, occurredAt: new Date(now - 172800000).toISOString() },
+    ],
+    signals: [
+      { id: '123e4567-e89b-42d3-a456-426614174010', cosmeticId: 'ship_ember_runner', price: 750, fee: 75, sellerPayout: 675, buyerName: 'BYTEFOX', createdAt: new Date(now - 5400000).toISOString() },
+    ],
+  };
+};
+
+const marketTimeLeft = expiresAt => {
+  const remaining = Date.parse(expiresAt || '') - Date.now();
+  if (!Number.isFinite(remaining) || remaining <= 0) return 'EXPIRING';
+  if (remaining >= 86400000) return `${Math.ceil(remaining / 86400000)}D LEFT`;
+  return `${Math.max(1, Math.ceil(remaining / 3600000))}H LEFT`;
+};
+
+const marketAge = occurredAt => {
+  const elapsed = Math.max(0, Date.now() - Date.parse(occurredAt || ''));
+  if (!Number.isFinite(elapsed) || elapsed < 3600000) return 'JUST NOW';
+  if (elapsed < 86400000) return `${Math.floor(elapsed / 3600000)}H AGO`;
+  return `${Math.floor(elapsed / 86400000)}D AGO`;
+};
+
+const renderMarketSignal = () => {
+  const signals = marketData.signals || [];
+  const latest = signals.at(-1);
+  const visible = Boolean(latest);
+  ui.marketSaleSignal.classList.toggle('hidden', !visible);
+  ui.marketSignalBadge.classList.toggle('hidden', !visible);
+  if (!latest) return;
+  const cosmetic = COSMETIC_BY_ID[latest.cosmeticId];
+  const payout = signals.reduce((sum, signal) => sum + Math.max(0, Number(signal.sellerPayout) || 0), 0);
+  ui.marketSaleSignal.style.setProperty('--tier-color', RARITY_BY_KEY[cosmetic?.rarity]?.color || '#ffd36b');
+  ui.marketSaleSignalImage.src = cosmetic ? cosmeticSpriteUrl(cosmetic) : '';
+  ui.marketSaleSignalImage.alt = cosmetic?.name || 'Sold cosmetic';
+  ui.marketSaleSignalTitle.textContent = signals.length === 1 ? `${cosmetic?.name || 'ITEM'} SOLD` : `${signals.length} ITEMS SOLD`;
+  ui.marketSaleSignalCopy.textContent = signals.length === 1
+    ? `PILOT ${latest.buyerName} · ◆ ${latest.fee.toLocaleString('en-US')} MARKET FEE`
+    : `LATEST: ${cosmetic?.name || 'ITEM'} · ALL PAYOUTS ALREADY SECURED`;
+  ui.marketSaleSignalAmount.textContent = `+ ◆ ${payout.toLocaleString('en-US')}`;
+  ui.acknowledgeMarketSignal.disabled = marketBusy;
+  ui.acknowledgeMarketSignal.innerHTML = `<i>♛</i> ${marketBusy ? 'SYNCING...' : 'ACKNOWLEDGE'}`;
+};
+
+const renderMarketActivity = () => {
+  const labels = { bought: 'BOUGHT', sold: 'SOLD', cancelled: 'CANCELLED', expired: 'EXPIRED' };
+  const rows = (marketData.activity || []).map(item => {
+    const cosmetic = COSMETIC_BY_ID[item.cosmeticId]; if (!cosmetic) return null;
+    const row = document.createElement('article'); row.className = `market-activity-row ${item.kind}`;
+    row.style.setProperty('--tier-color', RARITY_BY_KEY[cosmetic.rarity]?.color || '#9dfbe0');
+    const image = document.createElement('img'); image.src = cosmeticSpriteUrl(cosmetic); image.alt = '';
+    const copy = document.createElement('div');
+    const label = document.createElement('small'); label.textContent = labels[item.kind] || 'MARKET';
+    const name = document.createElement('strong'); name.textContent = cosmetic.name;
+    const detail = document.createElement('span');
+    detail.textContent = item.kind === 'sold' ? `TO ${item.counterparty || 'PILOT'} · FEE ◆ ${item.fee.toLocaleString('en-US')}`
+      : item.kind === 'bought' ? `FROM ${item.counterparty || 'PILOT'}`
+        : item.kind === 'expired' ? 'ITEM RETURNED TO COLLECTION' : 'ITEM RETURNED';
+    copy.append(label, name, detail);
+    const value = document.createElement('div'); value.className = 'market-activity-value';
+    const amount = document.createElement('b'); amount.textContent = item.amount ? `${item.amount > 0 ? '+' : '−'} ◆ ${Math.abs(item.amount).toLocaleString('en-US')}` : '◆ 0';
+    const age = document.createElement('em'); age.textContent = marketAge(item.occurredAt);
+    value.append(amount, age); row.append(image, copy, value); return row;
+  }).filter(Boolean);
+  ui.marketActivity.replaceChildren(...rows);
+};
 
 const openMarketOrder = (type, item) => {
   const cosmetic = COSMETIC_BY_ID[item.cosmeticId];
@@ -882,7 +953,7 @@ const openMarketOrder = (type, item) => {
   ui.marketConfirmImage.src = cosmeticSpriteUrl(cosmetic);
   ui.marketConfirmImage.alt = cosmetic.name;
   ui.marketConfirmTitle.textContent = type === 'list' ? `LIST ${cosmetic.name}` : type === 'cancel' ? `CANCEL ${cosmetic.name}` : `BUY ${cosmetic.name}`;
-  ui.marketConfirmCopy.textContent = type === 'list' ? 'SET A SHARD PRICE. THE ITEM IS RESERVED UNTIL SOLD OR CANCELLED.' : type === 'cancel' ? 'RETURN THIS ITEM TO YOUR COLLECTION?' : `BUY FROM ${item.sellerName} FOR ◆ ${item.price.toLocaleString('en-US')}?`;
+  ui.marketConfirmCopy.textContent = type === 'list' ? 'SET A SHARD PRICE. THE ITEM IS RESERVED FOR 7 DAYS OR UNTIL SOLD OR CANCELLED.' : type === 'cancel' ? 'RETURN THIS ITEM TO YOUR COLLECTION?' : `BUY FROM ${item.sellerName} FOR ◆ ${item.price.toLocaleString('en-US')}?`;
   ui.marketPriceLabel.classList.toggle('hidden', type !== 'list');
   const [minimum, maximum] = marketBounds(cosmetic.rarity);
   ui.marketPriceInput.min = String(minimum); ui.marketPriceInput.max = String(maximum); ui.marketPriceInput.value = String(Math.round((minimum + maximum) / 2));
@@ -895,11 +966,13 @@ const openMarketOrder = (type, item) => {
 
 const renderMarket = () => {
   const state = walletState();
-  [ui.marketBrowseTab, ui.marketSellTab, ui.marketMineTab].forEach((tab, index) => {
-    const selected = ['browse', 'sell', 'mine'][index] === marketMode;
+  [ui.marketBrowseTab, ui.marketSellTab, ui.marketMineTab, ui.marketActivityTab].forEach((tab, index) => {
+    const selected = ['browse', 'sell', 'mine', 'activity'][index] === marketMode;
     tab.classList.toggle('selected', selected); tab.setAttribute('aria-selected', String(selected));
   });
   ui.marketFilters.classList.toggle('hidden', marketMode !== 'browse');
+  ui.marketCatalog.classList.toggle('hidden', marketMode === 'activity');
+  ui.marketActivity.classList.toggle('hidden', marketMode !== 'activity');
   ui.marketCategoryFilter.value = marketCategoryFilter;
   ui.marketRarityFilter.value = marketRarityFilter;
   ui.marketSortFilter.value = marketSortFilter;
@@ -923,7 +996,8 @@ const renderMarket = () => {
         : newestFirst);
   }
   if (marketMode === 'sell') items = CRATE_COSMETICS.filter(cosmetic => state.inventory.cosmetics[cosmetic.id]).map(cosmetic => ({ cosmeticId: cosmetic.id, rarity: cosmetic.rarity, sellable: true }));
-  if (marketMode === 'mine') items = marketData.myListings;
+  if (marketMode === 'mine') items = marketData.myListings.filter(item => item.status === 'active');
+  if (marketMode === 'activity') items = [];
   const cards = items.map(item => {
     const cosmetic = COSMETIC_BY_ID[item.cosmeticId]; if (!cosmetic) return null;
     const tier = RARITY_BY_KEY[cosmetic.rarity]; const card = document.createElement('button'); card.type = 'button';
@@ -931,14 +1005,23 @@ const renderMarket = () => {
     const owned = Boolean(state.inventory.cosmetics[cosmetic.id]);
     card.className = `market-card${active ? '' : ' market-final'}${marketMode === 'browse' && owned ? ' owned' : ''}`; card.style.setProperty('--tier-color', tier.color); card.dataset.cosmeticId = cosmetic.id;
     const mine = marketMode === 'mine'; const equipped = equippedCosmeticId(state, cosmetic) === cosmetic.id;
-    card.innerHTML = `<img src="${cosmeticSpriteUrl(cosmetic)}" alt=""><span><small>${tier.name}${item.status ? ` · ${item.status.toUpperCase()}` : ''}</small><strong>${cosmetic.name}</strong><em>${item.sellerName ? `PILOT ${item.sellerName}` : cosmetic.slot === 'ship' ? 'SHIP CHASSIS' : `${cosmetic.weaponKey.toUpperCase()} SKIN`}</em><b>${item.sellable ? equipped ? 'EQUIPPED · UNEQUIP TO SELL' : 'SET YOUR PRICE' : mine ? active ? `CANCEL · ◆ ${item.price.toLocaleString('en-US')}` : `◆ ${item.price.toLocaleString('en-US')}` : owned ? 'OWNED · NOT AVAILABLE' : `BUY · ◆ ${item.price.toLocaleString('en-US')}`}</b></span>`;
+    const descriptor = item.sellerName ? `PILOT ${item.sellerName}` : cosmetic.slot === 'ship' ? 'SHIP CHASSIS' : `${cosmetic.weaponKey.toUpperCase()} SKIN`;
+    const expiry = item.expiresAt ? marketTimeLeft(item.expiresAt) : '';
+    card.innerHTML = `<img src="${cosmeticSpriteUrl(cosmetic)}" alt=""><span><small>${tier.name}${item.status ? ` · ${item.status.toUpperCase()}` : ''}</small><strong>${cosmetic.name}</strong><em>${descriptor}${expiry ? ` · ${expiry}` : ''}</em><b>${item.sellable ? equipped ? 'EQUIPPED · UNEQUIP TO SELL' : 'SET YOUR PRICE' : mine ? active ? `CANCEL · ◆ ${item.price.toLocaleString('en-US')}` : `◆ ${item.price.toLocaleString('en-US')}` : owned ? 'OWNED · NOT AVAILABLE' : `BUY · ◆ ${item.price.toLocaleString('en-US')}`}</b></span>`;
     card.disabled = marketBusy || (item.sellable && equipped) || (mine && !active) || (marketMode === 'browse' && owned);
     card.addEventListener('click', () => openMarketOrder(item.sellable ? 'list' : mine ? 'cancel' : 'buy', item));
     return card;
   }).filter(Boolean);
   ui.marketCatalog.replaceChildren(...cards);
+  renderMarketActivity();
+  renderMarketSignal();
   const filtersActive = marketCategoryFilter !== 'all' || marketRarityFilter !== 'all' || marketHideOwned;
-  ui.marketStatus.textContent = marketLoading ? 'MARKET SIGNAL CONNECTING...' : !cards.length ? (marketMode === 'sell' ? 'NO UNEQUIPPED CRATE COSMETICS READY TO SELL' : marketMode === 'mine' ? 'YOU HAVE NO MARKET LISTINGS' : filtersActive ? 'NO LISTINGS MATCH THESE FILTERS' : 'NO ACTIVE LISTINGS · CHECK BACK SOON') : marketMode === 'browse' ? `${cards.length} OF ${marketData.listings.length} LISTINGS · THE MARKET SETS THE PRICE` : marketMode === 'sell' ? 'SELECT AN ITEM · YOU SET THE PRICE' : 'ACTIVE LISTINGS CAN BE CANCELLED AT ANY TIME';
+  const activityCount = marketData.activity?.length || 0;
+  ui.marketStatus.textContent = marketLoading ? 'MARKET SIGNAL CONNECTING...'
+    : marketMode === 'activity' ? (activityCount ? `${activityCount} RECENT MARKET EVENTS · SERVER VERIFIED` : 'NO MARKET ACTIVITY YET')
+      : !cards.length ? (marketMode === 'sell' ? 'NO UNEQUIPPED CRATE COSMETICS READY TO SELL' : marketMode === 'mine' ? 'YOU HAVE NO ACTIVE LISTINGS' : filtersActive ? 'NO LISTINGS MATCH THESE FILTERS' : 'NO ACTIVE LISTINGS · CHECK BACK SOON')
+        : marketMode === 'browse' ? `${cards.length} OF ${marketData.listings.length} LISTINGS · THE MARKET SETS THE PRICE`
+          : marketMode === 'sell' ? 'SELECT AN ITEM · LISTINGS EXPIRE AFTER 7 DAYS' : 'ACTIVE LISTINGS CAN BE CANCELLED AT ANY TIME';
 };
 
 const loadCrownMarket = async () => {
@@ -1292,6 +1375,12 @@ const renderSettings = () => {
     if (button.dataset.setting === 'dashSide') {
       button.setAttribute('aria-pressed', String(dashSide === 'left'));
       button.querySelector('b').textContent = dashSide.toUpperCase();
+      return;
+    }
+    if (button.dataset.setting === 'haptics' && !hapticsSupported) {
+      button.disabled = true;
+      button.setAttribute('aria-pressed', 'false');
+      button.querySelector('b').textContent = 'UNAVAILABLE';
       return;
     }
     const enabled = values[button.dataset.setting];
@@ -1650,12 +1739,6 @@ const prepareScoreEntry = (score, summary) => {
       ui.playerInitials.required = false;
       ui.scoreEntry.classList.remove('hidden');
       ui.scoreSubmitStatus.textContent = 'CHOOSE A CALLSIGN IN PLAYER ACCOUNT TO SUBMIT';
-      return;
-    }
-    if (button.dataset.setting === 'haptics' && !hapticsSupported) {
-      button.disabled = true;
-      button.setAttribute('aria-pressed', 'false');
-      button.querySelector('b').textContent = 'UNAVAILABLE';
       return;
     }
     scoreTicket.callsign = accountCallsign;
@@ -2910,10 +2993,10 @@ ui.vaultMarketTab.addEventListener('click', () => {
   ui.marketBrowseTab.focus({ preventScroll: true });
   sfx.play('confirm');
 });
-[ui.marketBrowseTab, ui.marketSellTab, ui.marketMineTab].forEach((tab, index) => tab.addEventListener('click', () => {
-  marketMode = ['browse', 'sell', 'mine'][index];
+[ui.marketBrowseTab, ui.marketSellTab, ui.marketMineTab, ui.marketActivityTab].forEach((tab, index) => tab.addEventListener('click', () => {
+  marketMode = ['browse', 'sell', 'mine', 'activity'][index];
   renderMarket();
-  ui.marketCatalog.querySelector('button')?.focus({ preventScroll: true });
+  if (marketMode !== 'activity') ui.marketCatalog.querySelector('button')?.focus({ preventScroll: true });
   sfx.play('confirm');
 }));
 ui.marketCategoryFilter.addEventListener('change', () => {
@@ -2932,6 +3015,20 @@ ui.marketHideOwned.addEventListener('click', () => {
   marketHideOwned = !marketHideOwned;
   renderMarket();
   sfx.play('confirm');
+});
+ui.acknowledgeMarketSignal.addEventListener('click', async () => {
+  const saleIds = (marketData.signals || []).map(signal => signal.id);
+  if (marketBusy || !saleIds.length) return;
+  try {
+    marketBusy = true; renderMarketSignal();
+    if (!localPreview) await playerAccount.acknowledgeMarketSignals(saleIds);
+    marketData.signals = [];
+    renderMarket(); sfx.play('confirm'); triggerHaptic(35);
+  } catch {
+    ui.acknowledgeMarketSignal.innerHTML = '<i>♛</i> TRY AGAIN';
+  } finally {
+    marketBusy = false; renderMarketSignal();
+  }
 });
 ui.cosmeticCategoryTabs.forEach(tab => tab.addEventListener('click', () => {
   vaultCategory = tab.dataset.cosmeticCategory;
@@ -2978,18 +3075,24 @@ ui.marketConfirmForm.addEventListener('submit', async event => {
       if (!ui.marketPriceInput.reportValidity()) throw Object.assign(new Error('Price outside rarity range.'), { code: 'PRICE_OUT_OF_RANGE' });
       if (localPreview) {
         shardWallet.previewMarketList(item.cosmeticId);
-        marketData.myListings.unshift({ id: `preview-mine-${Date.now()}`, cosmeticId: item.cosmeticId, price, status: 'active', createdAt: new Date().toISOString() });
+        marketData.myListings.unshift({ id: `preview-mine-${Date.now()}`, cosmeticId: item.cosmeticId, price, status: 'active', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 7 * 86400000).toISOString() });
       } else {
         const result = await playerAccount.createMarketListing(item.cosmeticId, price); acceptServerWallet(result); marketData = result.market;
       }
       ui.marketConfirmStatus.textContent = `LISTED FOR ◆ ${price.toLocaleString('en-US')}`;
     } else if (type === 'buy') {
-      if (localPreview) { shardWallet.previewMarketBuy(item.cosmeticId, item.price); marketData.listings = marketData.listings.filter(listing => listing.id !== item.id); }
+      if (localPreview) {
+        shardWallet.previewMarketBuy(item.cosmeticId, item.price); marketData.listings = marketData.listings.filter(listing => listing.id !== item.id);
+        marketData.activity.unshift({ id: `preview-buy-${Date.now()}`, kind: 'bought', cosmeticId: item.cosmeticId, amount: -item.price, fee: 0, counterparty: item.sellerName, occurredAt: new Date().toISOString() });
+      }
       else { const result = await playerAccount.buyMarketListing(item.id); acceptServerWallet(result); marketData = result.market; }
       ui.marketConfirmStatus.textContent = 'PURCHASE COMPLETE · ADDED TO COLLECTION';
       purchaseCompleted = true;
     } else {
-      if (localPreview) { shardWallet.previewMarketCancel(item.cosmeticId); item.status = 'cancelled'; }
+      if (localPreview) {
+        shardWallet.previewMarketCancel(item.cosmeticId); item.status = 'cancelled';
+        marketData.activity.unshift({ id: `preview-cancel-${Date.now()}`, kind: 'cancelled', cosmeticId: item.cosmeticId, amount: 0, fee: 0, counterparty: null, occurredAt: new Date().toISOString() });
+      }
       else { const result = await playerAccount.cancelMarketListing(item.id); acceptServerWallet(result); marketData = result.market; }
       ui.marketConfirmStatus.textContent = 'LISTING CANCELLED · ITEM RETURNED';
     }

@@ -50,6 +50,9 @@ assert.match(schema, /before insert on public\.leaderboard_scores[\s\S]*fill_leg
 assert.match(indexSource, /id="scoreIdentity"[\s\S]*id="guestInitials"/, 'the result screen has separate account and guest identity presentations');
 assert.match(mainSource, /scoreRun\?\.walletBound \? String\(playerProfile\?\.displayName/, 'an authenticated run renders the loaded callsign');
 assert.match(mainSource, /\.{3}\(accountCallsign \? \{\} : \{ initials \}\)/, 'the browser omits legacy initials for account submissions');
+const prepareScoreSource = mainSource.match(/const prepareScoreEntry = [\s\S]*?\n};/)?.[0] || '';
+assert.doesNotMatch(prepareScoreSource, /button\.dataset\.setting/, 'score preparation never references settings controls');
+assert.match(prepareScoreSource, /scoreTicket\.callsign = accountCallsign[\s\S]*ui\.submitScore\.classList\.remove\('hidden'\)/, 'score submission becomes available after both Chill and Crowned runs');
 
 const unconfigured = await onRequest({
   request: new Request('https://crownlizard.com/api/scores?difficulty=arcade'),

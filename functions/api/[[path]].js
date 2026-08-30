@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1274,16 +1274,27 @@ const redeemPlayerRewardCode = async (request, config) => {
 };
 
 const marketView = snapshot => ({
-  rules: snapshot?.rules || { feePercent: 10, maxActiveListings: 5, tradeableSource: 'crate' },
+  rules: snapshot?.rules || { feePercent: 10, maxActiveListings: 5, tradeableSource: 'crate', listingDays: 7 },
   listings: (snapshot?.listings || []).map(row => ({
     id: String(row.id || ''), cosmeticId: String(row.cosmetic_id || ''), price: Number(row.price) || 0,
     rarity: String(row.rarity || ''), slot: String(row.slot || ''), sellerName: String(row.seller_name || 'PILOT'),
     sellerPublicId: UUID_PATTERN.test(String(row.seller_public_id || '')) ? String(row.seller_public_id) : null,
-    sellerId: String(row.seller_id || ''), createdAt: row.created_at || null,
+    createdAt: row.created_at || null, expiresAt: row.expires_at || null,
   })),
   myListings: (snapshot?.myListings || []).map(row => ({
     id: String(row.id || ''), cosmeticId: String(row.cosmetic_id || ''), price: Number(row.price) || 0,
-    status: String(row.status || ''), createdAt: row.created_at || null, soldAt: row.sold_at || null, cancelledAt: row.cancelled_at || null,
+    status: String(row.status || ''), createdAt: row.created_at || null, expiresAt: row.expires_at || null,
+    soldAt: row.sold_at || null, cancelledAt: row.cancelled_at || null, updatedAt: row.updated_at || null,
+  })),
+  activity: (snapshot?.activity || []).map(row => ({
+    id: String(row.activity_id || ''), kind: String(row.kind || ''), cosmeticId: String(row.cosmetic_id || ''),
+    amount: Number(row.amount) || 0, fee: Number(row.fee) || 0, occurredAt: row.occurred_at || null,
+    counterparty: row.counterparty ? String(row.counterparty) : null,
+  })),
+  signals: (snapshot?.signals || []).map(row => ({
+    id: String(row.id || ''), cosmeticId: String(row.cosmetic_id || ''), price: Number(row.price) || 0,
+    fee: Number(row.fee) || 0, sellerPayout: Number(row.seller_payout) || 0,
+    buyerName: String(row.buyer_name || 'PILOT'), createdAt: row.created_at || null,
   })),
 });
 
@@ -1338,6 +1349,20 @@ const buyCrownMarketListing = async (request, config, listingId) => {
   console.log(JSON.stringify({ event: 'market_listing_purchased', buyerId: user.id, listingId, saleId: result.saleId, price: result.price }));
   const snapshot = await supabaseFetch(config, 'rpc/market_snapshot', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_limit: 60 }) });
   return json({ sale: result, market: marketView(snapshot), wallet: await walletSnapshot(config, user.id) }, result.duplicateRequest ? 200 : 201);
+};
+
+const acknowledgeCrownMarketSignals = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Crown account required.', code: 'ACCOUNT_REQUIRED' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid market signals.' }, 400); }
+  const saleIds = [...new Set(Array.isArray(body.saleIds) ? body.saleIds.map(value => String(value || '')) : [])];
+  if (!saleIds.length || saleIds.length > 10 || saleIds.some(id => !UUID_PATTERN.test(id))) return json({ error: 'Invalid market signals.' }, 400);
+  const acknowledged = await supabaseFetch(config, 'rpc/acknowledge_market_signals', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_sale_ids: saleIds }),
+  });
+  console.log(JSON.stringify({ event: 'market_signals_acknowledged', userId: user.id, count: Number(acknowledged) || 0 }));
+  return json({ acknowledged: Number(acknowledged) || 0 });
 };
 
 const getCrownStore = async (request, config) => {
@@ -1609,6 +1634,7 @@ export const onRequest = async context => {
     if (path.startsWith('market/listings/') && path.endsWith('/buy') && request.method === 'POST') {
       return await buyCrownMarketListing(request, config, path.slice('market/listings/'.length, -'/buy'.length));
     }
+    if (path === 'market/signals/seen' && request.method === 'POST') return await acknowledgeCrownMarketSignals(request, config);
     if (path === 'vault/inventory/seen' && request.method === 'POST') return await markPlayerInventorySeen(request, config);
     if (path === 'player/profile' && request.method === 'GET') return await getPlayerProfile(request, config);
     if (path === 'player/profile/visibility' && request.method === 'PUT') return await setPlayerProfileVisibility(request, config);

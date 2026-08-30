@@ -501,6 +501,12 @@ export class PlayerAccount {
     return result;
   }
 
+  acknowledgeMarketSignals(saleIds) {
+    return this.authorizedRequest('/api/market/signals/seen', {
+      method: 'POST', body: JSON.stringify({ saleIds }),
+    });
+  }
+
   getAdminSession() {
     return this.authorizedRequest('/api/admin/session');
   }
