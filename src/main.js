@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260830-95-score-fix';
+import { CONFIG } from './config.js?v=20260830-96-warden-schedule-final';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
@@ -12,7 +12,7 @@ import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
 import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-91-weapon-skins4';
-import { BossNetwork } from './boss-network.js?v=20260828-91-weapon-skins4';
+import { BossNetwork } from './boss-network.js?v=20260830-96-warden-schedule-final';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
 
 const $ = id => document.getElementById(id);
@@ -40,7 +40,7 @@ const ui = {
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'), openRedeem: $('openRedeem'), openAdmin: $('openAdmin'),
-  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuWardenState: $('menuWardenState'), menuWardenCountdown: $('menuWardenCountdown'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'), accountSignedInActions: $('accountSignedInActions'), accountLogout: $('accountLogout'), accountLogoutConfirm: $('accountLogoutConfirm'), confirmAccountLogout: $('confirmAccountLogout'), cancelAccountLogout: $('cancelAccountLogout'),
   redeemOverlay: $('redeemOverlay'), redeemForm: $('redeemForm'), redeemCode: $('redeemCode'), redeemSubmit: $('redeemSubmit'), redeemReward: $('redeemReward'), redeemRewardAmount: $('redeemRewardAmount'), redeemRewardCampaign: $('redeemRewardCampaign'), redeemStatus: $('redeemStatus'), closeRedeem: $('closeRedeem'),
   adminOverlay: $('adminOverlay'), adminCreateTab: $('adminCreateTab'), adminCampaignsTab: $('adminCampaignsTab'), adminCreatePanel: $('adminCreatePanel'), adminCampaignsPanel: $('adminCampaignsPanel'), adminCodeForm: $('adminCodeForm'), adminCampaignName: $('adminCampaignName'), adminRewardType: $('adminRewardType'), adminRewardAmount: $('adminRewardAmount'), adminMaxRedemptions: $('adminMaxRedemptions'), adminExpiresAt: $('adminExpiresAt'), adminNote: $('adminNote'), adminCreateCode: $('adminCreateCode'), adminCodeReveal: $('adminCodeReveal'), adminCreatedCode: $('adminCreatedCode'), adminCopyCode: $('adminCopyCode'), adminCampaignCount: $('adminCampaignCount'), adminCampaignList: $('adminCampaignList'), adminStatus: $('adminStatus'), closeAdmin: $('closeAdmin'),
@@ -53,7 +53,7 @@ const ui = {
   marketSignalBadge: $('marketSignalBadge'), marketSaleSignal: $('marketSaleSignal'), marketSaleSignalImage: $('marketSaleSignalImage'), marketSaleSignalTitle: $('marketSaleSignalTitle'), marketSaleSignalCopy: $('marketSaleSignalCopy'), marketSaleSignalAmount: $('marketSaleSignalAmount'), acknowledgeMarketSignal: $('acknowledgeMarketSignal'),
   storeRename: $('storeRename'), storeRenameForm: $('storeRenameForm'), storeCurrentCallsign: $('storeCurrentCallsign'), storeCallsignInput: $('storeCallsignInput'), storeRenameStatus: $('storeRenameStatus'), storeRenameSubmit: $('storeRenameSubmit'), closeStoreRename: $('closeStoreRename'),
   storePurchaseReveal: $('storePurchaseReveal'), storePurchaseImage: $('storePurchaseImage'), storePurchaseTier: $('storePurchaseTier'), storePurchaseName: $('storePurchaseName'), storePurchaseContinue: $('storePurchaseContinue'),
-  wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenAssaultHint: $('wardenAssaultHint'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), wardenBriefingEyebrow: $('wardenBriefingEyebrow'), wardenBriefingTitle: $('wardenBriefingTitle'), wardenBriefingCopy: $('wardenBriefingCopy'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), bossRewardGrid: $('bossRewardGrid'), bossRewardProgress: $('bossRewardProgress'), bossRewardStatus: $('bossRewardStatus'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
+  wardenOverlay: $('wardenOverlay'), closeWarden: $('closeWarden'), wardenAssault: $('wardenAssault'), wardenAssaultHint: $('wardenAssaultHint'), wardenSignalLabel: $('wardenSignalLabel'), wardenSignalState: $('wardenSignalState'), wardenBriefingEyebrow: $('wardenBriefingEyebrow'), wardenBriefingTitle: $('wardenBriefingTitle'), wardenBriefingCopy: $('wardenBriefingCopy'), wardenSchedule: $('wardenSchedule'), wardenNextDate: $('wardenNextDate'), wardenNextCountdown: $('wardenNextCountdown'), bossEventHp: $('bossEventHp'), bossRankingList: $('bossRankingList'), bossPlayerRank: $('bossPlayerRank'), bossRewardGrid: $('bossRewardGrid'), bossRewardProgress: $('bossRewardProgress'), bossRewardStatus: $('bossRewardStatus'), armoryRank: $('armoryRank'), armoryBonus: $('armoryBonus'), armoryXpLabel: $('armoryXpLabel'), armoryXpRemaining: $('armoryXpRemaining'), armoryXpFill: $('armoryXpFill'), armorySelected: $('armorySelected'), armorySelectedImage: $('armorySelectedImage'), armorySelectedName: $('armorySelectedName'), armorySelectedRole: $('armorySelectedRole'), armorySelectedDescription: $('armorySelectedDescription'), armoryOwned: $('armoryOwned'), armoryGrid: $('armoryGrid'), armoryStatus: $('armoryStatus'),
   assaultHud: $('assaultHud'), assaultTime: $('assaultTime'), assaultPhaseLabel: $('assaultPhaseLabel'), assaultPhaseName: $('assaultPhaseName'), assaultPhaseRole: $('assaultPhaseRole'), assaultDamage: $('assaultDamage'), assaultGlobalHp: $('assaultGlobalHp'), assaultResultEyebrow: $('assaultResultEyebrow'), assaultDamageLabel: $('assaultDamageLabel'), assaultResultTitle: $('assaultResultTitle'), assaultFinalDamage: $('assaultFinalDamage'), assaultFinalTime: $('assaultFinalTime'), assaultFinalTargets: $('assaultFinalTargets'), assaultFinalRank: $('assaultFinalRank'), assaultFinalMultiplier: $('assaultFinalMultiplier'), assaultFinalGlobalHp: $('assaultFinalGlobalHp'), assaultFinalEventRank: $('assaultFinalEventRank'), assaultMilestone: $('assaultMilestone'), assaultMilestoneLabel: $('assaultMilestoneLabel'), assaultMilestoneFill: $('assaultMilestoneFill'), assaultResultMessage: $('assaultResultMessage'), assaultRetry: $('assaultRetry'), assaultArmory: $('assaultArmory'),
   crateReveal: $('crateReveal'), revealEyebrow: $('revealEyebrow'), revealTier: $('revealTier'), revealShip: $('revealShip'), revealName: $('revealName'), revealMessage: $('revealMessage'), revealContinue: $('revealContinue'),
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
@@ -332,7 +332,69 @@ let bossAssaultStarting = false;
 let bossSettlementPending = false;
 let bossRewardClaiming = '';
 let bossRewardMessage = '';
+let bossNextEvent = null;
+let bossServerOffsetMs = 0;
+let bossScheduleLoaded = false;
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+const bossNow = () => Date.now() + bossServerOffsetMs;
+const bossEventIsLive = event => event?.status === 'active'
+  && Number(event.currentHp) > 0
+  && Date.parse(event.startsAt) <= bossNow()
+  && Date.parse(event.endsAt) > bossNow();
+const formatBossCountdown = milliseconds => {
+  const seconds = Math.max(0, Math.ceil(Number(milliseconds) / 1000));
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor(seconds % 86_400 / 3_600);
+  const minutes = Math.floor(seconds % 3_600 / 60);
+  if (days) return `${days}D ${hours}H`;
+  if (hours) return `${hours}H ${minutes}M`;
+  return `${minutes}M ${String(seconds % 60).padStart(2, '0')}S`;
+};
+const formatBossLocalStart = value => {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'SCHEDULE CALIBRATING';
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  }).format(date).replace(',', '').toUpperCase();
+};
+const syncBossServerClock = serverTime => {
+  const parsed = Date.parse(String(serverTime || ''));
+  if (Number.isFinite(parsed)) bossServerOffsetMs = parsed - Date.now();
+};
+const renderMenuWarden = () => {
+  const live = bossEventIsLive(bossEvent);
+  const nextStarts = Date.parse(bossNextEvent?.startsAt || '');
+  const hasNext = Number.isFinite(nextStarts) && nextStarts > bossNow();
+  const claimable = (bossRewardsState.rewards || []).some(reward => reward.claimable);
+  let state = 'OFFLINE';
+  let detail = 'SIGNAL UNAVAILABLE';
+  let className = 'event-offline';
+  if (bossEventLoading && !bossScheduleLoaded) {
+    state = 'SYNC'; detail = 'CHECKING SIGNAL'; className = 'event-sync';
+  } else if (live) {
+    state = 'LIVE'; detail = `${formatBossCountdown(Date.parse(bossEvent.endsAt) - bossNow())} LEFT`; className = 'event-live';
+  } else if (bossEvent && ['victory', 'failed'].includes(bossEvent.status)) {
+    state = claimable ? 'CLAIM' : 'RESULTS';
+    detail = hasNext ? `NEXT ${formatBossCountdown(nextStarts - bossNow())}` : 'EVENT COMPLETE';
+    className = 'event-results';
+  } else if (hasNext) {
+    state = 'NEXT'; detail = formatBossCountdown(nextStarts - bossNow()); className = 'event-next';
+  }
+  ui.menuWarden.classList.remove('event-sync', 'event-live', 'event-next', 'event-results', 'event-offline');
+  ui.menuWarden.classList.add(className);
+  ui.menuWardenState.textContent = state;
+  ui.menuWardenCountdown.textContent = detail;
+  ui.menuWarden.setAttribute('aria-label', `Global Warden ${state.toLowerCase()}. ${detail.toLowerCase()}.`);
+};
+const renderWardenSchedule = () => {
+  const nextStarts = Date.parse(bossNextEvent?.startsAt || '');
+  const visible = !bossEventIsLive(bossEvent) && Number.isFinite(nextStarts) && nextStarts > bossNow();
+  ui.wardenSchedule.classList.toggle('hidden', !visible);
+  if (!visible) return;
+  ui.wardenNextDate.textContent = formatBossLocalStart(bossNextEvent.startsAt);
+  ui.wardenNextCountdown.textContent = `IN ${formatBossCountdown(nextStarts - bossNow())}`;
+};
 
 const armoryBlueprintColor = blueprint => CONFIG.weapons[blueprint?.weaponKey]?.color || CONFIG.weapons.blaster.color;
 
@@ -417,18 +479,25 @@ const claimBossReward = async rewardKey => {
 const renderBossEvent = () => {
   ui.wardenOverlay.classList.toggle('event-victory', bossEvent?.status === 'victory');
   ui.wardenOverlay.classList.toggle('event-failed', bossEvent?.status === 'failed');
+  renderMenuWarden();
+  renderWardenSchedule();
   if (!bossEvent) {
-    ui.wardenSignalState.textContent = bossEventLoading ? 'CONNECTING' : 'OFFLINE';
-    ui.bossEventHp.textContent = bossEventLoading ? 'CONNECTING...' : 'NO ACTIVE EVENT';
+    const nextStarts = Date.parse(bossNextEvent?.startsAt || '');
+    const hasNext = Number.isFinite(nextStarts) && nextStarts > bossNow();
+    ui.wardenSignalState.textContent = bossEventLoading ? 'CONNECTING' : hasNext ? `NEXT · ${formatBossCountdown(nextStarts - bossNow())}` : 'OFFLINE';
+    ui.wardenBriefingEyebrow.textContent = hasNext ? 'NEXT COOPERATIVE ASSAULT' : 'GLOBAL SIGNAL OFFLINE';
+    ui.wardenBriefingTitle.textContent = hasNext ? 'THE SIGNAL RETURNS' : 'THE CROWN IS SILENT';
+    ui.wardenBriefingCopy.textContent = hasNext
+      ? `GLOBAL WARDEN OPENS ${formatBossLocalStart(bossNextEvent.startsAt)}. PREPARE A BLUEPRINT IN CROWN ARMORY.`
+      : 'NO VERIFIED GLOBAL WARDEN EVENT IS CURRENTLY SCHEDULED.';
+    ui.bossEventHp.textContent = bossEventLoading ? 'CONNECTING...' : hasNext ? `EVENT OPENS ${formatBossLocalStart(bossNextEvent.startsAt)}` : 'NO ACTIVE EVENT';
     ui.bossRankingList.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: bossEventLoading ? 'SYNCING GLOBAL DAMAGE...' : 'NO VERIFIED EVENT DATA' }));
     ui.bossPlayerRank.textContent = 'YOUR PLACEMENT APPEARS AFTER YOUR FIRST VERIFIED ASSAULT';
     renderBossRewards();
     return;
   }
-  const remainingMs = Math.max(0, Date.parse(bossEvent.endsAt) - Date.now());
-  const hours = Math.floor(remainingMs / 3_600_000);
-  const minutes = Math.floor(remainingMs % 3_600_000 / 60_000);
-  ui.wardenSignalState.textContent = bossEvent.status === 'active' ? `LIVE · ${hours}H ${minutes}M` : bossEvent.status === 'victory' ? 'VICTORY' : 'SIGNAL LOST';
+  const remainingMs = Math.max(0, Date.parse(bossEvent.endsAt) - bossNow());
+  ui.wardenSignalState.textContent = bossEventIsLive(bossEvent) ? `LIVE · ${formatBossCountdown(remainingMs)}` : bossEvent.status === 'victory' ? 'VICTORY' : 'SIGNAL LOST';
   ui.wardenBriefingEyebrow.textContent = bossEvent.status === 'victory' ? 'GLOBAL EVENT COMPLETE' : bossEvent.status === 'failed' ? 'TRANSMISSION ENDED' : 'INCOMING COOPERATIVE ASSAULT';
   ui.wardenBriefingTitle.textContent = bossEvent.status === 'victory' ? 'THE WARDEN HAS FALLEN' : bossEvent.status === 'failed' ? 'THE SIGNAL HAS FADED' : 'THE CROWN STIRS';
   ui.wardenBriefingCopy.textContent = bossEvent.status === 'victory'
@@ -473,12 +542,18 @@ const loadBossEvent = async () => {
     }
     const payload = await bossNetwork.getEvent();
     bossEvent = payload.event || null;
+    bossNextEvent = payload.nextEvent || null;
+    syncBossServerClock(payload.serverTime);
+    bossScheduleLoaded = true;
     bossRanking = payload.ranking || { leaders: [], player: null };
     bossRewardsState = payload.rewards || { playerDamage: 0, qualified: false, rewards: [] };
   } catch {
-    bossEvent = null;
-    bossRanking = { leaders: [], player: null };
-    bossRewardsState = { playerDamage: 0, qualified: false, rewards: [] };
+    if (!bossScheduleLoaded) {
+      bossEvent = null;
+      bossNextEvent = null;
+      bossRanking = { leaders: [], player: null };
+      bossRewardsState = { playerDamage: 0, qualified: false, rewards: [] };
+    }
   } finally {
     bossEventLoading = false;
     renderBossEvent();
@@ -487,8 +562,24 @@ const loadBossEvent = async () => {
 };
 
 setInterval(() => {
-  if (!ui.wardenOverlay.classList.contains('hidden') && !bossEventLoading && !game.active) void loadBossEvent();
-}, 20_000);
+  const scheduleVisible = !ui.menu.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden');
+  if (scheduleVisible && document.visibilityState === 'visible' && !bossEventLoading && !game.active) void loadBossEvent();
+}, 30_000);
+
+setInterval(() => {
+  if (ui.menu.classList.contains('hidden') && ui.wardenOverlay.classList.contains('hidden')) return;
+  renderMenuWarden();
+  renderWardenSchedule();
+  if (!ui.wardenOverlay.classList.contains('hidden')) {
+    const nextStarts = Date.parse(bossNextEvent?.startsAt || '');
+    if (bossEventIsLive(bossEvent)) ui.wardenSignalState.textContent = `LIVE · ${formatBossCountdown(Date.parse(bossEvent.endsAt) - bossNow())}`;
+    else if (!bossEvent && Number.isFinite(nextStarts) && nextStarts > bossNow()) ui.wardenSignalState.textContent = `NEXT · ${formatBossCountdown(nextStarts - bossNow())}`;
+  }
+}, 1_000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !game.active && !bossEventLoading) void loadBossEvent();
+});
 
 const renderArmory = () => {
   if (!armory) {
@@ -505,11 +596,19 @@ const renderArmory = () => {
     || armory.blueprints.find(item => item.id === armory.standardBlueprintId)
     || armory.blueprints[0];
   const available = armory.blueprints.filter(item => item.access !== 'locked');
-  const eventReady = bossEvent?.status === 'active' && Number(bossEvent.currentHp) > 0 && Date.parse(bossEvent.endsAt) > Date.now();
+  const eventReady = bossEventIsLive(bossEvent);
+  const nextStarts = Date.parse(bossNextEvent?.startsAt || '');
+  const hasNext = Number.isFinite(nextStarts) && nextStarts > bossNow();
   ui.wardenAssault.disabled = Boolean(armorySelecting || armoryLoading || bossEventLoading || bossAssaultStarting || !selected || !eventReady);
-  const eventButtonLabel = bossEvent?.status === 'victory' ? 'VICTORY CONFIRMED' : bossEvent?.status === 'failed' ? 'EVENT ENDED' : 'EVENT OFFLINE';
+  const eventButtonLabel = bossEvent?.status === 'victory' ? 'VICTORY CONFIRMED' : bossEvent?.status === 'failed' ? 'EVENT ENDED' : hasNext ? 'NEXT EVENT SCHEDULED' : 'EVENT OFFLINE';
   ui.wardenAssault.innerHTML = `<i>♛</i> ${armorySelecting ? 'EQUIPPING...' : bossAssaultStarting ? 'OPENING SIGNAL...' : bossEventLoading ? 'CONNECTING EVENT...' : eventReady ? 'START BOSS ASSAULT' : eventButtonLabel}`;
-  ui.wardenAssaultHint.textContent = eventReady ? '90 SECOND STRIKE · VERIFIED DAMAGE COUNTS TOWARD GLOBAL HP' : bossEvent?.status === 'victory' ? 'ASSAULTS CLOSED · CLAIM EARNED EVENT REWARDS BELOW' : 'ASSAULTS CLOSED · EARNED PERSONAL REWARDS REMAIN AVAILABLE';
+  ui.wardenAssaultHint.textContent = eventReady
+    ? '90 SECOND STRIKE · VERIFIED DAMAGE COUNTS TOWARD GLOBAL HP'
+    : bossEvent?.status === 'victory'
+      ? 'ASSAULTS CLOSED · CLAIM EARNED EVENT REWARDS BELOW'
+      : hasNext
+        ? `NEXT ASSAULT · ${formatBossLocalStart(bossNextEvent.startsAt)} · IN ${formatBossCountdown(nextStarts - bossNow())}`
+        : 'ASSAULTS CLOSED · EARNED PERSONAL REWARDS REMAIN AVAILABLE';
   ui.armoryRank.textContent = String(progress.rank).padStart(2, '0');
   ui.armoryBonus.textContent = `+${Math.round((Number(armory.progression.damageBonus) || 0) * 100)}% BOSS DMG`;
   ui.armoryXpLabel.textContent = progress.rank >= 10 ? `${progress.xp} XP · MAX RANK` : `${progress.xp} / ${progress.ceiling} XP`;
@@ -3431,6 +3530,7 @@ if (pwaPreviewMode && debugParams.has('update')) {
   });
 }
 loadLeaderboard(selectedDifficulty, true);
+void (serverEconomy ? playerReadyPromise : Promise.resolve()).then(() => loadBossEvent(), () => loadBossEvent());
 if (requestedPilotProfileId) {
   void (serverEconomy ? playerReadyPromise : Promise.resolve()).finally(() => {
     pilotDeepLinkActive = true;

@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95', '0.37.0-96']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95', '0.37.0-96']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1036,6 +1036,19 @@ const bossEventRecord = async (config, eventId = '') => {
   return rows[0] || null;
 };
 
+const ensureBossEventSchedule = config => supabaseFetch(config, 'rpc/ensure_boss_event_schedule', {
+  method: 'POST', body: '{}',
+});
+
+const nextBossEventRecord = async config => {
+  const query = new URLSearchParams({
+    select: 'id,slug,name,status,starts_at,ends_at,max_hp,current_hp,trial_blueprint_id,balance_version,config',
+    status: 'eq.scheduled', starts_at: `gt.${new Date().toISOString()}`, order: 'starts_at.asc', limit: '1',
+  });
+  const rows = await supabaseFetch(config, `boss_events?${query}`);
+  return rows[0] || null;
+};
+
 const publicBossEvent = row => row ? ({
   id: String(row.id), slug: String(row.slug), name: String(row.name), status: String(row.status),
   startsAt: row.starts_at, endsAt: row.ends_at, maxHp: Number(row.max_hp) || 0,
@@ -1053,13 +1066,16 @@ const bossRewards = async (config, eventId, userId) => userId
 
 const getBossEvent = async (request, config) => {
   const user = await authenticatePlayer(request, config);
+  await ensureBossEventSchedule(config);
   const event = await bossEventRecord(config);
-  if (!event) return json({ event: null, ranking: { leaders: [], player: null } }, 200, 'public, max-age=5, s-maxage=5');
+  const nextEvent = await nextBossEventRecord(config);
+  const serverTime = new Date().toISOString();
+  if (!event) return json({ event: null, nextEvent: publicBossEvent(nextEvent), serverTime, ranking: { leaders: [], player: null }, rewards: { eventId: null, playerDamage: 0, qualified: false, rewards: [] } }, 200);
   const [ranking, rewards] = await Promise.all([
     bossLeaderboard(config, event.id, user?.id || null, 10),
     bossRewards(config, event.id, user?.id || null),
   ]);
-  return json({ event: publicBossEvent(event), ranking, rewards });
+  return json({ event: publicBossEvent(event), nextEvent: publicBossEvent(nextEvent), serverTime, ranking, rewards });
 };
 
 const getBossLeaderboard = async (request, config) => {
@@ -1106,6 +1122,7 @@ const startBossAssaultRequest = async (request, config) => {
   if (!UUID_PATTERN.test(eventId) || !BOSS_PHASE_CEILINGS[blueprintId] || !SUPPORTED_GAME_VERSIONS.has(gameVersion)) {
     return json({ error: 'Invalid assault loadout.' }, 400);
   }
+  await ensureBossEventSchedule(config);
   const event = await bossEventRecord(config, eventId);
   if (!event || event.status !== 'active' || Date.parse(event.ends_at) <= Date.now() || Number(event.current_hp) <= 0) {
     return json({ error: 'This event is not active.', code: 'EVENT_NOT_ACTIVE' }, 409);

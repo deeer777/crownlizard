@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260830-95-score-fix">
+  <link rel="stylesheet" href="./styles.css?v=20260830-96-warden-schedule-final">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -110,7 +110,7 @@
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
         <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></button>
-        <button id="menuWarden" class="primary menu-choice menu-event" data-menu-choice="warden"><i>♛</i> GLOBAL WARDEN <em>NEW</em></button>
+        <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" aria-label="Global Warden event status syncing"><span><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em><small id="menuWardenCountdown">CHECKING SIGNAL</small></button>
         <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
         <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
@@ -552,6 +552,11 @@
         </div>
       </section>
 
+      <section id="wardenSchedule" class="warden-schedule hidden" aria-live="polite">
+        <div><small>NEXT GLOBAL WARDEN</small><strong id="wardenNextDate">SCHEDULE CALIBRATING</strong></div>
+        <b id="wardenNextCountdown">—</b>
+      </section>
+
       <section class="armory-shell" aria-labelledby="armoryTitle">
         <div class="armory-heading">
           <div><span>CROWN ARMORY</span><h3 id="armoryTitle">CHOOSE YOUR BLUEPRINT</h3></div>
@@ -629,6 +634,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260830-95-score-fix"></script>
+  <script type="module" src="./src/main.js?v=20260830-96-warden-schedule-final"></script>
 </body>
 </html>

@@ -238,8 +238,17 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .hero-panel .menu-choice i { visibility: hidden; animation: none; }
 .hero-panel .menu-choice.menu-selected { color: var(--ink); }
 .hero-panel .menu-choice.menu-selected i { visibility: visible; animation: menu-cursor .8s steps(2,end) infinite; }
-.hero-panel .menu-event { color: #9b8a65; }
-.hero-panel .menu-event em { display: inline-block; margin-left: 7px; padding: 3px 4px 2px; color: #07110e; background: var(--gold); font: 700 6px var(--font-pixel-ui); font-style: normal; text-shadow: none; vertical-align: 2px; animation: event-tag 1.2s steps(2,end) infinite; }
+.hero-panel .menu-event { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px; width: min(370px,calc(100vw - 28px)); color: #9b8a65; text-align: left; }
+.hero-panel .menu-event > span { float: none; min-width: 0; margin: 0; color: inherit; font: inherit; line-height: inherit; }
+.hero-panel .menu-event em { display: inline-block; min-width: 42px; margin: 0; padding: 3px 4px 2px; color: #07110e; background: var(--gold); font: 700 7px var(--font-pixel-ui); font-style: normal; text-align: center; text-shadow: none; animation: event-tag 1.2s steps(2,end) infinite; }
+.hero-panel .menu-event small { min-width: 76px; color: #778f88; font: 700 7px var(--font-pixel-ui); letter-spacing: .04em; text-align: right; text-shadow: 1px 1px #06100e; }
+.hero-panel .menu-event.event-live { color: var(--ink); }
+.hero-panel .menu-event.event-live em { color: #03100c; background: var(--mint); box-shadow: 0 0 9px rgba(111,255,210,.45); }
+.hero-panel .menu-event.event-next em { color: #120d02; background: var(--gold); animation: none; }
+.hero-panel .menu-event.event-results em { color: #190a0e; background: #ff8296; animation: event-tag 1.2s steps(2,end) infinite; }
+.hero-panel .menu-event.event-offline { color: #596b66; }
+.hero-panel .menu-event.event-offline em,
+.hero-panel .menu-event.event-sync em { color: #96a49f; background: #34443f; animation: none; }
 .hero-panel .menu-choice:hover,
 .hero-panel .menu-choice:focus-visible { color: var(--gold); outline: none; }
 .menu-nav-hint { margin: 4px 0 0; color: #405a55; font: 400 6px var(--font-pixel-ui); letter-spacing: .07em; }
@@ -880,6 +889,12 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .warden-briefing small { color: #ff8296; font: 700 7px var(--font-pixel-ui); letter-spacing: .12em; }
 .warden-briefing h3 { margin: 7px 0; color: #fff0d0; font: 400 14px/1.4 var(--font-pixel-display); text-shadow: 3px 3px #521e2a; }
 .warden-briefing p { margin: 0; max-width: 420px; color: #9bb0aa; font: 700 7px/1.6 var(--font-pixel-ui); letter-spacing: .05em; }
+.warden-schedule { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px; width: min(840px,100%); margin: -3px auto 14px; padding: 11px 14px; color: #8da49d; background: linear-gradient(90deg,rgba(255,211,107,.05),rgba(7,24,23,.9)); border-left: 4px solid var(--gold); border-bottom: 1px solid #3b554d; box-shadow: 4px 5px #010405; text-align: left; }
+.warden-schedule.hidden { display: none; }
+.warden-schedule div { display: grid; gap: 6px; min-width: 0; }
+.warden-schedule small { color: var(--gold); font: 700 7px var(--font-pixel-ui); letter-spacing: .13em; }
+.warden-schedule strong { color: var(--ink); font: 400 10px/1.5 var(--font-pixel-display); }
+.warden-schedule > b { color: var(--gold); font: 400 13px var(--font-pixel-display); text-align: right; text-shadow: 2px 2px #352609; }
 .warden-assault-entry { display: grid; justify-items: center; gap: 6px; margin: -2px 0 13px; padding: 11px 9px 10px; background: linear-gradient(90deg,rgba(255,211,107,.02),rgba(255,211,107,.1),rgba(255,211,107,.02)); border-block: 2px solid #765a26; }
 .warden-assault-entry > span { color: var(--gold); font: 700 7px var(--font-pixel-ui); letter-spacing: .14em; }
 .warden-assault-entry > small { color: #7f9790; font: 700 6px/1.5 var(--font-pixel-ui); letter-spacing: .07em; }
@@ -1373,6 +1388,10 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .warden-briefing small { font-size: 7px; }
   .warden-briefing h3 { margin-block: 6px; font-size: 10px; }
   .warden-briefing p { font-size: 8px; line-height: 1.5; }
+  .warden-schedule { gap: 8px; margin-bottom: 11px; padding: 10px 9px; }
+  .warden-schedule small { font-size: 8px; }
+  .warden-schedule strong { font-size: 9px; }
+  .warden-schedule > b { font-size: 10px; }
   .warden-assault-entry { margin-bottom: 11px; padding-block: 10px 9px; }
   .warden-assault-entry > span { font-size: 8px; }
   .warden-assault-entry > small { max-width: 300px; font-size: 7px; }
@@ -1615,6 +1634,7 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .hero-panel .tagline { font-size: 10px; letter-spacing: .08em; }
   .hero-panel .primary span,
   .hero-panel .menu-event em { font-size: 9px; }
+  .hero-panel .menu-event small { min-width: 82px; font-size: 9px; }
 
   .score-block span,
   .final-score span,

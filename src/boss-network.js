@@ -22,18 +22,38 @@ const requestJson = async (url, options = {}) => {
   return payload;
 };
 
-const previewEvent = () => ({
-  id: PREVIEW_EVENT_ID, slug: 'sovereign-engine-alpha', name: 'THE SOVEREIGN ENGINE', status: 'active',
-  startsAt: new Date(Date.now() - 300_000).toISOString(), endsAt: new Date(Date.now() + 47 * 3_600_000).toISOString(),
+const previewEvent = (status = 'active') => ({
+  id: PREVIEW_EVENT_ID, slug: 'sovereign-engine-alpha', name: 'THE SOVEREIGN ENGINE', status,
+  startsAt: new Date(Date.now() - (status === 'active' ? 300_000 : 49 * 3_600_000)).toISOString(),
+  endsAt: new Date(Date.now() + (status === 'active' ? 47 * 3_600_000 : -3_600_000)).toISOString(),
   maxHp: 68_420_000, currentHp: 51_884_260, trialBlueprintId: 'pulse_singularity', balanceVersion: 1,
 });
+
+const nextWeeklyPreviewStart = (now = Date.now()) => {
+  const current = new Date(now);
+  const daysUntilFriday = (5 - current.getUTCDay() + 7) % 7;
+  const start = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate() + daysUntilFriday, 18));
+  if (start.getTime() <= now) start.setUTCDate(start.getUTCDate() + 7);
+  return start.getTime();
+};
+
+const previewNextEvent = () => {
+  const startsAt = nextWeeklyPreviewStart();
+  return {
+  id: '00000000-0000-4000-8000-000000000096', slug: 'sovereign-engine-next', name: 'THE SOVEREIGN ENGINE', status: 'scheduled',
+  startsAt: new Date(startsAt).toISOString(),
+  endsAt: new Date(startsAt + 48 * 3_600_000).toISOString(),
+  maxHp: 68_420_000, currentHp: 68_420_000, trialBlueprintId: 'pulse_singularity', balanceVersion: 1,
+  };
+};
 
 export class BossNetwork {
   constructor({ preview = false, accessToken = async () => '', playerName = () => 'YOU', previewDamage = 0, previewStatus = 'active' } = {}) {
     this.preview = preview;
     this.accessToken = accessToken;
     this.playerName = playerName;
-    this.event = { ...previewEvent(), status: previewStatus };
+    this.event = previewEvent(previewStatus);
+    this.nextEvent = previewNextEvent();
     this.attempts = 0;
     this.playerDamage = Math.max(0, Number(previewDamage) || 0);
     this.activeAssault = null;
@@ -67,7 +87,7 @@ export class BossNetwork {
   }
 
   async getEvent() {
-    if (this.preview) return { event: this.event, ranking: this.previewRanking(), rewards: this.previewRewards() };
+    if (this.preview) return { event: this.event, nextEvent: this.nextEvent, serverTime: new Date().toISOString(), ranking: this.previewRanking(), rewards: this.previewRewards() };
     return requestJson('/api/boss/event', { headers: await this.headers() });
   }
 
