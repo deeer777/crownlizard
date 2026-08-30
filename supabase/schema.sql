@@ -114,7 +114,7 @@ alter table public.player_wallets
 create table if not exists public.player_inventory (
   user_id uuid not null references auth.users(id) on delete cascade,
   cosmetic_id text not null,
-  source text not null check (source in ('crate', 'shop', 'sponsored', 'grant', 'legacy')),
+  source text not null check (source in ('crate', 'shop', 'sponsored', 'grant', 'legacy', 'market')),
   acquired_at timestamptz not null default now(),
   seen_at timestamptz,
   primary key (user_id, cosmetic_id)

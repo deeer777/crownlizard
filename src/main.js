@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260830-96-warden-schedule-final';
+import { CONFIG } from './config.js?v=20260831-98-market-new';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
@@ -1146,9 +1146,23 @@ const renderVault = () => {
   ui.vaultCollectionTitle.textContent = vaultCategory === 'weapon' ? 'WEAPON SKINS' : 'SHIP COLLECTION';
   ui.vaultOwned.textContent = `${owned.length} / ${collectibleCosmetics.length}`;
   ui.cosmeticCategoryTabs.forEach(tab => {
-    const selected = tab.dataset.cosmeticCategory === vaultCategory;
+    const category = tab.dataset.cosmeticCategory;
+    const selected = category === vaultCategory;
+    const newCount = COLLECTION_COSMETICS.filter(cosmetic => {
+      if (cosmeticCategory(cosmetic) !== category) return false;
+      const acquisition = state.inventory.cosmetics[cosmetic.id];
+      return ['shop', 'market'].includes(acquisition?.source) && !acquisition.seenAt;
+    }).length;
+    const categoryStatus = tab.querySelector('[data-category-status]');
+    const statusText = newCount ? `${newCount} NEW` : (tab.dataset.categoryMeta || '');
     tab.classList.toggle('selected', selected);
+    tab.classList.toggle('has-new', newCount > 0);
     tab.setAttribute('aria-selected', String(selected));
+    tab.setAttribute('aria-label', `${tab.dataset.categoryLabel || category}${newCount ? `, ${newCount} new` : ''}`);
+    if (categoryStatus) {
+      categoryStatus.textContent = statusText;
+      categoryStatus.classList.toggle('hidden', !statusText);
+    }
   });
   ui.vaultGuarantee.textContent = `${state.vault.sinceSovereign} / ${SOVEREIGN_GUARANTEE}`;
   ui.vaultGuaranteeFill.style.width = `${state.vault.sinceSovereign / SOVEREIGN_GUARANTEE * 100}%`;

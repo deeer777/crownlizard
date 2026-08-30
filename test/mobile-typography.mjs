@@ -23,5 +23,8 @@ assert.doesNotMatch(main, /menuShards\.textContent = `◆ \$\{walletState/, 'the
 assert.match(css, /\.arcade-status \{[\s\S]*?transform: translateY\(-22px\);/, 'the player status row uses the free space above the logo');
 assert.match(mobileReadability, /\.leaderboard-list li \{ font-size: 11px; \}/, 'mobile leaderboard rows stay readable');
 assert.match(mobileReadability, /\.setting-list button,\s*\.setting-list a \{ min-height: 52px; font-size: 11px; \}/, 'settings buttons and crawlable links remain readable and touch-friendly');
+assert.match(mobileReadability, /\.hero-panel \.menu-event \{[\s\S]*grid-template-areas: "event-name event-state" "event-time event-time"[\s\S]*width: min\(300px,calc\(100vw - 24px\)\)/, 'the Warden mobile choice uses an intentional two-level layout instead of three squeezed columns');
+assert.match(mobileReadability, /\.hero-panel \.menu-event > span \{[\s\S]*white-space: nowrap/, 'the Global Warden name cannot wrap on narrow phones');
+assert.match(mobileReadability, /\.hero-panel \.menu-event small \{[\s\S]*grid-area: event-time[\s\S]*text-align: center/, 'the event countdown owns a centered second line');
 
 console.log('Mobile typography hierarchy test passed');

@@ -48,6 +48,9 @@ assert.match(main, /renderMarketSignal[\s\S]*renderMarketActivity/, 'sale confir
 assert.match(main, /marketTimeLeft\(item\.expiresAt\)/, 'listing cards expose their remaining lifetime');
 assert.match(main, /showStorePurchaseReveal\(item\.cosmeticId, 'market'\)/, 'a successful market purchase gets a rarity-coloured acquisition reveal');
 assert.match(main, /\['shop', 'market'\]\.includes\(acquisition\?\.source\)/, 'market purchases receive the collection NEW marker');
+assert.match(main, /newCount[\s\S]*\$\{newCount\} NEW[\s\S]*has-new/, 'collection category tabs expose a persistent NEW count');
+assert.match(html, /data-cosmetic-category="ship"[\s\S]*data-category-status[\s\S]*data-cosmetic-category="weapon"[\s\S]*data-category-status/, 'ship and weapon categories reserve an accessible NEW status');
+assert.match(styles, /\.vault-categories button\.has-new[\s\S]*new-label-pulse/, 'category NEW signals match the arcade collection treatment');
 assert.match(styles, /#vaultOverlay \{[^}]*overflow-y: scroll;[^}]*scrollbar-gutter: stable both-edges/, 'short market tabs reserve scrollbar space and cannot widen the Vault');
 assert.match(styles, /\.market-catalog[\s\S]*grid-template-columns: repeat\(2,minmax\(0,1fr\)\)/, 'market becomes a readable two-column mobile grid');
 assert.match(styles, /\.market-filters[\s\S]*grid-template-columns: repeat\(2,minmax\(0,1fr\)\)/, 'market filters become a compact two-by-two mobile control grid');

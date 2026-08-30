@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v96-warden-schedule-final';
+const CACHE_VERSION = 'crown-lizard-shell-v98-market-new';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260830-96-warden-schedule-final',
+  '/styles.css?v=20260831-98-market-new',
   '/site.css?v=20260828-90-seo',
   '/about/',
   '/how-to-play/',
@@ -13,8 +13,8 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/main.js?v=20260830-96-warden-schedule-final',
-  '/src/config.js?v=20260830-96-warden-schedule-final',
+  '/src/main.js?v=20260831-98-market-new',
+  '/src/config.js?v=20260831-98-market-new',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
   '/src/audio.js?v=20260828-91-weapon-skins4',

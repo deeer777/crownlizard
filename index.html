@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260830-96-warden-schedule-final">
+  <link rel="stylesheet" href="./styles.css?v=20260831-98-market-new">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -449,10 +449,10 @@
           <div class="vault-section-title collection-title"><span id="vaultCollectionTitle">SHIP COLLECTION</span><b id="vaultOwned">0 / 10</b></div>
           <button id="randomFavoriteToggle" class="random-favorite-toggle" type="button" role="switch" aria-checked="false"><span>RANDOM FAVORITE EACH RUN</span><b>OFF</b></button>
           <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
-            <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship">SHIPS</button>
+            <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship" data-category-label="SHIPS"><span>SHIPS</span><small data-category-status class="hidden"></small></button>
             <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
             <button type="button" role="tab" aria-selected="false" disabled>DASH FX <small>SOON</small></button>
-            <button type="button" role="tab" aria-selected="false" data-cosmetic-category="weapon">WEAPONS <small>6 SKINS</small></button>
+            <button type="button" role="tab" aria-selected="false" data-cosmetic-category="weapon" data-category-label="WEAPONS" data-category-meta="6 SKINS"><span>WEAPONS</span><small data-category-status>6 SKINS</small></button>
           </div>
           <div id="vaultCollection" class="vault-collection"></div>
         </div>
@@ -634,6 +634,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260830-96-warden-schedule-final"></script>
+  <script type="module" src="./src/main.js?v=20260831-98-market-new"></script>
 </body>
 </html>

@@ -744,8 +744,10 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-categories { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; margin-bottom: 7px; }
 .vault-categories button { min-width: 0; min-height: 38px; padding: 6px 2px; color: #4f6862; background: rgba(4,14,15,.64); border: 0; border-bottom: 2px solid #1b302b; font: 700 7px var(--font-pixel-ui); cursor: pointer; }
 .vault-categories button.selected { color: var(--gold); border-color: var(--gold); }
+.vault-categories button.has-new:not(.selected) { color: var(--ink); border-color: #7a5820; }
 .vault-categories button:disabled { cursor: default; opacity: .58; }
 .vault-categories small { display: block; margin-top: 3px; color: #425852; font: 700 5px var(--font-pixel-ui); }
+.vault-categories button.has-new small { color: var(--gold); animation: new-label-pulse 1.2s steps(2,end) infinite; }
 .vault-collection { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
 .vault-cosmetic { position: relative; display: grid; grid-template-rows: 67px auto; place-items: center; min-width: 0; min-height: 112px; padding: 7px 5px 8px; color: inherit; background: rgba(5,17,18,.72); border: 0; border-bottom: 3px solid var(--tier-color); text-align: center; cursor: pointer; }
 .vault-cosmetic:hover,
@@ -1632,9 +1634,38 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .arcade-status b { font-size: 12px; }
   .status-shards { line-height: 1.35; }
   .hero-panel .tagline { font-size: 10px; letter-spacing: .08em; }
-  .hero-panel .primary span,
-  .hero-panel .menu-event em { font-size: 9px; }
-  .hero-panel .menu-event small { min-width: 82px; font-size: 9px; }
+  .hero-panel .primary span { font-size: 9px; }
+  .hero-panel .menu-event {
+    grid-template-columns: auto auto;
+    grid-template-areas: "event-name event-state" "event-time event-time";
+    justify-content: center;
+    gap: 3px 9px;
+    width: min(300px,calc(100vw - 24px));
+    min-height: 56px;
+    padding: 6px 8px 5px;
+    text-align: center;
+  }
+  .hero-panel .menu-event > span {
+    grid-area: event-name;
+    width: auto;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 18px;
+    text-align: left;
+  }
+  .hero-panel .menu-event em {
+    grid-area: event-state;
+    align-self: center;
+    min-width: 48px;
+    font-size: 9px;
+  }
+  .hero-panel .menu-event small {
+    grid-area: event-time;
+    min-width: 0;
+    font-size: 8px;
+    line-height: 13px;
+    text-align: center;
+  }
 
   .score-block span,
   .final-score span,
