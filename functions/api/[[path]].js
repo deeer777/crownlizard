@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92']);
+const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94']);
+const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94']);
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -19,6 +19,13 @@ const PROMO_SHARD_MIN = 25;
 const PROMO_SHARD_MAX = 2500;
 const PROMO_CRATE_MIN = 1;
 const PROMO_CRATE_MAX = 5;
+const MARKET_PRICE_BOUNDS = Object.freeze({
+  uncommon: Object.freeze({ minimum: 50, maximum: 750 }),
+  rare: Object.freeze({ minimum: 100, maximum: 1500 }),
+  royal: Object.freeze({ minimum: 200, maximum: 3000 }),
+  mythic: Object.freeze({ minimum: 400, maximum: 6000 }),
+  sovereign: Object.freeze({ minimum: 1000, maximum: 15000 }),
+});
 const CALLSIGN_RENAME_COST = 500;
 const CALLSIGN_RENAME_COOLDOWN_DAYS = 7;
 const RESERVED_CALLSIGNS = new Set(['ADMIN', 'CROWNLIZARD', 'CROWN_LIZARD', 'DEVELOPER', 'GUEST', 'MOD', 'MODERATOR', 'STAFF', 'SUPPORT', 'SYSTEM']);
@@ -217,6 +224,14 @@ export const validatePromoCreation = (body, now = Date.now()) => {
       startsAt: new Date(startsMs).toISOString(), expiresAt: new Date(expiresMs).toISOString(),
     },
   };
+};
+
+export const validateMarketListing = body => {
+  const cosmeticId = String(body?.cosmeticId || '');
+  const price = normalizeInt(body?.price, 50, 15_000);
+  const requestId = String(body?.requestId || '');
+  if (!COSMETIC_IDS.has(cosmeticId) || price === null || !UUID_PATTERN.test(requestId)) return { error: 'Invalid market listing.' };
+  return { value: { cosmeticId, price, requestId } };
 };
 
 export const normalizeCallsign = value => String(value || '').trim().toUpperCase();
@@ -430,7 +445,7 @@ const ensureWallet = async (config, userId) => {
 const walletSnapshot = async (config, userId) => {
   await ensureWallet(config, userId);
   const walletQuery = new URLSearchParams({ select: 'balance,opens,since_sovereign,free_crate_credits,equipped_ship,equipped_weapon_skins,legacy_imported_at,updated_at', user_id: `eq.${userId}`, limit: '1' });
-  const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at,seen_at', user_id: `eq.${userId}`, order: 'acquired_at.asc' });
+  const inventoryQuery = new URLSearchParams({ select: 'cosmetic_id,source,acquired_at,seen_at,market_listing_id', user_id: `eq.${userId}`, market_listing_id: 'is.null', order: 'acquired_at.asc' });
   const [wallets, inventory] = await Promise.all([
     supabaseFetch(config, `player_wallets?${walletQuery}`),
     supabaseFetch(config, `player_inventory?${inventoryQuery}`),
@@ -1258,6 +1273,73 @@ const redeemPlayerRewardCode = async (request, config) => {
   return json({ redemption: result, wallet: await walletSnapshot(config, user.id) }, 201);
 };
 
+const marketView = snapshot => ({
+  rules: snapshot?.rules || { feePercent: 10, maxActiveListings: 5, tradeableSource: 'crate' },
+  listings: (snapshot?.listings || []).map(row => ({
+    id: String(row.id || ''), cosmeticId: String(row.cosmetic_id || ''), price: Number(row.price) || 0,
+    rarity: String(row.rarity || ''), slot: String(row.slot || ''), sellerName: String(row.seller_name || 'PILOT'),
+    sellerPublicId: UUID_PATTERN.test(String(row.seller_public_id || '')) ? String(row.seller_public_id) : null,
+    sellerId: String(row.seller_id || ''), createdAt: row.created_at || null,
+  })),
+  myListings: (snapshot?.myListings || []).map(row => ({
+    id: String(row.id || ''), cosmeticId: String(row.cosmetic_id || ''), price: Number(row.price) || 0,
+    status: String(row.status || ''), createdAt: row.created_at || null, soldAt: row.sold_at || null, cancelledAt: row.cancelled_at || null,
+  })),
+});
+
+const getCrownMarket = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  const snapshot = await supabaseFetch(config, 'rpc/market_snapshot', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user && !user.is_anonymous ? user.id : null, p_limit: 60 }),
+  });
+  return json({ market: marketView(snapshot), wallet: user ? await walletSnapshot(config, user.id) : null });
+};
+
+const createCrownMarketListing = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Crown account required.', code: 'ACCOUNT_REQUIRED' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid market listing.' }, 400); }
+  const validation = validateMarketListing(body);
+  if (validation.error) return json({ error: validation.error }, 400);
+  const value = validation.value;
+  const result = await supabaseFetch(config, 'rpc/create_market_listing', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_cosmetic_id: value.cosmeticId, p_price: value.price, p_request_id: value.requestId }),
+  });
+  const statuses = { ACCOUNT_REQUIRED: 403, LISTING_LIMIT: 409, NOT_TRADEABLE: 422, PRICE_OUT_OF_RANGE: 422, ITEM_NOT_OWNED: 404, ALREADY_LISTED: 409, ITEM_EQUIPPED: 409 };
+  if (result.error) return json({ error: 'Listing could not be created.', code: result.error, bounds: result.bounds }, statuses[result.error] || 409);
+  console.log(JSON.stringify({ event: 'market_listing_created', userId: user.id, listingId: result.listingId, cosmeticId: value.cosmeticId, price: value.price }));
+  const snapshot = await supabaseFetch(config, 'rpc/market_snapshot', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_limit: 60 }) });
+  return json({ listing: result, market: marketView(snapshot), wallet: await walletSnapshot(config, user.id) }, result.duplicateRequest ? 200 : 201);
+};
+
+const cancelCrownMarketListing = async (request, config, listingId) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Crown account required.', code: 'ACCOUNT_REQUIRED' }, 401);
+  if (!UUID_PATTERN.test(listingId)) return json({ error: 'Invalid market listing.' }, 400);
+  const result = await supabaseFetch(config, 'rpc/cancel_market_listing', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_listing_id: listingId }) });
+  const statuses = { LISTING_NOT_FOUND: 404, NOT_LISTING_OWNER: 403, LISTING_FINAL: 409 };
+  if (result.error) return json({ error: 'Listing could not be cancelled.', code: result.error }, statuses[result.error] || 409);
+  const snapshot = await supabaseFetch(config, 'rpc/market_snapshot', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_limit: 60 }) });
+  return json({ listing: result, market: marketView(snapshot), wallet: await walletSnapshot(config, user.id) });
+};
+
+const buyCrownMarketListing = async (request, config, listingId) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return json({ error: 'Crown account required.', code: 'ACCOUNT_REQUIRED' }, 401);
+  if (!UUID_PATTERN.test(listingId)) return json({ error: 'Invalid market purchase.' }, 400);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid market purchase.' }, 400); }
+  const requestId = String(body.requestId || '');
+  if (!UUID_PATTERN.test(requestId)) return json({ error: 'Invalid market purchase.' }, 400);
+  const result = await supabaseFetch(config, 'rpc/buy_market_listing', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_listing_id: listingId, p_request_id: requestId }) });
+  const statuses = { LISTING_NOT_FOUND: 404, LISTING_UNAVAILABLE: 409, SELF_PURCHASE: 409, NOT_ENOUGH_SHARDS: 409, ALREADY_OWNED: 409, ESCROW_MISSING: 409 };
+  if (result.error) return json({ error: 'Market purchase failed.', code: result.error, balance: result.balance, cost: result.cost }, statuses[result.error] || 409);
+  console.log(JSON.stringify({ event: 'market_listing_purchased', buyerId: user.id, listingId, saleId: result.saleId, price: result.price }));
+  const snapshot = await supabaseFetch(config, 'rpc/market_snapshot', { method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_limit: 60 }) });
+  return json({ sale: result, market: marketView(snapshot), wallet: await walletSnapshot(config, user.id) }, result.duplicateRequest ? 200 : 201);
+};
+
 const getCrownStore = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
@@ -1519,6 +1601,14 @@ export const onRequest = async context => {
     if (path === 'vault/equip' && request.method === 'POST') return await equipPlayerCosmetic(request, config);
     if (path === 'vault/store' && request.method === 'GET') return await getCrownStore(request, config);
     if (path === 'vault/store/purchase' && request.method === 'POST') return await purchaseCrownStoreItem(request, config);
+    if (path === 'market' && request.method === 'GET') return await getCrownMarket(request, config);
+    if (path === 'market/listings' && request.method === 'POST') return await createCrownMarketListing(request, config);
+    if (path.startsWith('market/listings/') && path.endsWith('/cancel') && request.method === 'POST') {
+      return await cancelCrownMarketListing(request, config, path.slice('market/listings/'.length, -'/cancel'.length));
+    }
+    if (path.startsWith('market/listings/') && path.endsWith('/buy') && request.method === 'POST') {
+      return await buyCrownMarketListing(request, config, path.slice('market/listings/'.length, -'/buy'.length));
+    }
     if (path === 'vault/inventory/seen' && request.method === 'POST') return await markPlayerInventorySeen(request, config);
     if (path === 'player/profile' && request.method === 'GET') return await getPlayerProfile(request, config);
     if (path === 'player/profile/visibility' && request.method === 'PUT') return await setPlayerProfileVisibility(request, config);

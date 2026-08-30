@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260828-93-crown-control">
+  <link rel="stylesheet" href="./styles.css?v=20260829-94-market-filters">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -425,6 +425,7 @@
       <div class="vault-mode-tabs" role="tablist" aria-label="Crown Vault section">
         <button id="vaultCratesTab" class="selected" type="button" role="tab" aria-selected="true" aria-controls="vaultBody"><i>♛</i> CRATES &amp; COLLECTION</button>
         <button id="vaultStoreTab" type="button" role="tab" aria-selected="false" aria-controls="vaultStore"><i>♛</i> CROWN STORE</button>
+        <button id="vaultMarketTab" type="button" role="tab" aria-selected="false" aria-controls="vaultMarket"><i>♛</i> MARKET</button>
       </div>
       <div id="vaultBody" class="vault-body" role="tabpanel">
         <div class="vault-crate-column">
@@ -464,6 +465,25 @@
         <div id="storeCatalog" class="store-catalog" aria-live="polite"></div>
         <p id="storeStatus" class="store-status" role="status"></p>
       </div>
+      <div id="vaultMarket" class="vault-market hidden" role="tabpanel">
+        <div class="market-header">
+          <div><span>PLAYER EXCHANGE</span><strong>THE MARKET SETS THE PRICE</strong></div>
+          <p>CRATE COSMETICS ONLY · 10% SALE FEE</p>
+        </div>
+        <div class="market-actions" role="tablist" aria-label="Market section">
+          <button id="marketBrowseTab" class="selected" type="button" role="tab" aria-selected="true"><i>♛</i> BROWSE</button>
+          <button id="marketSellTab" type="button" role="tab" aria-selected="false"><i>♛</i> SELL</button>
+          <button id="marketMineTab" type="button" role="tab" aria-selected="false"><i>♛</i> MY LISTINGS</button>
+        </div>
+        <div id="marketFilters" class="market-filters" aria-label="Market filters">
+          <label><span>ITEMS</span><select id="marketCategoryFilter"><option value="all">ALL ITEMS</option><option value="ship">SHIPS</option><option value="weapon">WEAPONS</option></select></label>
+          <label><span>RARITY</span><select id="marketRarityFilter"><option value="all">ALL RARITIES</option><option value="uncommon">UNCOMMON</option><option value="rare">RARE</option><option value="royal">ROYAL</option><option value="mythic">MYTHIC</option><option value="sovereign">SOVEREIGN</option></select></label>
+          <label><span>SORT</span><select id="marketSortFilter"><option value="newest">NEWEST</option><option value="price-low">PRICE LOW</option><option value="price-high">PRICE HIGH</option></select></label>
+          <button id="marketHideOwned" type="button" role="switch" aria-checked="false"><span>HIDE OWNED</span><b>OFF</b></button>
+        </div>
+        <div id="marketCatalog" class="market-catalog" aria-live="polite"></div>
+        <p id="marketStatus" class="market-status" role="status"></p>
+      </div>
       <p class="vault-fineprint">DUPLICATES ARE SALVAGED FOR SHARDS · COSMETICS ONLY</p>
       <button id="closeVault" class="system-action" type="button"><i>♛</i> BACK</button>
     </div>
@@ -490,6 +510,19 @@
         <p>ADDED TO YOUR COLLECTION</p>
         <button id="storePurchaseContinue" class="system-action" type="button"><i>♛</i> CONTINUE</button>
       </div>
+    </div>
+    <div id="marketConfirm" class="store-rename hidden" role="dialog" aria-modal="true" aria-labelledby="marketConfirmTitle">
+      <form id="marketConfirmForm" class="store-rename-panel market-confirm-panel">
+        <div class="eyebrow">CROWN MARKET</div>
+        <img id="marketConfirmImage" alt="">
+        <h3 id="marketConfirmTitle">MARKET ORDER</h3>
+        <p id="marketConfirmCopy"></p>
+        <label id="marketPriceLabel">YOUR PRICE<input id="marketPriceInput" type="number" inputmode="numeric" min="50" max="15000" step="1"></label>
+        <p id="marketConfirmHint"></p>
+        <p id="marketConfirmStatus" class="store-rename-status" role="status"></p>
+        <button id="marketConfirmSubmit" class="system-action" type="submit"><i>♛</i> CONFIRM</button>
+        <button id="closeMarketConfirm" class="system-action" type="button"><i>♛</i> BACK TO MARKET</button>
+      </form>
     </div>
   </section>
 
@@ -588,6 +621,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260828-93-crown-control"></script>
+  <script type="module" src="./src/main.js?v=20260829-94-market-filters"></script>
 </body>
 </html>

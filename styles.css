@@ -670,7 +670,7 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .pilot-profile-actions .system-action { width: 100%; min-height: 50px; }
 .boss-ranking .pilot-profile-link { font-size: inherit; }
 
-.vault-overlay { overflow-y: auto; background: rgba(0,3,5,.96); }
+#vaultOverlay { overflow-y: scroll; scrollbar-gutter: stable both-edges; background: rgba(0,3,5,.96); }
 .vault-panel { width: min(780px,100%); padding-block: 18px; }
 .vault-panel h2 { margin: 10px 0 12px; }
 .vault-wallet { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 auto 15px; color: #708b84; font: 700 8px var(--font-pixel-ui); letter-spacing: .11em; }
@@ -679,7 +679,7 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .vault-sync-status[data-state="signed-in"] { color: var(--mint); border-color: #347a67; background: rgba(43,105,87,.14); }
 .vault-sync-status[data-state="setup"] { color: var(--gold); border-color: #735d29; }
 .vault-sync-status[data-state="expired"] { color: #ff8a96; border-color: #753a43; }
-.vault-mode-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; width: min(720px,100%); margin: 0 auto 15px; }
+.vault-mode-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; width: min(720px,100%); margin: 0 auto 15px; }
 .vault-mode-tabs button { min-width: 0; min-height: 48px; padding: 8px 6px; color: #607b74; background: rgba(3,12,13,.78); border: 0; border-bottom: 3px solid #1d3731; font: 400 8px/1.55 var(--font-pixel-display); cursor: pointer; text-shadow: 2px 2px #03100d; }
 .vault-mode-tabs button i { color: #536c65; font-style: normal; }
 .vault-mode-tabs button.selected { color: var(--gold); border-color: var(--gold); background: rgba(255,211,107,.06); }
@@ -779,6 +779,38 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .store-service-mark b { font: 400 17px var(--font-pixel-display); text-shadow: 3px 3px #714315; }
 .store-service-mark i { color: var(--mint); font: 700 20px var(--font-pixel-ui); font-style: normal; }
 .store-status { min-height: 20px; margin: 13px 0 0; color: #759189; font: 700 7px/1.6 var(--font-pixel-ui); letter-spacing: .08em; }
+.vault-market { width: min(720px,100%); margin: 0 auto 8px; }
+.market-header { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 12px; margin-bottom: 8px; padding: 10px 12px; background: rgba(4,15,16,.8); border-block: 2px solid #2c5148; text-align: left; }
+.market-header div { display: grid; gap: 5px; }
+.market-header span { color: #6f8d85; font: 700 7px var(--font-pixel-ui); letter-spacing: .11em; }
+.market-header strong { color: var(--gold); font: 400 10px var(--font-pixel-display); }
+.market-header p { margin: 0; color: #77948c; font: 700 6px/1.6 var(--font-pixel-ui); letter-spacing: .08em; text-align: right; }
+.market-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; margin-bottom: 9px; }
+.market-actions button { min-height: 43px; padding: 5px 2px; color: #789088; background: #051314; border: 0; border-bottom: 2px solid #294940; font: 700 7px var(--font-pixel-ui); cursor: pointer; }
+.market-actions button.selected { color: var(--gold); border-color: var(--gold); background: rgba(255,211,107,.06); }
+.market-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) minmax(112px,.72fr); gap: 6px; margin-bottom: 10px; padding: 8px; background: rgba(3,13,14,.86); border-block: 1px solid #2c5148; }
+.market-filters label { display: grid; gap: 5px; min-width: 0; color: #6f8d85; font: 700 6px var(--font-pixel-ui); letter-spacing: .08em; text-align: left; }
+.market-filters select,.market-filters button { width: 100%; min-width: 0; min-height: 43px; padding: 7px 8px; color: var(--ink); background: #061718; border: 1px solid #31534a; border-radius: 0; outline: 0; font: 700 7px var(--font-pixel-ui); cursor: pointer; }
+.market-filters select:focus-visible,.market-filters button:focus-visible { border-color: var(--gold); box-shadow: inset 0 -2px var(--gold); }
+.market-filters button { align-self: end; display: flex; align-items: center; justify-content: space-between; gap: 6px; color: #819b94; }
+.market-filters button b { color: #657d77; }
+.market-filters button[aria-checked="true"] { color: var(--gold); border-color: var(--gold); background: rgba(255,211,107,.07); }
+.market-filters button[aria-checked="true"] b { color: var(--mint); }
+.market-catalog { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.market-card { position: relative; display: grid; grid-template-rows: 132px 1fr; min-width: 0; min-height: 250px; padding: 8px; color: inherit; background: linear-gradient(#07191a,#041011); border: 0; border-bottom: 4px solid var(--tier-color); box-shadow: 4px 5px #010405; cursor: pointer; text-align: center; }
+.market-card:hover,.market-card:focus-visible { outline: 2px solid var(--tier-color); outline-offset: -2px; background: color-mix(in srgb,var(--tier-color) 9%,#061415); }
+.market-card:disabled { cursor: default; opacity: .55; }
+.market-card img { align-self: center; justify-self: center; width: 126px; height: 126px; object-fit: contain; image-rendering: pixelated; filter: saturate(1.08) drop-shadow(3px 4px #010504); }
+.market-card > span { display: grid; align-content: start; gap: 7px; min-width: 0; }
+.market-card small { color: var(--tier-color); font: 700 6px var(--font-pixel-ui); }
+.market-card strong { color: var(--ink); font: 400 9px/1.45 var(--font-pixel-display); }
+.market-card em { color: #789089; font: 700 6px/1.5 var(--font-pixel-ui); font-style: normal; }
+.market-card b { align-self: end; min-height: 39px; padding: 10px 3px 7px; color: var(--gold); border-top: 1px solid #36584f; font: 700 7px/1.45 var(--font-pixel-ui); }
+.market-card.owned { opacity: .72; }
+.market-card.owned::before { content: 'OWNED'; position: absolute; z-index: 2; right: 5px; top: 5px; padding: 4px 5px; color: #03100e; background: var(--mint); font: 700 6px var(--font-pixel-ui); box-shadow: 2px 2px #010504; }
+.market-card.market-final { filter: grayscale(.65); opacity: .62; }
+.market-status { min-height: 24px; margin: 13px 0 0; color: #759189; font: 700 7px/1.6 var(--font-pixel-ui); letter-spacing: .08em; }
+.market-confirm-panel img { display: block; width: 142px; height: 142px; margin: 0 auto; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(4px 5px #010504); }
 .store-rename { position: fixed; inset: 0; z-index: 58; display: grid; place-items: center; padding: 14px; overflow-y: auto; background: rgba(0,3,5,.97); }
 .store-rename-panel { width: min(430px,100%); padding: 24px 20px; background: #07191a; border-block: 3px solid var(--gold); box-shadow: 7px 8px #010405; }
 .store-rename-panel h3 { margin: 10px 0 18px; color: var(--gold); font: 400 14px/1.55 var(--font-pixel-display); }
@@ -1411,6 +1443,21 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .store-product.service > span:last-child { align-self: stretch; align-content: center; }
   .store-service-mark { width: 104px; height: 104px; }
   .store-status { min-height: 28px; font-size: 9px; }
+  .market-header { grid-template-columns: 1fr; align-items: start; padding: 11px 9px; }
+  .market-header p { font-size: 8px; text-align: left; }
+  .market-header span { font-size: 9px; }
+  .market-header strong { font-size: 11px; }
+  .market-actions button { min-height: 50px; font-size: 9px; }
+  .market-filters { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; padding: 8px 6px; }
+  .market-filters label { font-size: 8px; }
+  .market-filters select,.market-filters button { min-height: 50px; font-size: 9px; }
+  .market-catalog { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+  .market-card { grid-template-rows: 112px 1fr; min-height: 244px; padding: 7px 6px; }
+  .market-card img { width: 108px; height: 108px; }
+  .market-card small,.market-card em { font-size: 8px; }
+  .market-card strong { font-size: 9px; }
+  .market-card b { min-height: 45px; font-size: 9px; }
+  .market-status { font-size: 9px; }
   .store-rename-panel { padding: 20px 12px; }
   .store-rename-panel h3 { font-size: 15px; }
   .store-current-name span,

@@ -72,7 +72,7 @@ const emptyState = () => ({
   sponsored: { pendingRunId: '' },
 });
 const cloneState = state => JSON.parse(JSON.stringify(state));
-const acquisitionSources = new Set(['crate', 'shop', 'sponsored', 'grant']);
+const acquisitionSources = new Set(['crate', 'shop', 'sponsored', 'grant', 'market']);
 
 const normalizeOutcome = outcome => {
   if (!outcome || typeof outcome.openingId !== 'string' || !TIER_BY_KEY[outcome.tier]) return null;
@@ -232,6 +232,31 @@ export class ShardWallet {
       purchase: { ...product, purchasedAt: acquiredAt },
       wallet: saved,
     };
+  }
+
+  previewMarketBuy(cosmeticId, price) {
+    const state = this.read();
+    const cost = safeInteger(price);
+    if (!COSMETIC_BY_ID[cosmeticId] || state.inventory.cosmetics[cosmeticId]) throw walletError('ALREADY_OWNED', 'This item is already owned.');
+    if (state.balance < cost) throw walletError('NOT_ENOUGH_SHARDS', 'Not enough shards.');
+    state.balance -= cost;
+    state.inventory.cosmetics[cosmeticId] = { acquiredAt: new Date().toISOString(), source: 'market', seenAt: null };
+    return this.write(state);
+  }
+
+  previewMarketList(cosmeticId) {
+    const state = this.read();
+    const cosmetic = COSMETIC_BY_ID[cosmeticId];
+    if (!state.inventory.cosmetics[cosmeticId]) throw walletError('ITEM_NOT_OWNED', 'This item is not owned.');
+    if (state.inventory.equipped.ship === cosmeticId || (cosmetic?.weaponKey && state.inventory.equipped.weapons[cosmetic.weaponKey] === cosmeticId)) throw walletError('ITEM_EQUIPPED', 'Unequip this item first.');
+    delete state.inventory.cosmetics[cosmeticId];
+    return this.write(state);
+  }
+
+  previewMarketCancel(cosmeticId) {
+    const state = this.read();
+    if (!state.inventory.cosmetics[cosmeticId]) state.inventory.cosmetics[cosmeticId] = { acquiredAt: new Date().toISOString(), source: 'crate', seenAt: new Date().toISOString() };
+    return this.write(state);
   }
 
   markCosmeticSeen(cosmeticId) {

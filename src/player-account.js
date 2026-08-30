@@ -2,6 +2,7 @@ const SESSION_KEY = 'cl:player-session:v1';
 const PENDING_CRATE_KEY = 'cl:pending-crate:v1';
 const PENDING_SETTLEMENT_KEY = 'cl:pending-settlement:v1';
 const PENDING_STORE_KEY = 'cl:pending-store:v1';
+const PENDING_MARKET_KEY = 'cl:pending-market:v1';
 const PASSWORD_SETUP_KEY = 'cl:account-password:v1';
 const REQUEST_TIMEOUT = 20000;
 
@@ -186,6 +187,7 @@ export class PlayerAccount {
         this.storage?.removeItem(PENDING_CRATE_KEY);
         this.storage?.removeItem(PENDING_SETTLEMENT_KEY);
         this.storage?.removeItem(PENDING_STORE_KEY);
+        this.storage?.removeItem(PENDING_MARKET_KEY);
       } catch {}
     }
     return { signedOut: true, serverRevoked };
@@ -465,6 +467,38 @@ export class PlayerAccount {
       method: 'POST',
       body: JSON.stringify({ cosmeticId }),
     });
+  }
+
+  getMarket() { return this.authorizedRequest('/api/market'); }
+
+  marketRequestId(action, target) {
+    const key = `${action}:${target}`;
+    try {
+      const pending = JSON.parse(this.storage?.getItem(PENDING_MARKET_KEY) || 'null');
+      if (pending?.key === key && typeof pending.requestId === 'string') return pending.requestId;
+    } catch {}
+    if (!globalThis.crypto?.randomUUID) throw new Error('Secure market identifiers are unavailable.');
+    const requestId = globalThis.crypto.randomUUID();
+    try { this.storage?.setItem(PENDING_MARKET_KEY, JSON.stringify({ key, requestId })); } catch {}
+    return requestId;
+  }
+
+  async createMarketListing(cosmeticId, price) {
+    const requestId = this.marketRequestId('list', cosmeticId);
+    const result = await this.authorizedRequest('/api/market/listings', { method: 'POST', body: JSON.stringify({ cosmeticId, price, requestId }) });
+    try { this.storage?.removeItem(PENDING_MARKET_KEY); } catch {}
+    return result;
+  }
+
+  cancelMarketListing(listingId) {
+    return this.authorizedRequest(`/api/market/listings/${encodeURIComponent(listingId)}/cancel`, { method: 'POST', body: '{}' });
+  }
+
+  async buyMarketListing(listingId) {
+    const requestId = this.marketRequestId('buy', listingId);
+    const result = await this.authorizedRequest(`/api/market/listings/${encodeURIComponent(listingId)}/buy`, { method: 'POST', body: JSON.stringify({ requestId }) });
+    try { this.storage?.removeItem(PENDING_MARKET_KEY); } catch {}
+    return result;
   }
 
   getAdminSession() {

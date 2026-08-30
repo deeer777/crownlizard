@@ -38,6 +38,6 @@ assert.equal(structured.offers.price, '0', 'structured data accurately describes
 assert.match(root, /href="\/how-to-play\/"[\s\S]*GAME GUIDE &amp; INFO/, 'the game exposes one focused crawlable information route');
 assert.match(read('robots.txt'), /Disallow: \/api\/[\s\S]*Sitemap: https:\/\/crownlizard\.com\/sitemap\.xml/, 'robots keeps APIs out and advertises the sitemap');
 assert.match(read('privacy/index.html'), /does not currently serve production advertising/, 'privacy copy does not claim the planned ad system is already active');
-assert.match(read('terms/index.html'), /No player-to-player market is currently active/, 'terms do not claim the planned market is already active');
+assert.match(read('terms/index.html'), /Market purchases are final[\s\S]*cannot be sold, withdrawn or converted to money/, 'terms document the cosmetic-only shard market without implying cash value');
 
 console.log('SEO metadata, public content and publisher-readiness tests passed');
