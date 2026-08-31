@@ -3292,7 +3292,7 @@ grant execute on function public.complete_verified_run(uuid,text,uuid,text,integ
 
 create or replace function public.submit_verified_score(p_run_id uuid,p_user_id uuid,p_initials text,p_player_name text)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare r public.leaderboard_runs%rowtype; existing_id bigint; score_id bigint; s jsonb;
+declare r public.leaderboard_runs%rowtype; existing_id uuid; score_id uuid; s jsonb;
 begin
   select * into r from public.leaderboard_runs where id=p_run_id for update;
   if not found then return jsonb_build_object('error','RUN_NOT_FOUND'); end if;

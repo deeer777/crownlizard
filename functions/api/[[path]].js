@@ -1676,6 +1676,13 @@ const submitScore = async (request, config) => {
       p_player_name: value.playerName,
     }),
   });
+  if (inserted.error) {
+    const statuses = { RUN_NOT_FOUND: 404, RUN_OWNER_MISMATCH: 403, RUN_NOT_VERIFIED: 409 };
+    return json({ error: 'Score could not be saved.', code: inserted.error }, statuses[inserted.error] || 409);
+  }
+  if (!UUID_PATTERN.test(String(inserted.id || ''))) {
+    throw new Error('INVALID_SCORE_RESULT');
+  }
   const scores = await listScores(config, value.difficulty, 100);
   const rank = scores.findIndex(entry => entry.id === inserted.id) + 1;
   const entry = scores.find(score => score.id === inserted.id) || { ...inserted, playerName: value.playerName, initials: value.playerName };

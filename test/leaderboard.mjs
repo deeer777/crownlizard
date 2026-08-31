@@ -65,6 +65,7 @@ const originalFetch = globalThis.fetch;
 const runId = '223e4567-e89b-42d3-a456-426614174000';
 const insertedId = '323e4567-e89b-42d3-a456-426614174000';
 let insertedScore = null;
+let scoreRpcError = '';
 globalThis.fetch = async (url, options = {}) => {
   const href = String(url);
   if (href.endsWith('/auth/v1/user')) return Response.json({ id: accountUserId, is_anonymous: false, email: 'pilot@example.com' });
@@ -73,6 +74,7 @@ globalThis.fetch = async (url, options = {}) => {
   if (href.endsWith('/rest/v1/rpc/complete_verified_run')) return Response.json({ summary: valid });
   if (href.endsWith('/rest/v1/rpc/submit_verified_score')) {
     insertedScore = JSON.parse(options.body);
+    if (scoreRpcError) return Response.json({ error: scoreRpcError });
     return Response.json({ id: insertedId });
   }
   if (href.includes('/rest/v1/leaderboard_runs?') && options.method === 'PATCH') return Response.json([]);
@@ -94,6 +96,19 @@ assert.equal(insertedScore.p_player_name, 'PILOT_ONE', 'the atomic database RPC 
 assert.equal(insertedScore.p_user_id, accountUserId, 'the atomic database RPC receives the verified owner');
 assert.equal(insertedScore.p_initials, null, 'spoofed browser initials are discarded for an account run');
 assert.equal((await accountSubmitResponse.json()).entry.playerName, 'PILOT_ONE', 'the response renders the account callsign immediately');
+
+scoreRpcError = 'RUN_NOT_VERIFIED';
+const rejectedSubmitResponse = await onRequest({
+  request: new Request('https://crownlizard.com/api/scores', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer account-access-token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...valid, runId, checkpointToken: '423e4567-e89b-42d3-a456-426614174000', sequence: 6 }),
+  }),
+  env: { SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SECRET_KEY: 'server-secret', SUPABASE_PUBLISHABLE_KEY: 'browser-publishable', SCORE_HASH_SALT: 'leaderboard-salt' },
+  params: { path: ['scores'] },
+});
+assert.equal(rejectedSubmitResponse.status, 409, 'database score rejection is returned as a controlled conflict');
+assert.equal((await rejectedSubmitResponse.json()).code, 'RUN_NOT_VERIFIED', 'database score rejection preserves its stable error code');
 globalThis.fetch = originalFetch;
 
 console.log('Leaderboard validation test passed');

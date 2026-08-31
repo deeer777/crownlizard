@@ -16,6 +16,7 @@ assert.match(client, /const \{ refreshToken: _removed/, 'refresh tokens are stri
 assert.match(migration, /leaderboard_runs_one_active_user_idx/, 'one active authenticated run is enforced in PostgreSQL');
 assert.match(migration, /for update;[\s\S]*CHECKPOINT_TOKEN_INVALID/, 'checkpoint transitions serialize under a row lock');
 assert.match(migration, /create or replace function public\.submit_verified_score[\s\S]*for update;[\s\S]*insert into public\.leaderboard_scores/, 'score insertion and run consumption are one transaction');
+assert.match(migration, /declare r public\.leaderboard_runs%rowtype; existing_id uuid; score_id uuid;/, 'atomic score submission preserves UUID score identifiers');
 assert.match(migration, /status='quarantined'/, 'implausible final telemetry is quarantined instead of ranked');
 assert.match(migration, /record_boss_assault_checkpoint[\s\S]*PHASE_DAMAGE_MISMATCH/, 'Global Warden damage is bound to phase checkpoints');
 assert.match(migration, /pg_advisory_xact_lock\(hashtextextended\('market-list:'/, 'concurrent market listings share an account lock');
