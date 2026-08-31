@@ -2,13 +2,5 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crownlizard",
   "compatibility_date": "2026-08-31",
-  "pages_build_output_dir": "./dist",
-  "observability": {
-    "enabled": true,
-    "logs": {
-      "enabled": true,
-      "invocation_logs": true,
-      "head_sampling_rate": 1
-    }
-  }
+  "pages_build_output_dir": "./dist"
 }

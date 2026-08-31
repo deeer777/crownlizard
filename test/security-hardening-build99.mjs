@@ -20,7 +20,7 @@ assert.match(migration, /status='quarantined'/, 'implausible final telemetry is 
 assert.match(migration, /record_boss_assault_checkpoint[\s\S]*PHASE_DAMAGE_MISMATCH/, 'Global Warden damage is bound to phase checkpoints');
 assert.match(migration, /pg_advisory_xact_lock\(hashtextextended\('market-list:'/, 'concurrent market listings share an account lock');
 assert.match(wrangler, /"compatibility_date": "2026-08-31"/, 'Cloudflare compatibility is versioned');
-assert.match(wrangler, /"observability"[\s\S]*"enabled": true/, 'Worker observability is versioned');
+assert.doesNotMatch(wrangler, /"observability"/, 'Pages config excludes unsupported Worker observability settings');
 assert.match(wrangler, /"pages_build_output_dir": "\.\/dist"/, 'Pages publishes the allowlisted build rather than the repository root');
 
 assert.deepEqual(checkpointTelemetry({ sequence: 1, elapsedMs: 20_000, score: 100, zone: 1, wardens: 0, enemies: 2, crates: 0, bestCombo: 1 }), {
