@@ -1,18 +1,18 @@
-import { CONFIG } from './config.js?v=20260831-98-market-new';
+import { CONFIG } from './config.js?v=20260831-99-security';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
 import { Game } from './game.js?v=20260828-91-weapon-skins4';
 import { ShardWallet } from './economy.js?v=20260830-95-score-fix';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260824-45-cutover';
-import { PlayerAccount } from './player-account.js?v=20260830-95-score-fix';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
+import { PlayerAccount } from './player-account.js?v=20260831-99-security';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
 import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-91-weapon-skins4';
-import { BossNetwork } from './boss-network.js?v=20260830-96-warden-schedule-final';
+import { BossNetwork } from './boss-network.js?v=20260831-99-security';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
 
 const $ = id => document.getElementById(id);
@@ -132,6 +132,9 @@ let pilotDeepLinkActive = false;
 let runGeneration = 0;
 let currentRunPromise = Promise.resolve(null);
 let pendingScore = null;
+let runCheckpointSequence = 0;
+let runCheckpointTimer = 0;
+let runCheckpointChain = Promise.resolve();
 let economyRunId = '';
 let selectedMenuChoice = 0;
 let selectedResultChoice = 0;
@@ -328,6 +331,7 @@ let bossRanking = { leaders: [], player: null };
 let bossRewardsState = { playerDamage: 0, qualified: false, rewards: [] };
 let bossEventLoading = false;
 let activeBossAssault = null;
+let bossCheckpointChain = Promise.resolve();
 let bossAssaultStarting = false;
 let bossSettlementPending = false;
 let bossRewardClaiming = '';
@@ -732,6 +736,8 @@ const startBossAssault = async () => {
       arsenalRank: armory.progression.rank,
     });
     activeBossAssault = payload.assault;
+    bossNetwork.activeAssault = activeBossAssault;
+    bossCheckpointChain = Promise.resolve();
     bossEvent = payload.event || bossEvent;
     bossRanking = payload.ranking || bossRanking;
     renderBossEvent();
@@ -800,8 +806,10 @@ const showAssaultResult = async result => {
   }
   bossSettlementPending = true;
   try {
+    await bossCheckpointChain;
     const payload = await bossNetwork.settle({
       assaultId: activeBossAssault.assaultId,
+      checkpointToken: activeBossAssault.checkpointToken,
       requestId: crypto.randomUUID(),
       elapsedMs: Math.round(result.elapsed * 1000),
       phaseDamage: result.phaseDamage,
@@ -2026,9 +2034,11 @@ const renderShardVerification = message => {
 
 const settleServerReward = async summary => {
   try {
+    clearInterval(runCheckpointTimer);
+    await runCheckpointChain.catch(() => null);
     const run = await currentRunPromise;
     if (!run?.id || !run.walletBound || !serverEconomyReady) throw new Error('WALLET_NOT_BOUND');
-    const result = await playerAccount.settleRun(run.id, summary);
+    const result = await playerAccount.settleRun(run.id, { ...summary, score: game.score }, run.checkpointToken, runCheckpointSequence || 1);
     if (serverWallet) serverWallet.balance = Number(result.balance) || serverWallet.balance;
     await refreshServerWallet();
     renderShardReward(result);
@@ -2094,6 +2104,7 @@ const game = new Game($('game'), input, {
     if (type === 'death') music.pause();
   },
   gameover: (score, summary) => {
+    clearInterval(runCheckpointTimer);
     hideToast();
     ui.finalScore.textContent = score.toLocaleString('en-US');
     const previousBest = best;
@@ -2128,6 +2139,13 @@ const game = new Game($('game'), input, {
   assaultPhase: phase => {
     showToast(`PHASE ${phase.number} · ${phase.name}`, 'threat', phase.color);
     sfx.play('stage');
+    if (phase.number > 1 && activeBossAssault) {
+      const completedPhase = phase.number - 1;
+      const damage = Math.max(0, Math.round(game.assault?.phaseDamage?.[completedPhase - 1] || 0));
+      bossCheckpointChain = bossCheckpointChain.then(() => bossNetwork.checkpoint({
+        phase: completedPhase, elapsedMs: Math.round((game.assault?.elapsed || completedPhase * 30) * 1000), damage,
+      }));
+    }
   },
   assaultover: showAssaultResult,
   stage: stage => {
@@ -2693,6 +2711,9 @@ const start = async () => {
     return;
   }
   startingRun = true;
+  clearInterval(runCheckpointTimer);
+  runCheckpointSequence = 0;
+  runCheckpointChain = Promise.resolve();
   ui.play.disabled = true;
   ui.retry.disabled = true;
   const generation = ++runGeneration;
@@ -2720,6 +2741,21 @@ const start = async () => {
   ui.pauseButton.classList.remove('hidden');
   applyRunShip();
   game.start(selectedDifficulty);
+  runCheckpointTimer = setInterval(() => {
+    runCheckpointChain = runCheckpointChain.then(async () => {
+      const run = await currentRunPromise;
+      if (!run?.id || !run.checkpointToken) return;
+      const summary = game.runSummary();
+      const sequence = runCheckpointSequence + 1;
+      const accessToken = run.walletBound ? await playerAccount.getAccessToken().catch(() => '') : '';
+      const accepted = await leaderboard.checkpoint({
+        runId: run.id, checkpointToken: run.checkpointToken, sequence,
+        score: Math.max(0, Math.floor(game.score || 0)), ...summary,
+      }, accessToken);
+      run.checkpointToken = accepted.checkpointToken;
+      runCheckpointSequence = sequence;
+    }).catch(() => null);
+  }, 20_000);
   economyRunId = createEconomyRunId();
   pendingScore = null;
   ui.scoreEntry.classList.add('hidden');
@@ -3374,9 +3410,12 @@ ui.scoreEntry.addEventListener('submit', async event => {
   ui.scoreSubmitStatus.textContent = 'TRANSMITTING...';
   try {
     const summary = pendingScore.summary;
+    await runCheckpointChain.catch(() => null);
     const accessToken = serverEconomy && serverEconomyReady ? await playerAccount.getAccessToken().catch(() => '') : '';
     const result = await leaderboard.submit({
       runId: pendingScore.run.id,
+      checkpointToken: pendingScore.run.checkpointToken,
+      sequence: runCheckpointSequence || 1,
       ...(accountCallsign ? {} : { initials }),
       score: pendingScore.score,
       difficulty: pendingScore.difficulty,

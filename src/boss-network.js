@@ -1,5 +1,6 @@
 const PREVIEW_EVENT_ID = '00000000-0000-4000-8000-000000000082';
 const PENDING_SETTLEMENT_KEY = 'cl:boss-pending-settlement:v1';
+const REQUEST_TIMEOUT = 10000;
 export const BOSS_REWARD_DEFINITIONS = Object.freeze([
   Object.freeze({ key: 'first_strike', type: 'milestone', name: 'FIRST STRIKE', description: 'DEAL 1,000 VERIFIED EVENT DAMAGE', threshold: 1000, shards: 25 }),
   Object.freeze({ key: 'crown_vanguard', type: 'milestone', name: 'CROWN VANGUARD', description: 'DEAL 5,000 VERIFIED EVENT DAMAGE', threshold: 5000, shards: 50 }),
@@ -8,18 +9,22 @@ export const BOSS_REWARD_DEFINITIONS = Object.freeze([
 ]);
 
 const requestJson = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...options,
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(options.headers || {}) },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(payload.error || 'Crown Network unavailable.');
-    error.code = payload.code || '';
-    error.status = response.status;
-    throw error;
-  }
-  return payload;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  try {
+    const response = await fetch(url, {
+      ...options, signal: controller.signal,
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.error || 'Crown Network unavailable.');
+      error.code = payload.code || '';
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  } finally { clearTimeout(timer); }
 };
 
 const previewEvent = (status = 'active') => ({
@@ -132,6 +137,24 @@ export class BossNetwork {
     };
     this.activeAssault = null;
     return { settlement, event: this.event, ranking: this.previewRanking(), rewards: this.previewRewards() };
+  }
+
+  async checkpoint({ phase, elapsedMs, damage }) {
+    if (this.preview) return { checkpointToken: this.activeAssault?.checkpointToken || '', phase };
+    if (!this.activeAssault?.assaultId || !this.activeAssault.checkpointToken) throw new Error('Assault signal expired.');
+    const request = () => requestJson('/api/boss/assault/checkpoint', {
+      method: 'POST', headers: this._checkpointHeaders,
+      body: JSON.stringify({ assaultId: this.activeAssault.assaultId, checkpointToken: this.activeAssault.checkpointToken, phase, elapsedMs, damage }),
+    });
+    this._checkpointHeaders = await this.headers();
+    let payload;
+    try { payload = await request(); }
+    catch (error) {
+      if (error.status) throw error;
+      payload = await request();
+    }
+    this.activeAssault.checkpointToken = payload.checkpointToken;
+    return payload;
   }
 
   async claimReward({ eventId, rewardKey, requestId = crypto.randomUUID() }) {

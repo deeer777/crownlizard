@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v98-market-new';
+const CACHE_VERSION = 'crown-lizard-shell-v99-security';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260831-98-market-new',
+  '/styles.css?v=20260831-99-security',
   '/site.css?v=20260828-90-seo',
   '/about/',
   '/how-to-play/',
@@ -13,18 +13,18 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/main.js?v=20260831-98-market-new',
-  '/src/config.js?v=20260831-98-market-new',
+  '/src/main.js?v=20260831-99-security',
+  '/src/config.js?v=20260831-99-security',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
   '/src/audio.js?v=20260828-91-weapon-skins4',
   '/src/game.js?v=20260828-91-weapon-skins4',
   '/src/boss-assault.js?v=20260828-91-weapon-skins4',
-  '/src/boss-network.js?v=20260830-96-warden-schedule-final',
+  '/src/boss-network.js?v=20260831-99-security',
   '/src/economy.js?v=20260830-95-score-fix',
   '/src/cosmetics.js?v=20260828-91-weapon-skins4',
-  '/src/leaderboard.js?v=20260824-45-cutover',
-  '/src/player-account.js?v=20260830-95-score-fix',
+  '/src/leaderboard.js?v=20260831-99-security',
+  '/src/player-account.js?v=20260831-99-security',
   '/src/armory.js?v=20260828-91-weapon-skins4',
   '/src/cosmetic-preferences.js?v=20260828-91-weapon-skins4',
   '/src/account-presentation.js?v=20260826-73-cinematic-endings',
@@ -78,7 +78,7 @@ const cacheStatic = async request => {
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok && response.type === 'basic') cache.put(request, response.clone());
+  if (response.ok && response.type === 'basic') await cache.put(request, response.clone());
   return response;
 };
 

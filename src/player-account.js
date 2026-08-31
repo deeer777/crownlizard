@@ -10,7 +10,6 @@ const validToken = value => typeof value === 'string' && value.length > 0 && val
 
 const validSession = value => value
   && validToken(value.accessToken)
-  && validToken(value.refreshToken)
   && typeof value.player?.id === 'string' && value.player.id.length > 0;
 
 const normalizeSession = value => {
@@ -27,14 +26,6 @@ const normalizeSession = value => {
       email: String(player.email || ''),
     },
   };
-};
-
-const decodeJwtPayload = token => {
-  try {
-    const encoded = String(token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=');
-    return JSON.parse(atob(padded));
-  } catch { return null; }
 };
 
 const requestJson = async (url, options = {}) => {
@@ -65,19 +56,12 @@ const requestJson = async (url, options = {}) => {
   } finally { clearTimeout(timer); }
 };
 
-export const legacyWalletPayload = state => ({
-  balance: Math.max(0, Math.floor(Number(state?.balance) || 0)),
-  opens: Math.max(0, Math.floor(Number(state?.vault?.opens) || 0)),
-  sinceSovereign: Math.max(0, Math.floor(Number(state?.vault?.sinceSovereign) || 0)),
-  equippedShip: String(state?.inventory?.equipped?.ship || 'ship_default'),
-  cosmetics: Object.keys(state?.inventory?.cosmetics || {}),
-});
-
 export class PlayerAccount {
   constructor(storage = globalThis.localStorage, storageKey = SESSION_KEY) {
     this.storage = storage;
     this.storageKey = storageKey;
     this.sessionExpired = false;
+    this.legacyRefreshToken = '';
     this.session = this.readSession();
     this.redirectResult = this.consumeAuthRedirect();
   }
@@ -119,31 +103,27 @@ export class PlayerAccount {
       clearRedirect();
       return { pending: true, tokenHash, type: verificationType };
     }
-    if (!accessToken || !refreshToken) {
+    if (accessToken || refreshToken) {
+      clearRedirect();
+      return { error: 'Legacy sign-in link rejected. Request a new secure account link.' };
+    }
+    if (!accessToken && !refreshToken) {
       if (!confirmation) return null;
       try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
       clearRedirect();
       return { confirmed: true };
     }
-    const claims = decodeJwtPayload(accessToken);
-    if (!claims?.sub) return { error: 'Account verification could not be completed.' };
-    const session = this.saveSession({
-      accessToken,
-      refreshToken,
-      expiresIn: Number(params.get('expires_in')) || 3600,
-      player: { id: String(claims.sub), anonymous: Boolean(claims.is_anonymous), email: String(claims.email || '') },
-    });
-    try { this.storage?.setItem(PASSWORD_SETUP_KEY, 'required'); } catch {}
-    clearRedirect();
-    return { verified: true, session };
+    return null;
   }
 
   readSession() {
     try {
       const normalized = normalizeSession(JSON.parse(this.storage?.getItem(this.storageKey) || 'null'));
       if (!validSession(normalized)) return null;
+      if (validToken(normalized.refreshToken)) this.legacyRefreshToken = normalized.refreshToken;
       const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
-      const session = { ...normalized, expiresAt };
+      const { refreshToken: _removed, ...publicFields } = normalized;
+      const session = { ...publicFields, expiresAt };
       try { this.storage?.setItem(this.storageKey, JSON.stringify(session)); } catch {}
       return session;
     } catch { return null; }
@@ -153,7 +133,9 @@ export class PlayerAccount {
     const normalized = normalizeSession(session);
     if (!validSession(normalized)) throw new Error('Sign-in succeeded, but the player session could not be restored. Please try again.');
     const expiresAt = Number(normalized.expiresAt) || Math.floor(Date.now() / 1000) + Number(normalized.expiresIn || 3600);
-    this.session = { ...normalized, expiresAt };
+    const { refreshToken: _removed, ...publicFields } = normalized;
+    this.session = { ...publicFields, expiresAt };
+    this.legacyRefreshToken = '';
     this.sessionExpired = false;
     try { this.storage?.setItem(this.storageKey, JSON.stringify(this.session)); } catch {}
     return this.session;
@@ -161,6 +143,7 @@ export class PlayerAccount {
 
   clearSession() {
     this.session = null;
+    this.legacyRefreshToken = '';
     this.sessionExpired = false;
     try { this.storage?.removeItem(this.storageKey); } catch {}
   }
@@ -236,16 +219,22 @@ export class PlayerAccount {
       expired.status = 401;
       throw expired;
     }
+    if (this.legacyRefreshToken) {
+      try { return await this.refresh(); } catch (error) { return this.recoverExpiredSession(error); }
+    }
     if (this.session.expiresAt * 1000 > Date.now() + 30_000) return this.session;
     try { return await this.refresh(); } catch (error) { return this.recoverExpiredSession(error); }
   }
 
   async refresh() {
-    if (!this.session?.refreshToken) throw new Error('Player session is missing.');
-    return this.saveSession(await requestJson('/api/player/refresh', {
+    if (!this.session) throw new Error('Player session is missing.');
+    const refreshToken = this.legacyRefreshToken;
+    const refreshed = await requestJson('/api/player/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken: this.session.refreshToken }),
-    }));
+      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+    });
+    this.legacyRefreshToken = '';
+    return this.saveSession(refreshed);
   }
 
   async authorizedRequest(url, options = {}, retry = true) {
@@ -302,16 +291,8 @@ export class PlayerAccount {
   async bootstrapWallet() {
     if (this.session) return this.getWallet();
     const payload = await requestJson('/api/player/bootstrap', { method: 'POST', body: '{}' });
-    const session = {
-      accessToken: String(payload.accessToken || ''),
-      refreshToken: String(payload.refreshToken || ''),
-      expiresIn: Number(payload.expiresIn) || 3600,
-      expiresAt: Number(payload.expiresAt) || Math.floor(Date.now() / 1000) + 3600,
-      player: payload.player || { id: '', anonymous: true },
-    };
-    if (!session.accessToken || !session.refreshToken) throw new Error('Player bootstrap session is missing.');
-    this.session = session;
-    try { this.storage?.setItem(this.storageKey, JSON.stringify(session)); } catch {}
+    const session = this.saveSession(payload.session || payload);
+    if (!session.accessToken) throw new Error('Player bootstrap session is missing.');
     return payload;
   }
 
@@ -367,14 +348,18 @@ export class PlayerAccount {
     return { ...payload, ...this.session };
   }
 
-  async settleRun(runId, summary) {
+  async settleRun(runId, summary, checkpointToken, sequence) {
     const settlement = {
       runId,
+      checkpointToken,
+      sequence,
+      score: Math.max(0, Math.floor(Number(summary.score) || 0)),
       durationMs: summary.durationMs,
       zone: summary.zone,
       wardens: summary.wardens,
       enemies: summary.enemies,
       crates: summary.crates,
+      bestCombo: summary.bestCombo,
       masteries: Array.isArray(summary.masteries) ? summary.masteries.map(({ weaponKey, masteryKey }) => ({ weaponKey, masteryKey })) : [],
     };
     try { this.storage?.setItem(PENDING_SETTLEMENT_KEY, JSON.stringify(settlement)); } catch {}
@@ -547,10 +532,4 @@ export class PlayerAccount {
     });
   }
 
-  importLegacy(state) {
-    return this.authorizedRequest('/api/player/wallet/import', {
-      method: 'POST',
-      body: JSON.stringify(legacyWalletPayload(state)),
-    });
-  }
 }

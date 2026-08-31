@@ -15,7 +15,12 @@ const request = async (url, options = {}) => {
       signal: controller.signal,
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || 'Leaderboard unavailable');
+    if (!response.ok) {
+      const error = new Error(payload.error || 'Leaderboard unavailable');
+      error.status = response.status;
+      error.code = payload.code || '';
+      throw error;
+    }
     return payload;
   } finally {
     clearTimeout(timer);
@@ -34,6 +39,19 @@ export const leaderboard = {
   async list(difficulty, limit = 10) {
     const query = new URLSearchParams({ difficulty, limit: String(limit) });
     return request(`/api/scores?${query}`);
+  },
+
+  async checkpoint(entry, accessToken = '') {
+    const options = {
+      method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: JSON.stringify(entry),
+    };
+    try { return await request('/api/runs/checkpoint', options); }
+    catch (error) {
+      if (error.status) throw error;
+      return request('/api/runs/checkpoint', options);
+    }
   },
 
   async submit(entry, accessToken = '') {

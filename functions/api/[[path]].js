@@ -3,6 +3,8 @@ const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', 
 const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95', '0.37.0-96', '0.37.1-97']);
 SUPPORTED_GAME_VERSIONS.add('0.38.0-98');
 ARMORY_UNLOCK_VERSIONS.add('0.38.0-98');
+SUPPORTED_GAME_VERSIONS.add('0.39.0-99');
+ARMORY_UNLOCK_VERSIONS.add('0.39.0-99');
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,8 +16,9 @@ const COSMETIC_IDS = new Set([
   'weapon_tesla_verdant_chain', 'weapon_tesla_storm_crown', 'weapon_laser_void_lance',
   'weapon_pulse_sovereign_eclipse', 'weapon_laser_royal_prism', 'weapon_pulse_solar_core',
 ]);
-const LEGACY_BALANCE_CAP = 50_000;
 const AUTH_BOOTSTRAP_LIMIT = 60;
+const REFRESH_COOKIE = '__Secure-cl_refresh';
+const REFRESH_COOKIE_PATH = '/api/player';
 const PROMO_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PROMO_SHARD_MIN = 25;
 const PROMO_SHARD_MAX = 2500;
@@ -123,6 +126,40 @@ const readJson = async request => {
   let offset = 0;
   chunks.forEach(chunk => { bytes.set(chunk, offset); offset += chunk.byteLength; });
   return JSON.parse(new TextDecoder().decode(bytes));
+};
+
+const readForm = async request => {
+  const type = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/x-www-form-urlencoded') throw new Error('INVALID_FORM');
+  const length = Number(request.headers.get('content-length') || 0);
+  if (length > MAX_BODY_BYTES) throw new Error('PAYLOAD_TOO_LARGE');
+  if (!request.body) return new URLSearchParams();
+  const reader = request.body.getReader();
+  const chunks = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new Error('PAYLOAD_TOO_LARGE');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  chunks.forEach(chunk => { bytes.set(chunk, offset); offset += chunk.byteLength; });
+  return new URLSearchParams(new TextDecoder().decode(bytes));
+};
+
+const isSameOriginRequest = request => {
+  const target = new URL(request.url).origin;
+  const origin = request.headers.get('Origin');
+  if (origin) return origin === target;
+  const referer = request.headers.get('Referer');
+  if (!referer) return false;
+  try { return new URL(referer).origin === target; } catch { return false; }
 };
 
 const getConfig = env => {
@@ -382,6 +419,25 @@ const sessionPayload = payload => {
   };
 };
 
+const publicSession = session => ({
+  accessToken: String(session?.accessToken || ''),
+  expiresIn: Number(session?.expiresIn) || 3600,
+  expiresAt: Number(session?.expiresAt) || Math.floor(Date.now() / 1000) + 3600,
+  player: session?.player || { id: '', anonymous: true, email: '' },
+});
+
+const refreshCookie = (token, maxAge = 2_592_000) => `${REFRESH_COOKIE}=${encodeURIComponent(String(token || ''))}; Max-Age=${maxAge}; Path=${REFRESH_COOKIE_PATH}; HttpOnly; Secure; SameSite=Strict`;
+const clearRefreshCookie = () => `${REFRESH_COOKIE}=; Max-Age=0; Path=${REFRESH_COOKIE_PATH}; HttpOnly; Secure; SameSite=Strict`;
+const withCookie = (response, cookie) => {
+  const headers = new Headers(response.headers);
+  headers.append('Set-Cookie', cookie);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+};
+const sessionJson = (session, data = null, status = 200) => withCookie(
+  json(data ? { ...data, session: publicSession(session) } : publicSession(session), status),
+  refreshCookie(session.refreshToken),
+);
+
 const createAnonymousSession = async (request, config) => {
   if (!config.publishableKey) throw new Error('PLAYER_ACCOUNTS_NOT_CONFIGURED');
   const ipHash = await hashIp(request, config.salt);
@@ -401,7 +457,7 @@ const createAnonymousSession = async (request, config) => {
 };
 
 const beginAnonymousSession = async (request, config) => {
-  try { return json(await createAnonymousSession(request, config), 201); }
+  try { return sessionJson(await createAnonymousSession(request, config), null, 201); }
   catch (error) {
     if (error.message === 'PLAYER_ACCOUNTS_NOT_CONFIGURED') return json({ error: 'Player accounts are not configured yet.' }, 503);
     if (error.status === 429) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
@@ -412,12 +468,16 @@ const beginAnonymousSession = async (request, config) => {
 const refreshPlayerSession = async (request, config) => {
   let body;
   try { body = await readJson(request); } catch { return json({ error: 'Invalid session request.' }, 400); }
-  const refreshToken = String(body.refreshToken || '');
+  const cookies = accountCookies(request);
+  let cookieToken = '';
+  try { cookieToken = decodeURIComponent(String(cookies[REFRESH_COOKIE] || '')); } catch {}
+  // One-release bridge: move existing Build 98 refresh tokens out of localStorage.
+  const refreshToken = cookieToken || String(body.refreshToken || '');
   if (!refreshToken || refreshToken.length > 4096) return json({ error: 'Invalid session.' }, 400);
   try {
     const payload = await authFetch(config, 'token?grant_type=refresh_token', { method: 'POST', body: JSON.stringify({ refresh_token: refreshToken }) });
-    return json(sessionPayload(payload));
-  } catch { return json({ error: 'Player session expired.' }, 401); }
+    return sessionJson(sessionPayload(payload));
+  } catch { return withCookie(json({ error: 'Player session expired.' }, 401), clearRefreshCookie()); }
 };
 
 const logoutPlayer = async (request, config) => {
@@ -429,9 +489,9 @@ const logoutPlayer = async (request, config) => {
       headers: { Authorization: `Bearer ${token}` },
       body: '{}',
     });
-    return json({ status: 'signed_out', scope: 'local' });
+    return withCookie(json({ status: 'signed_out', scope: 'local' }), clearRefreshCookie());
   } catch (error) {
-    if (error.status === 401 || error.status === 403) return json({ status: 'signed_out', scope: 'local' });
+    if (error.status === 401 || error.status === 403) return withCookie(json({ status: 'signed_out', scope: 'local' }), clearRefreshCookie());
     throw error;
   }
 };
@@ -555,18 +615,6 @@ const armorySnapshot = async (config, userId) => {
   };
 };
 
-export const validateLegacyWallet = body => {
-  const balance = normalizeInt(body?.balance, 0, LEGACY_BALANCE_CAP);
-  const opens = normalizeInt(body?.opens, 0, 100_000);
-  const sinceSovereign = normalizeInt(body?.sinceSovereign, 0, 199);
-  const cosmetics = Array.isArray(body?.cosmetics) ? [...new Set(body.cosmetics.map(String))] : [];
-  const equippedShip = String(body?.equippedShip || 'ship_default');
-  if ([balance, opens, sinceSovereign].some(value => value === null)) return { error: 'Invalid legacy wallet.' };
-  if (cosmetics.length > COSMETIC_IDS.size || cosmetics.some(id => !COSMETIC_IDS.has(id))) return { error: 'Invalid legacy inventory.' };
-  if (equippedShip !== 'ship_default' && !cosmetics.includes(equippedShip)) return { error: 'Invalid equipped cosmetic.' };
-  return { value: { balance, opens, sinceSovereign, cosmetics, equippedShip } };
-};
-
 const getPlayerWallet = async (request, config) => {
   const user = await authenticatePlayer(request, config);
   if (!user) return json({ error: 'Player session required.' }, 401);
@@ -620,7 +668,7 @@ const confirmPlayerEmail = async (request, config) => {
     if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.player.email || !session.accessToken || !session.refreshToken) {
       throw new Error('AUTH_SESSION_INVALID');
     }
-    return json(session);
+    return sessionJson(session);
   } catch (error) {
     if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
       return json({ error: 'This verification link is invalid or has expired.' }, 400);
@@ -629,25 +677,24 @@ const confirmPlayerEmail = async (request, config) => {
   }
 };
 
-const accountPage = ({ title, eyebrow, message, body, status = 200, cookie = '', script = '' }) => {
+const accountPage = ({ title, eyebrow, message, body, status = 200, cookie = '', cookies = [], script = '' }) => {
   const nonce = script ? crypto.randomUUID().replace(/-/g, '') : '';
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
-@font-face{font-family:PressStart;src:url('/assets/fonts/PressStart2P-Regular.ttf')}@font-face{font-family:Silkscreen;src:url('/assets/fonts/Silkscreen-Bold.ttf')}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:Silkscreen,monospace;text-align:center}.panel{width:min(440px,100%);border-block:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-family:PressStart,monospace;font-size:14px;letter-spacing:1px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:10px;letter-spacing:2px}h1{margin:0 0 14px;font:400 20px/1.45 PressStart,monospace;letter-spacing:0}p{margin:0 auto 24px;max-width:350px;color:#b8d8d0;font-size:12px;line-height:1.55}.field{display:block;margin:0 0 17px;text-align:left}.field span{display:block;margin:0 0 7px;color:#8cc8b9;font-size:10px;letter-spacing:2px}.field input{width:100%;min-height:52px;border:2px solid #377f72;border-radius:0;background:#02090c;color:#fff;padding:10px 12px;font:700 16px Silkscreen,monospace;outline:0}.field input:focus{border-color:#ffd36b;box-shadow:0 0 0 2px #8f541c}.button{display:grid;place-items:center;width:100%;min-height:58px;border:0;background:transparent;color:#e8fff8;text-decoration:none;font:400 11px/1.7 PressStart,monospace;letter-spacing:1px;text-shadow:2px 2px #164b41;cursor:pointer}.button:hover,.button:focus{color:#ffd36b;outline:0}.button:active{transform:translateY(2px)}.error{margin:-5px 0 18px;color:#ff8c83;font-size:12px;line-height:1.5}.note{margin:18px 0 0;color:#77958d;font-size:9px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${message}</p>${body}<div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main>${script ? `<script nonce="${nonce}">${script}</script>` : ''}</body></html>`, {
-  status,
-  headers: {
+  const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#03090d"><title>Crown Lizard · Secure Account</title><style>
+@font-face{font-family:PressStart;src:url('/assets/fonts/PressStart2P-Regular.ttf')}@font-face{font-family:Silkscreen;src:url('/assets/fonts/Silkscreen-Bold.ttf')}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:22px;background:#03090d;color:#e8fff8;font-family:Silkscreen,monospace;text-align:center}.panel{width:min(440px,100%);border-block:3px solid #6fffd2;background:#071a1d;padding:30px 22px;box-shadow:8px 8px 0 #010405}.crown{color:#ffd36b;font-size:42px;line-height:1;text-shadow:3px 3px 0 #7d4318}.brand{margin:10px 0 4px;color:#ffd36b;font-family:PressStart,monospace;font-size:14px;letter-spacing:1px}.eyebrow{margin:18px 0 8px;color:#77a69a;font-size:10px;letter-spacing:2px}h1{margin:0 0 14px;font:400 20px/1.45 PressStart,monospace;letter-spacing:0}p{margin:0 auto 24px;max-width:350px;color:#b8d8d0;font-size:12px;line-height:1.55}.field{display:block;margin:0 0 17px;text-align:left}.field span{display:block;margin:0 0 7px;color:#8cc8b9;font-size:10px;letter-spacing:2px}.field input{width:100%;min-height:52px;border:2px solid #377f72;border-radius:0;background:#02090c;color:#fff;padding:10px 12px;font:700 16px Silkscreen,monospace;outline:0}.field input:focus{border-color:#ffd36b;box-shadow:0 0 0 2px #8f541c}.button{display:grid;place-items:center;width:100%;min-height:58px;border:0;background:transparent;color:#e8fff8;text-decoration:none;font:400 11px/1.7 PressStart,monospace;letter-spacing:1px;text-shadow:2px 2px #164b41;cursor:pointer}.button:hover,.button:focus{color:#ffd36b;outline:0}.button:active{transform:translateY(2px)}.error{margin:-5px 0 18px;color:#ff8c83;font-size:12px;line-height:1.5}.note{margin:18px 0 0;color:#77958d;font-size:9px;letter-spacing:1px}</style></head><body><main class="panel"><div class="crown">♛</div><div class="brand">CROWN LIZARD</div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${message}</p>${body}<div class="note">CROWNLIZARD.COM · SECURE CONNECTION</div></main>${script ? `<script nonce="${nonce}">${script}</script>` : ''}</body></html>`;
+  const headers = new Headers({
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; ${script ? `script-src 'nonce-${nonce}';` : ''} form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
-    ...(cookie ? { 'Set-Cookie': cookie } : {}),
-  },
   });
+  [...cookies, cookie].filter(Boolean).forEach(value => headers.append('Set-Cookie', value));
+  return new Response(document, { status, headers });
 };
 
-const sessionReadyPage = (session, cookie, flow = 'password') => {
-  const safeSession = JSON.stringify(session)
+const sessionReadyPage = (session, cookies = [], flow = 'password') => {
+  const safeSession = JSON.stringify(publicSession(session))
     .replace(/&/g, '\\u0026')
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
@@ -655,7 +702,7 @@ const sessionReadyPage = (session, cookie, flow = 'password') => {
     .replace(/\u2029/g, '\\u2029');
   const script = `(()=>{try{const session=${safeSession};session.expiresIn=Number(session.expiresIn)||3600;session.expiresAt=Number(session.expiresAt)||Math.floor(Date.now()/1000)+session.expiresIn;localStorage.setItem('cl:player-session:v1',JSON.stringify(session));localStorage.setItem('cl:account-password:v1','done')}catch{}})();`;
   const login = flow === 'login';
-  return accountPage({ title: login ? 'SIGNED IN' : 'PASSWORD SAVED', eyebrow: login ? 'VAULT RESTORED' : 'ACCOUNT READY', message: login ? 'Your Crown account is active on this device.' : 'Your password is saved and your Crown account is ready.', body: '<a class="button" href="/">♛ ENTER CROWN LIZARD</a>', cookie, script });
+  return accountPage({ title: login ? 'SIGNED IN' : 'PASSWORD SAVED', eyebrow: login ? 'VAULT RESTORED' : 'ACCOUNT READY', message: login ? 'Your Crown account is active on this device.' : 'Your password is saved and your Crown account is ready.', body: '<a class="button" href="/">♛ ENTER CROWN LIZARD</a>', cookies: Array.isArray(cookies) ? cookies : [cookies], script });
 };
 
 const passwordSetupForm = error => `<form method="post" action="/api/player/account/password/complete"><label class="field"><span>NEW PASSWORD</span><input name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required autofocus></label><label class="field"><span>CONFIRM PASSWORD</span><input name="confirm_password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>${error ? `<div class="error" role="alert">${error}</div>` : ''}<button class="button" type="submit">♛ SAVE PASSWORD</button></form>`;
@@ -670,8 +717,11 @@ const playerAccountCallback = async (request, config) => {
   let tokenHash = String(url.searchParams.get('token_hash') || '');
   let type = String(url.searchParams.get('type') || '');
   if (request.method === 'POST') {
+    if (!isSameOriginRequest(request)) {
+      return accountPage({ title: 'REQUEST BLOCKED', eyebrow: 'SECURE ACCOUNT LINK', message: 'This account action must be completed from Crown Lizard.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 403 });
+    }
     try {
-      const form = await request.formData();
+      const form = await readForm(request);
       tokenHash = String(form.get('token_hash') || '');
       type = String(form.get('type') || '');
     } catch {
@@ -704,6 +754,9 @@ const playerAccountCallback = async (request, config) => {
 };
 
 const completeCallbackPassword = async (request, config) => {
+  if (!isSameOriginRequest(request)) {
+    return accountPage({ title: 'REQUEST BLOCKED', eyebrow: 'SECURE VAULT SETUP', message: 'This account action must be completed from Crown Lizard.', body: '<a class="button" href="/">BACK TO CROWN LIZARD</a>', status: 403 });
+  }
   const cookies = accountCookies(request);
   let refreshToken = '';
   try { refreshToken = decodeURIComponent(String(cookies['__Secure-cl_password_setup'] || '')); } catch {}
@@ -714,7 +767,7 @@ const completeCallbackPassword = async (request, config) => {
   let password = '';
   let confirmPassword = '';
   try {
-    const form = await request.formData();
+    const form = await readForm(request);
     password = String(form.get('password') || '');
     confirmPassword = String(form.get('confirm_password') || '');
   } catch {}
@@ -743,7 +796,7 @@ const completeCallbackPassword = async (request, config) => {
       });
       const loginSession = sessionPayload(loginPayload);
       if (!UUID_PATTERN.test(loginSession.player.id) || !loginSession.accessToken || !loginSession.refreshToken) throw new Error('AUTH_SESSION_INVALID');
-      return sessionReadyPage(loginSession, clearCookie);
+      return sessionReadyPage(loginSession, [clearCookie, refreshCookie(loginSession.refreshToken)]);
     } catch {
       return accountPage({ title: 'PASSWORD SAVED', eyebrow: 'VAULT SECURED', message: 'Your password is saved. Return to the game and use SIGN IN to restore your Vault.', body: '<a class="button" href="/?account=sign-in">♛ OPEN SIGN IN</a>', cookie: clearCookie });
     }
@@ -802,7 +855,7 @@ const loginPlayer = async (request, config) => {
     });
     const session = sessionPayload(payload);
     if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
-    return json({ contract: 'player-session-v1', session, wallet: await walletSnapshot(config, session.player.id) });
+    return sessionJson(session, { contract: 'player-session-v1', wallet: await walletSnapshot(config, session.player.id) });
   } catch (error) {
     if (error.status === 400 || error.status === 401 || error.message === 'AUTH_SESSION_INVALID') return json({ error: 'Email or password is incorrect.' }, 401);
     if (error.status === 429) return json({ error: 'Too many sign-in attempts. Try again later.' }, 429);
@@ -810,68 +863,15 @@ const loginPlayer = async (request, config) => {
   }
 };
 
-const completePlayerLoginPage = async (request, config) => {
-  let email = '';
-  let password = '';
-  try {
-    const form = await request.formData();
-    email = String(form.get('email') || '').trim().toLowerCase();
-    password = String(form.get('password') || '');
-  } catch {}
-  if (!EMAIL_PATTERN.test(email) || email.length > 254 || password.length < 1 || password.length > 128) {
-    return accountPage({ title: 'SIGN IN FAILED', eyebrow: 'CROWN ACCOUNT', message: 'The email or password is incorrect.', body: '<a class="button" href="/?account=sign-in">TRY AGAIN</a>', status: 401 });
-  }
-  try {
-    const payload = await authFetch(config, 'token?grant_type=password', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    const session = sessionPayload(payload);
-    if (!UUID_PATTERN.test(session.player.id) || session.player.anonymous || !session.accessToken || !session.refreshToken) throw new Error('AUTH_SESSION_INVALID');
-    return sessionReadyPage(session, '', 'login');
-  } catch (error) {
-    if ([400, 401, 403, 422].includes(error.status) || error.message === 'AUTH_SESSION_INVALID') {
-      return accountPage({ title: 'SIGN IN FAILED', eyebrow: 'CROWN ACCOUNT', message: 'The email or password is incorrect.', body: '<a class="button" href="/?account=sign-in">TRY AGAIN</a>', status: 401 });
-    }
-    throw error;
-  }
-};
-
 const bootstrapPlayerWallet = async (request, config) => {
   try {
     const session = await createAnonymousSession(request, config);
-    return json({ ...session, wallet: await walletSnapshot(config, session.player.id) }, 201);
+    return sessionJson(session, { wallet: await walletSnapshot(config, session.player.id) }, 201);
   } catch (error) {
     if (error.message === 'PLAYER_ACCOUNTS_NOT_CONFIGURED') return json({ error: 'Player accounts are not configured yet.' }, 503);
     if (error.status === 429) return json({ error: 'Too many player accounts created. Try again later.' }, 429);
     throw error;
   }
-};
-
-const importLegacyWallet = async (request, config, env) => {
-  const user = await authenticatePlayer(request, config);
-  if (!user) return json({ error: 'Player session required.' }, 401);
-  const deadline = Date.parse(String(env.ECONOMY_MIGRATION_DEADLINE || ''));
-  if (!Number.isFinite(deadline) || Date.now() > deadline) return json({ error: 'Legacy migration is closed.' }, 403);
-  let body;
-  try { body = await readJson(request); } catch { return json({ error: 'Invalid migration request.' }, 400); }
-  const validation = validateLegacyWallet(body);
-  if (validation.error) return json({ error: validation.error }, 422);
-  await ensureWallet(config, user.id);
-  const value = validation.value;
-  const imported = await supabaseFetch(config, 'rpc/import_legacy_wallet', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_user_id: user.id,
-      p_balance: value.balance,
-      p_opens: value.opens,
-      p_since_sovereign: value.sinceSovereign,
-      p_equipped_ship: value.equippedShip,
-      p_cosmetic_ids: value.cosmetics,
-    }),
-  });
-  if (imported !== true) return json({ error: 'This wallet was already migrated.' }, 409);
-  return json({ player: { id: user.id, anonymous: Boolean(user.is_anonymous) }, wallet: await walletSnapshot(config, user.id) }, 201);
 };
 
 export const validateScorePayload = (body, run, now = Date.now(), profile = null) => {
@@ -955,12 +955,66 @@ const beginRun = async (request, config) => {
   const recent = await supabaseFetch(config, `leaderboard_runs?${rateQuery}`);
   if (recent.length >= 20) return json({ error: 'Too many runs started. Try again shortly.' }, 429);
 
-  const rows = await supabaseFetch(config, 'leaderboard_runs', {
+  const checkpointToken = crypto.randomUUID();
+  const started = await supabaseFetch(config, 'rpc/start_verified_run', {
     method: 'POST',
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ difficulty, game_version: gameVersion, ip_hash: ipHash, user_id: user?.id || null }),
+    body: JSON.stringify({
+      p_user_id: user?.id || null, p_difficulty: difficulty, p_game_version: gameVersion,
+      p_ip_hash: ipHash, p_checkpoint_token_hash: await sha256Hex(checkpointToken),
+    }),
   });
-  return json({ id: rows[0].id, startedAt: rows[0].created_at }, 201);
+  return json({ id: started.id, startedAt: started.startedAt, expiresAt: started.expiresAt, checkpointToken }, 201);
+};
+
+export const checkpointTelemetry = body => {
+  const sequence = normalizeInt(body.sequence, 1, 100_000);
+  const elapsedMs = normalizeInt(body.elapsedMs ?? body.durationMs, 0, 86_400_000);
+  const score = normalizeInt(body.score, 0, 1_000_000_000);
+  const zone = normalizeInt(body.zone, 1, 999);
+  const wardens = normalizeInt(body.wardens, 0, 999);
+  const enemies = normalizeInt(body.enemies, 0, 1_000_000);
+  const crates = normalizeInt(body.crates, 0, 100_000);
+  const bestCombo = normalizeInt(body.bestCombo, 1, 100_000);
+  if ([sequence, elapsedMs, score, zone, wardens, enemies, crates, bestCombo].some(value => value === null)) return null;
+  return { sequence, elapsedMs, score, zone, wardens, enemies, crates, bestCombo };
+};
+
+const recordRunCheckpoint = async (request, config) => {
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid checkpoint request.' }, 400); }
+  const runId = String(body.runId || '');
+  const checkpointToken = String(body.checkpointToken || '');
+  const telemetry = checkpointTelemetry(body);
+  if (!UUID_PATTERN.test(runId) || !UUID_PATTERN.test(checkpointToken) || !telemetry) return json({ error: 'Invalid checkpoint.' }, 400);
+  const suppliedToken = bearerToken(request);
+  const user = suppliedToken ? await authenticatePlayer(request, config) : null;
+  if (suppliedToken && !user) return json({ error: 'Player session expired.' }, 401);
+  const nextToken = crypto.randomUUID();
+  const result = await supabaseFetch(config, 'rpc/record_run_checkpoint', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_user_id: user?.id || null, p_ip_hash: await hashIp(request, config.salt), p_run_id: runId,
+      p_token_hash: await sha256Hex(checkpointToken), p_next_token_hash: await sha256Hex(nextToken),
+      p_sequence: telemetry.sequence, p_elapsed_ms: telemetry.elapsedMs, p_telemetry: telemetry,
+    }),
+  });
+  if (result.error) return json({ error: 'Run checkpoint rejected.', code: result.error }, 409);
+  return json({ checkpointToken: nextToken, sequence: telemetry.sequence, acceptedAt: result.acceptedAt });
+};
+
+const completeVerifiedRun = async (request, config, user, body) => {
+  const runId = String(body.runId || '');
+  const checkpointToken = String(body.checkpointToken || '');
+  const telemetry = checkpointTelemetry({ ...body, sequence: normalizeInt(body.sequence, 1, 100_000) || 1 });
+  if (!UUID_PATTERN.test(runId) || !UUID_PATTERN.test(checkpointToken) || !telemetry) return { error: 'INVALID_RUN' };
+  return supabaseFetch(config, 'rpc/complete_verified_run', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_user_id: user?.id || null, p_ip_hash: await hashIp(request, config.salt), p_run_id: runId,
+      p_token_hash: await sha256Hex(checkpointToken), p_elapsed_ms: telemetry.elapsedMs,
+      p_summary: { ...telemetry, masteries: Array.isArray(body.masteries) ? body.masteries : [] },
+    }),
+  });
 };
 
 const settleRunReward = async (request, config) => {
@@ -974,6 +1028,9 @@ const settleRunReward = async (request, config) => {
   const runs = await supabaseFetch(config, `leaderboard_runs?${runQuery}`);
   if (!runs.length) return json({ error: 'Run not found.' }, 404);
   if (runs[0].user_id !== user.id) return json({ error: 'Run does not belong to this player.' }, 403);
+  const completed = await completeVerifiedRun(request, config, user, body);
+  if (completed.error) return json({ error: 'Run verification failed.', code: completed.error }, 409);
+  body = { ...body, ...(completed.summary || {}) };
   const validation = validateEconomySummary(body, runs[0]);
   if (validation.error) return json({ error: validation.error }, 422);
   const armoryValidation = validateArmorySummary(body, runs[0]);
@@ -1136,6 +1193,7 @@ const startBossAssaultRequest = async (request, config) => {
   }
   const ceilingScale = 1 + armory.progression.damageBonus;
   const phaseCeiling = BOSS_PHASE_CEILINGS[blueprintId].map(value => Math.round(value * ceilingScale));
+  const checkpointToken = crypto.randomUUID();
   const assault = await supabaseFetch(config, 'rpc/start_boss_assault', {
     method: 'POST',
     body: JSON.stringify({
@@ -1146,7 +1204,30 @@ const startBossAssaultRequest = async (request, config) => {
   });
   if (assault.error === 'BLUEPRINT_LOCKED') return json({ error: 'This blueprint is locked.', code: assault.error }, 403);
   if (assault.error) return json({ error: 'Assault signal is unavailable.', code: assault.error }, 409);
-  return json({ assault, event: publicBossEvent(event), ranking: await bossLeaderboard(config, eventId, user.id, 10) }, assault.duplicate ? 200 : 201);
+  const attached = await supabaseFetch(config, 'rpc/attach_boss_checkpoint_token', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_assault_id: assault.assaultId, p_token_hash: await sha256Hex(checkpointToken) }),
+  });
+  if (attached.error) return json({ error: 'Assault checkpoint unavailable.', code: attached.error }, 409);
+  return json({ assault: { ...assault, checkpointToken }, event: publicBossEvent(event), ranking: await bossLeaderboard(config, eventId, user.id, 10) }, assault.duplicate ? 200 : 201);
+};
+
+const checkpointBossAssaultRequest = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user) return json({ error: 'Player session required.' }, 401);
+  let body;
+  try { body = await readJson(request); } catch { return json({ error: 'Invalid boss checkpoint.' }, 400); }
+  const assaultId = String(body.assaultId || '');
+  const checkpointToken = String(body.checkpointToken || '');
+  const phase = normalizeInt(body.phase, 1, 2);
+  const elapsedMs = normalizeInt(body.elapsedMs, 1, 90_000);
+  const damage = normalizeInt(body.damage, 0, 1_000_000);
+  if (!UUID_PATTERN.test(assaultId) || !UUID_PATTERN.test(checkpointToken) || [phase, elapsedMs, damage].some(value => value === null)) return json({ error: 'Invalid boss checkpoint.' }, 400);
+  const nextToken = crypto.randomUUID();
+  const result = await supabaseFetch(config, 'rpc/record_boss_assault_checkpoint', {
+    method: 'POST', body: JSON.stringify({ p_user_id: user.id, p_assault_id: assaultId, p_token_hash: await sha256Hex(checkpointToken), p_next_token_hash: await sha256Hex(nextToken), p_phase: phase, p_elapsed_ms: elapsedMs, p_damage: damage }),
+  });
+  if (result.error) return json({ error: 'Boss checkpoint rejected.', code: result.error }, 409);
+  return json({ checkpointToken: nextToken, phase, acceptedAt: result.acceptedAt });
 };
 
 const settleBossAssaultRequest = async (request, config) => {
@@ -1157,11 +1238,14 @@ const settleBossAssaultRequest = async (request, config) => {
   const validation = validateBossSettlementPayload(body);
   if (validation.error) return json({ error: validation.error }, 400);
   const value = validation.value;
-  const settlement = await supabaseFetch(config, 'rpc/settle_boss_assault', {
+  const checkpointToken = String(body.checkpointToken || '');
+  if (!UUID_PATTERN.test(checkpointToken)) return json({ error: 'Boss checkpoint required.' }, 400);
+  const settlement = await supabaseFetch(config, 'rpc/settle_verified_boss_assault', {
     method: 'POST', body: JSON.stringify({
       p_user_id: user.id, p_assault_id: value.assaultId, p_request_id: value.requestId,
       p_elapsed_ms: value.elapsedMs, p_phase_damage: value.phaseDamage,
       p_outcome: value.outcome, p_targets_destroyed: value.targetsDestroyed,
+      p_token_hash: await sha256Hex(checkpointToken),
     }),
   });
   const statuses = { ASSAULT_NOT_FOUND: 404, ASSAULT_OWNER_MISMATCH: 403, ASSAULT_EXPIRED: 409, ASSAULT_TIME_INVALID: 422 };
@@ -1565,50 +1649,36 @@ const submitScore = async (request, config) => {
   const runId = String(body.runId || '');
   if (!UUID_PATTERN.test(runId)) return json({ error: 'Invalid run.' }, 400);
 
-  const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,created_at,used_at', id: `eq.${runId}`, limit: '1' });
+  const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,created_at,used_at,status,approved_summary', id: `eq.${runId}`, limit: '1' });
   const runs = await supabaseFetch(config, `leaderboard_runs?${runQuery}`);
   if (!runs.length) return json({ error: 'Run not found.' }, 404);
+  const suppliedToken = bearerToken(request);
+  const user = suppliedToken ? await authenticatePlayer(request, config) : null;
+  if (suppliedToken && !user) return json({ error: 'Player session expired.' }, 401);
   let profile = null;
   if (runs[0].user_id) {
-    const user = await authenticatePlayer(request, config);
     if (!user) return json({ error: 'Player session required.' }, 401);
     if (user.id !== runs[0].user_id) return json({ error: 'Run does not belong to this player.' }, 403);
     profile = await playerProfileSnapshot(config, user.id);
     if (!profile) return json({ error: 'Choose a callsign before submitting this score.', code: 'PROFILE_REQUIRED' }, 409);
   }
-  const validation = validateScorePayload(body, runs[0], Date.now(), profile);
+  const completed = await completeVerifiedRun(request, config, user, body);
+  if (completed.error) return json({ error: 'Run verification failed.', code: completed.error }, 409);
+  const approved = completed.summary || runs[0].approved_summary || {};
+  const validation = validateScorePayload({ ...body, ...approved }, runs[0], Date.now(), profile);
   if (validation.error) return json({ error: validation.error }, 422);
   const value = validation.value;
 
-  const inserted = await supabaseFetch(config, 'leaderboard_scores', {
+  const inserted = await supabaseFetch(config, 'rpc/submit_verified_score', {
     method: 'POST',
-    headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
-      run_id: runId,
-      initials: value.initials,
-      user_id: value.userId,
-      player_name: value.playerName,
-      score: value.score,
-      difficulty: value.difficulty,
-      duration_ms: value.durationMs,
-      zone: value.zone,
-      wardens: value.wardens,
-      enemies: value.enemies,
-      crates: value.crates,
-      best_combo: value.bestCombo,
-      game_version: value.gameVersion,
+      p_run_id: runId, p_user_id: value.userId, p_initials: value.initials,
+      p_player_name: value.playerName,
     }),
   });
-
-  const usedQuery = new URLSearchParams({ id: `eq.${runId}`, used_at: 'is.null' });
-  await supabaseFetch(config, `leaderboard_runs?${usedQuery}`, {
-    method: 'PATCH',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ used_at: new Date().toISOString() }),
-  });
   const scores = await listScores(config, value.difficulty, 100);
-  const rank = scores.findIndex(entry => entry.id === inserted[0].id) + 1;
-  const entry = scores.find(score => score.id === inserted[0].id) || { ...inserted[0], playerName: value.playerName, initials: value.playerName };
+  const rank = scores.findIndex(entry => entry.id === inserted.id) + 1;
+  const entry = scores.find(score => score.id === inserted.id) || { ...inserted, playerName: value.playerName, initials: value.playerName };
   return json({ entry, rank: rank || null, scores: scores.slice(0, 10) }, 201);
 };
 
@@ -1631,14 +1701,13 @@ export const onRequest = async context => {
     if (path === 'player/account/recovery' && request.method === 'POST') return await requestPasswordRecovery(request, config);
     if (path === 'player/account/password' && request.method === 'POST') return await setPlayerPassword(request, config);
     if (path === 'player/account/login' && request.method === 'POST') return await loginPlayer(request, config);
-    if (path === 'player/account/login/complete' && request.method === 'POST') return await completePlayerLoginPage(request, config);
-    if (path === 'player/wallet/import' && request.method === 'POST') return await importLegacyWallet(request, config, env);
     if (path === 'economy/settle' && request.method === 'POST') return await settleRunReward(request, config);
     if (path === 'armory' && request.method === 'GET') return await getCrownArmory(request, config);
     if (path === 'armory/select' && request.method === 'POST') return await selectCrownArmoryBlueprint(request, config);
     if (path === 'boss/event' && request.method === 'GET') return await getBossEvent(request, config);
     if (path === 'boss/leaderboard' && request.method === 'GET') return await getBossLeaderboard(request, config);
     if (path === 'boss/assault/start' && request.method === 'POST') return await startBossAssaultRequest(request, config);
+    if (path === 'boss/assault/checkpoint' && request.method === 'POST') return await checkpointBossAssaultRequest(request, config);
     if (path === 'boss/assault/settle' && request.method === 'POST') return await settleBossAssaultRequest(request, config);
     if (path === 'boss/rewards/claim' && request.method === 'POST') return await claimBossRewardRequest(request, config);
     if (path === 'vault/open' && request.method === 'POST') return await openCrownCrate(request, config);
@@ -1668,6 +1737,7 @@ export const onRequest = async context => {
     }
     if (path.startsWith('profiles/') && request.method === 'GET') return await getPublicPlayerProfile(config, path.slice('profiles/'.length));
     if (path === 'runs' && request.method === 'POST') return await beginRun(request, config);
+    if (path === 'runs/checkpoint' && request.method === 'POST') return await recordRunCheckpoint(request, config);
     if (path === 'scores' && request.method === 'GET') {
       const url = new URL(request.url);
       const difficulty = url.searchParams.get('difficulty') || 'arcade';

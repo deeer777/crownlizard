@@ -1,36 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { legacyWalletPayload, PlayerAccount } from '../src/player-account.js';
+import { PlayerAccount } from '../src/player-account.js';
 import { calculateShardReward } from '../src/economy.js';
-import { calculateServerShardReward, onRequest, secureServerInt, validateEconomySummary, validateLegacyWallet } from '../functions/api/[[path]].js';
+import { calculateServerShardReward, onRequest, secureServerInt, validateEconomySummary } from '../functions/api/[[path]].js';
 
 const playerAccountSource = readFileSync(new URL('../src/player-account.js', import.meta.url), 'utf8');
 assert.match(playerAccountSource, /const REQUEST_TIMEOUT = 20000;/, 'cold mobile Auth receives enough time to return its session');
-
-const localState = {
-  balance: 420,
-  inventory: {
-    cosmetics: {
-      ship_verdant_scout: { source: 'crate' },
-      ship_void_hunter: { source: 'sponsored' },
-    },
-    equipped: { ship: 'ship_void_hunter' },
-  },
-  vault: { opens: 9, sinceSovereign: 7 },
-};
-
-const payload = legacyWalletPayload(localState);
-assert.deepEqual(payload, {
-  balance: 420,
-  opens: 9,
-  sinceSovereign: 7,
-  equippedShip: 'ship_void_hunter',
-  cosmetics: ['ship_verdant_scout', 'ship_void_hunter'],
-}, 'the legacy bridge only sends the authoritative wallet fields');
-assert.deepEqual(validateLegacyWallet(payload).value, payload, 'a valid existing Vault can migrate once');
-assert.match(validateLegacyWallet({ ...payload, balance: 50001 }).error, /Invalid legacy wallet/, 'legacy balance is capped during the migration window');
-assert.match(validateLegacyWallet({ ...payload, cosmetics: ['ship_fake'] }).error, /Invalid legacy inventory/, 'invented cosmetics cannot enter the server inventory');
-assert.match(validateLegacyWallet({ ...payload, equippedShip: 'ship_crown_sovereign' }).error, /Invalid equipped cosmetic/, 'a locked cosmetic cannot be imported as equipped');
 
 const restrictedStorageAccount = new PlayerAccount({
   getItem: () => null,
@@ -51,7 +26,7 @@ normalizedSessionAccount.saveSession({ session: {
   user: { id: '123e4567-e89b-42d3-a456-426614174000', is_anonymous: false, email: 'pilot@example.com' },
 } });
 assert.equal(normalizedSessionAccount.getPlayer().email, 'pilot@example.com', 'the client normalizes nested Supabase-style sessions before validating them');
-assert.equal(normalizedSessionAccount.session.refreshToken, 'short-refresh', 'opaque Supabase refresh tokens are accepted without an invented minimum length');
+assert.equal(normalizedSessionAccount.session.refreshToken, undefined, 'refresh tokens are never retained in browser session state');
 assert.equal(normalizedSessionAccount.getAccountState(), 'setup', 'a verified account without completed password setup has one explicit state');
 
 const missingExpiryStorage = {
@@ -127,6 +102,7 @@ assert.ok(expiredPermanentStorage.value, 'the permanent identity is retained so 
 globalThis.fetch = fetchBeforeRecoveryTest;
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+const hardeningSchema = readFileSync(new URL('../supabase/security-hardening-build99.sql', import.meta.url), 'utf8');
 const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
 assert.match(serverApi, /const AUTH_BOOTSTRAP_LIMIT = 60;/, 'anonymous account bootstrap remains rate-limited but tolerates shared mobile and home networks');
 for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', 'economy_transactions', 'auth_bootstrap_events']) {
@@ -137,7 +113,8 @@ for (const table of ['player_profiles', 'blocked_callsign_terms']) {
   assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`), `${table} has RLS enabled`);
   assert.match(schema, new RegExp(`revoke all on table public\\.${table} from public, anon, authenticated`), `${table} denies every browser role direct access`);
 }
-assert.match(schema, /revoke all on function public\.import_legacy_wallet[\s\S]*from public, anon, authenticated/, 'legacy import is service-role only');
+assert.match(hardeningSchema, /drop function if exists public\.import_legacy_wallet/, 'legacy wallet import is removed from production');
+assert.doesNotMatch(serverApi, /player\/wallet\/import/, 'the Worker exposes no legacy wallet route');
 assert.match(schema, /for update;[\s\S]*economy_settled_at/, 'run settlement locks the run before marking it settled');
 assert.match(schema, /unique \(user_id, external_id\)/, 'the transaction ledger rejects duplicate run payouts');
 assert.match(schema, /revoke all on function public\.settle_run_reward[\s\S]*from public, anon, authenticated/, 'run settlement is service-role only');
@@ -155,7 +132,7 @@ assert.match(schema, /create or replace function public\.equip_player_cosmetic[\
 assert.match(schema, /revoke all on function public\.equip_player_cosmetic[\s\S]*from public, anon, authenticated/, 'cosmetic equip is service-role only');
 for (let index = 0; index < 32; index += 1) assert.ok(secureServerInt(10_000) >= 0 && secureServerInt(10_000) < 10_000, 'server crate rolls stay inside the published odds range');
 
-const normalRun = { durationMs: 120_000, enemies: 40, zone: 2, wardens: 1 };
+const normalRun = { durationMs: 120_000, elapsedMs: 120_000, score: 184500, enemies: 40, zone: 2, wardens: 1, crates: 2, bestCombo: 8, checkpointToken: '423e4567-e89b-42d3-a456-426614174000', sequence: 6 };
 assert.deepEqual(calculateServerShardReward(normalRun), calculateShardReward(normalRun), 'server and visible client payout rules match exactly');
 const serverRun = { created_at: new Date(Date.now() - 125_000).toISOString() };
 assert.ok(validateEconomySummary(normalRun, serverRun).reward, 'a plausible finished run can settle');
@@ -245,6 +222,7 @@ globalThis.fetch = async (url, options = {}) => {
     duplicate: rpcDuplicate, xpAwarded: 72, xp: 172, rank: 1, unlockedBlueprintIds: [],
   });
   if (String(url).endsWith('/rest/v1/rpc/ensure_player_armory')) return Response.json(true);
+  if (String(url).endsWith('/rest/v1/rpc/complete_verified_run')) return Response.json({ duplicate: rpcDuplicate, summary: normalRun });
   if (String(url).includes('/rest/v1/player_progression?')) return Response.json([{
     arsenal_xp: 172, arsenal_rank: 1, selected_blueprint_id: 'blaster_standard', backfilled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   }]);
@@ -280,6 +258,7 @@ const sessionResponse = await onRequest({
 });
 assert.equal(sessionResponse.status, 201, 'an anonymous Supabase player session can be bootstrapped');
 assert.equal((await sessionResponse.json()).player.id, userId, 'the authenticated player id is returned');
+assert.match(sessionResponse.headers.get('set-cookie'), /__Secure-cl_refresh=.*HttpOnly.*Secure.*SameSite=Strict/, 'refresh credentials are issued only in a protected cookie');
 const authSignupCall = calls.find(call => call.url.includes('/auth/v1/signup'));
 assert.equal(authSignupCall.options.headers.apikey, env.SUPABASE_PUBLISHABLE_KEY, 'Auth uses the publishable key rather than exposing the server secret');
 const authSignupIndex = calls.findIndex(call => call.url.includes('/auth/v1/signup'));
@@ -344,6 +323,7 @@ assert.equal(calls.filter(call => call.url.endsWith('/auth/v1/verify')).length, 
 const callbackResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/callback', {
     method: 'POST',
+    headers: { Origin: 'https://crownlizard.com', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ token_hash: 'callback-token-hash-with-enough-entropy', type: 'recovery' }),
   }),
   env,
@@ -360,7 +340,7 @@ assert.match(callbackResponse.headers.get('set-cookie'), /__Secure-cl_password_s
 const callbackPasswordResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/password/complete', {
     method: 'POST',
-    headers: { Cookie: '__Secure-cl_password_setup=confirmed-refresh-token-with-enough-entropy' },
+    headers: { Cookie: '__Secure-cl_password_setup=confirmed-refresh-token-with-enough-entropy', Origin: 'https://crownlizard.com', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ password: 'correct-horse-crown', confirm_password: 'correct-horse-crown' }),
   }),
   env,
@@ -425,7 +405,7 @@ assert.equal(clientLogoutResult.signedOut, true, 'the browser confirms local log
 assert.equal(clientLoginAccount.getPlayer(), null, 'logout removes the permanent identity from browser memory');
 assert.equal(clientLoginStorage.value, null, 'logout removes the stored player session');
 
-const serverRenderedLoginResponse = await onRequest({
+const removedLoginResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/account/login/complete', {
     method: 'POST',
     body: new URLSearchParams({ email: 'Pilot@Example.com', password: 'correct-horse-crown' }),
@@ -433,13 +413,7 @@ const serverRenderedLoginResponse = await onRequest({
   env,
   params: { path: ['player', 'account', 'login', 'complete'] },
 });
-assert.equal(serverRenderedLoginResponse.status, 200, 'the robust sign-in path bypasses the failing client JSON session boundary');
-const serverRenderedLoginPage = await serverRenderedLoginResponse.text();
-assert.match(serverRenderedLoginPage, /localStorage\.setItem\('cl:player-session:v1'/, 'the server-rendered sign-in installs the verified session directly');
-assert.match(serverRenderedLoginPage, /<h1>SIGNED IN<\/h1>/, 'fallback sign-in uses accurate copy instead of claiming a password was saved');
-assert.doesNotMatch(serverRenderedLoginPage, /<h1>PASSWORD SAVED<\/h1>/, 'ordinary sign-in never reuses password-creation feedback');
-assert.doesNotMatch(serverRenderedLoginPage, /correct-horse-crown/, 'the submitted password is never echoed into the completion page');
-assert.match(serverRenderedLoginResponse.headers.get('content-security-policy'), /script-src 'nonce-[a-f0-9]+'/, 'server-rendered sign-in uses the same nonce-protected session bootstrap');
+assert.equal(removedLoginResponse.status, 404, 'the login-CSRF-prone form fallback no longer exists');
 
 const bootstrapResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/player/bootstrap', { method: 'POST', headers: { 'CF-Connecting-IP': '203.0.113.8' } }),
@@ -449,7 +423,7 @@ const bootstrapResponse = await onRequest({
 assert.equal(bootstrapResponse.status, 201, 'a cold mobile client receives session and wallet atomically');
 const bootstrapPayload = await bootstrapResponse.json();
 assert.equal(bootstrapPayload.wallet.balance, 420, 'the atomic bootstrap response already contains the server wallet');
-assert.equal(bootstrapPayload.accessToken, 'header.payload.signature-access', 'the atomic bootstrap response can bind the next run');
+assert.equal(bootstrapPayload.session.accessToken, 'header.payload.signature-access', 'the atomic bootstrap response can bind the next run');
 
 const settlementResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/economy/settle', {
@@ -562,9 +536,8 @@ const redirectResult = redirectAccount.consumeAuthRedirect({
   pathname: '/',
   search: '?account=verified',
 }, { replaceState() {} });
-assert.equal(redirectResult.verified, true, 'the email verification redirect upgrades the stored browser session');
-assert.equal(redirectAccount.getPlayer().id, userId, 'identity linking preserves the anonymous player id and its inventory ownership');
-assert.equal(redirectAccount.needsPasswordSetup(), true, 'verified email immediately requires password completion');
+assert.match(redirectResult.error, /Legacy sign-in link rejected/, 'fragment-carried sessions are rejected rather than trusted');
+assert.equal(redirectAccount.getPlayer(), null, 'an unverified fragment can never overwrite the active browser identity');
 
 const messageStorage = {
   values: new Map(),
@@ -627,4 +600,4 @@ assert.equal(signedInResult.signedIn, undefined, 'a URL flag can never masquerad
 
 globalThis.fetch = originalFetch;
 
-console.log('Player account and legacy migration test passed');
+console.log('Player account and hardened session test passed');
