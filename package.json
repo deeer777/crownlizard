@@ -7,6 +7,14 @@
     "build": "node tools/build-site.mjs",
     "schema": "node tools/build-canonical-schema.mjs",
     "test": "node tools/run-tests.mjs",
-    "test:integration": "node tools/security-integration.mjs"
+    "test:integration": "node tools/security-integration.mjs",
+    "release:gate": "node tools/release-gate.mjs",
+    "release:verify": "npm run schema && npm test && npm run build && npm run release:gate",
+    "cloudflare:secrets": "node tools/check-pages-secrets.mjs",
+    "smoke:production": "node tools/production-smoke.mjs https://crownlizard.com",
+    "deploy:production": "npm run release:verify && npm run cloudflare:secrets && wrangler pages deploy dist --project-name crownlizard --branch main && npm run smoke:production"
+  },
+  "devDependencies": {
+    "wrangler": "^4.127.1"
   }
 }

@@ -21,6 +21,11 @@ const ipHash = hash(`integration:${randomUUID()}`);
 const checkpointToken = randomUUID();
 let runId = '';
 try {
+  const expired = await call('rpc/expire_stale_verified_runs', { p_limit: 1 });
+  assert.ok(Number.isInteger(expired) && expired >= 0, 'stale-run maintenance is installed in the isolated project');
+  const pruned = await call('rpc/prune_stale_run_checkpoints', { p_limit: 1 });
+  assert.ok(Number.isInteger(pruned) && pruned >= 0, 'checkpoint maintenance is installed in the isolated project');
+
   const started = await call('rpc/start_verified_run', {
     p_user_id: null, p_difficulty: 'arcade', p_game_version: '0.39.0-99', p_ip_hash: ipHash,
     p_checkpoint_token_hash: hash(checkpointToken),
@@ -34,6 +39,7 @@ try {
 
   const scoreBody = { p_run_id: runId, p_user_id: null, p_initials: 'TST', p_player_name: 'TST' };
   const results = await Promise.all(Array.from({ length: 8 }, () => call('rpc/submit_verified_score', scoreBody)));
+  assert.match(String(results[0].id), /^[0-9a-f]{8}-[0-9a-f-]{27}$/i, 'the real PostgreSQL score result preserves its UUID type');
   assert.equal(new Set(results.map(result => String(result.id))).size, 1, 'all concurrent score submissions resolve to one row');
   assert.equal(results.filter(result => result.duplicate === false).length, 1, 'exactly one concurrent request creates the score');
   assert.equal(results.filter(result => result.duplicate === true).length, 7, 'the remaining requests are idempotent replays');

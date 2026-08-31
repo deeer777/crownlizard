@@ -155,6 +155,14 @@ For production, apply `supabase/security-hardening-build99.sql` before publishin
 
 `npm test` runs the offline regression suite. `npm run test:integration` performs eight genuinely concurrent score submissions against an explicitly configured isolated Supabase test project and verifies that only one row is created. The harness refuses the production project ID and removes its test rows afterward.
 
+### Stabilized release gate
+
+After Build 99, apply `supabase/stability-build99.sql` to keep expired runs and old abandoned checkpoints bounded without deleting completed run or score history. New Supabase projects receive it through the generated canonical schema.
+
+Use `npm run release:verify` before every publish. It rebuilds the canonical schema, runs the complete offline suite, creates the allowlisted public build and checks that client, server, package and public release versions agree. It also rejects leaked SQL, tests, tools, environment files or package internals in `dist/`.
+
+`npm run cloudflare:secrets` performs a read-only check that the four required Pages secret names from `cloudflare-pages.required.json` exist; values are never read or printed. `npm run smoke:production` then verifies the exact local build on `crownlizard.com` plus Chill, Arcade and Crowned scores, Global Warden and Crown Market. An optional temporary `CROWNLIZARD_SMOKE_ACCESS_TOKEN` adds authenticated wallet and profile reads. `npm run deploy:production` executes the full gate, secret check, production upload and post-deploy smoke in that order.
+
 Server-side shard settlement är också förberedd. En Auth-verifierad run binds till spelarens `user_id` när den startar. Vid Game Over räknar Cloudflare om belöningen, jämför rapporterad tid med serverns starttid och avvisar orimliga zon-, Warden- och fiendevärden. Databasfunktionen `settle_run_reward` låser run-raden och uppdaterar run, wallet och transaktionslogg atomiskt. Kombinationen av row lock, `economy_settled_at` och ett unikt `(user_id, external_id)` gör replay idempotent.
 
 Atomic server crates används via `/api/vault/open` på live. Klienten skickar endast ett beständigt UUID som idempotency key. Cloudflare skapar två unbiased Web Crypto-rolls; `open_crown_crate` låser wallet och bestämmer kostnad, aktuell pity, tier, katalogskin, duplicate salvage, inventory, nytt saldo och transaktion i samma databasoperation. Klientfält som påstår tier eller saldo ignoreras. Samma UUID returnerar den lagrade öppningen utan ny debitering. Duplicate salvage krediteras atomiskt direkt men presenteras fortfarande i revealen.

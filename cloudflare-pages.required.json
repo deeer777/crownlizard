@@ -1,0 +1,9 @@
+{
+  "project": "crownlizard",
+  "secrets": [
+    "SUPABASE_URL",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SCORE_HASH_SALT"
+  ]
+}

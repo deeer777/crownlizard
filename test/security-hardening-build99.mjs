@@ -6,6 +6,7 @@ import { PlayerAccount } from '../src/player-account.js';
 const api = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
 const client = readFileSync(new URL('../src/player-account.js', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/security-hardening-build99.sql', import.meta.url), 'utf8');
+const stabilization = readFileSync(new URL('../supabase/stability-build99.sql', import.meta.url), 'utf8');
 const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 
 assert.doesNotMatch(api, /request\.formData\(/, 'all account forms use the bounded parser');
@@ -19,6 +20,8 @@ assert.match(migration, /create or replace function public\.submit_verified_scor
 assert.match(migration, /declare r public\.leaderboard_runs%rowtype; existing_id uuid; score_id uuid;/, 'atomic score submission preserves UUID score identifiers');
 assert.match(migration, /status='quarantined'/, 'implausible final telemetry is quarantined instead of ranked');
 assert.match(migration, /record_boss_assault_checkpoint[\s\S]*PHASE_DAMAGE_MISMATCH/, 'Global Warden damage is bound to phase checkpoints');
+assert.match(stabilization, /expire_stale_verified_runs[\s\S]*for update skip locked/, 'expired run cleanup is bounded and lock-safe');
+assert.match(stabilization, /prune_stale_run_checkpoints[\s\S]*r\.status in \('expired', 'abandoned'\)/, 'checkpoint pruning cannot touch active or completed runs');
 assert.match(migration, /pg_advisory_xact_lock\(hashtextextended\('market-list:'/, 'concurrent market listings share an account lock');
 assert.match(wrangler, /"compatibility_date": "2026-08-31"/, 'Cloudflare compatibility is versioned');
 assert.doesNotMatch(wrangler, /"observability"/, 'Pages config excludes unsupported Worker observability settings');

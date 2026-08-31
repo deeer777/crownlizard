@@ -105,6 +105,28 @@ const json = (data, status = 200, cacheControl = 'no-store') => new Response(JSO
   headers: { ...responseHeaders, 'Cache-Control': cacheControl },
 });
 
+const requestError = (requestId, error, code = 'NETWORK_UNAVAILABLE', status = 503) => new Response(JSON.stringify({
+  error,
+  code,
+  requestId,
+}), {
+  status,
+  headers: { ...responseHeaders, 'Cache-Control': 'no-store', 'X-Crown-Request-ID': requestId },
+});
+
+const operationalErrorCode = error => {
+  const message = String(error?.message || error || '');
+  if (message === 'AUTH_NOT_CONFIGURED') return 'AUTH_NOT_CONFIGURED';
+  if (message.startsWith('SUPABASE_')) return 'DATABASE_UPSTREAM_ERROR';
+  if (message.startsWith('AUTH_')) return 'AUTH_UPSTREAM_ERROR';
+  return 'UNEXPECTED_SERVER_ERROR';
+};
+
+const requestIdentifier = request => {
+  const cfRay = String(request.headers.get('CF-Ray') || '');
+  return /^[a-z0-9._:-]{1,80}$/i.test(cfRay) ? cfRay : crypto.randomUUID();
+};
+
 const readJson = async request => {
   const length = Number(request.headers.get('content-length') || 0);
   if (length > MAX_BODY_BYTES) throw new Error('PAYLOAD_TOO_LARGE');
@@ -1691,9 +1713,13 @@ const submitScore = async (request, config) => {
 
 export const onRequest = async context => {
   const { request, env, params } = context;
-  const config = getConfig(env);
-  if (!config) return json({ error: 'Leaderboard is not configured yet.' }, 503);
   const path = Array.isArray(params.path) ? params.path.join('/') : String(params.path || '');
+  const requestId = requestIdentifier(request);
+  const config = getConfig(env);
+  if (!config) {
+    console.error(JSON.stringify({ event: 'api_config_missing', requestId, path, method: request.method }));
+    return requestError(requestId, 'Crown Network is not configured.', 'NETWORK_NOT_CONFIGURED');
+  }
 
   try {
     if (path === 'player/session' && request.method === 'POST') return await beginAnonymousSession(request, config);
@@ -1755,7 +1781,11 @@ export const onRequest = async context => {
     if (path === 'scores' && request.method === 'POST') return await submitScore(request, config);
     return json({ error: 'Not found.' }, 404);
   } catch (error) {
-    console.error(JSON.stringify({ event: 'api_request_failed', path, message: String(error.message || error).slice(0, 120) }));
-    return json({ error: 'Crown Network temporarily unavailable.' }, 503);
+    const errorCode = operationalErrorCode(error);
+    console.error(JSON.stringify({
+      event: 'api_request_failed', requestId, path, method: request.method, errorCode,
+      upstreamStatus: Number(error?.status) || null,
+    }));
+    return requestError(requestId, 'Crown Network temporarily unavailable.', errorCode);
   }
 };
