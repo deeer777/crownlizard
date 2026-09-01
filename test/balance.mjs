@@ -16,6 +16,18 @@ game.start('arcade');
 assert.deepEqual(CONFIG.weaponProgression.discoveryInterval, [14, 18], 'new weapons are introduced on a readable early cadence');
 assert.deepEqual(CONFIG.weaponProgression.upgradeInterval, [27, 35], 'later weapon upgrades require a longer commitment');
 assert.ok(CONFIG.weaponProgression.upgradeInterval[0] > CONFIG.weaponProgression.discoveryInterval[1], 'upgrade cadence cannot collapse into discovery cadence');
+assert.equal(CONFIG.player.acceleration / CONFIG.player.drag, 1900 / 7.5, 'faster acceleration and braking preserve sustained movement speed');
+assert.ok(CONFIG.player.drag >= 9, 'movement reaches and releases its intended speed promptly');
+
+const discoveryGame = new Game(canvas, input, { hud: () => {} });
+discoveryGame.start('arcade');
+for (let drop = 0; drop < 4; drop += 1) {
+  discoveryGame.pickupTimer = 0;
+  discoveryGame.updateSpawning(0);
+}
+const discoveryOrder = discoveryGame.pickups.map(pickup => pickup.weapon);
+assert.deepEqual(new Set(discoveryOrder.slice(0, 2)), new Set(['laser', 'tesla']), 'Laser and Tesla are guaranteed to appear in the first two discovery crates');
+assert.deepEqual(new Set(discoveryOrder), new Set(['laser', 'tesla', 'spread', 'pulse']), 'missed crates cannot cause repeated discoveries to hide a weapon');
 
 game.weaponLevels.laser = 1;
 const laserMk1 = game.weaponStats('laser');

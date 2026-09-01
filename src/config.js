@@ -1,11 +1,11 @@
 export const CONFIG = Object.freeze({
-  version: Object.freeze({ release: '0.43.0', build: 104 }),
+  version: Object.freeze({ release: '0.44.0', build: 105 }),
   simulationHz: 60,
   player: {
     radius: 17,
-    acceleration: 1900,
+    acceleration: 2280,
     maxSpeed: 365,
-    drag: 7.5,
+    drag: 9,
     maxHealth: 3,
     hitInvulnerability: 1.15,
   },

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260901-104-mobile-controls';
+import { CONFIG } from './config.js?v=20260902-105-responsive-flight';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';

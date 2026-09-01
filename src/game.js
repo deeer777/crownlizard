@@ -223,6 +223,7 @@ export class Game {
     this.introducedThreats = new Set();
     this.pickupTimer = CONFIG.weaponProgression.initialDelay;
     this.pickupCount = 0;
+    this.discoveryDrops = new Set();
     this.runStats = { wardens: 0, enemies: 0, crates: 0, bestCombo: 1 };
     this.shake = 0;
     this.flash = 0;
@@ -991,11 +992,13 @@ export class Game {
       if (available.length) {
         const firstDrop = this.pickupCount === 0;
         const unowned = available.filter(key => this.weaponLevels[key] === 0);
-        const showcase = unowned.filter(key => key === 'laser' || key === 'tesla');
-        const discoveryDrop = unowned.length > 0 && this.pickupCount < 4;
+        const undiscovered = unowned.filter(key => !this.discoveryDrops.has(key));
+        const showcase = undiscovered.filter(key => key === 'laser' || key === 'tesla');
+        const discoveryDrop = undiscovered.length > 0 && this.discoveryDrops.size < 4;
         const favorCurrent = !discoveryDrop && this.pickupCount > 0 && available.includes(this.weapon) && Math.random() < CONFIG.weaponProgression.favorCurrentChance;
-        const pool = firstDrop && showcase.length ? showcase : discoveryDrop ? unowned : available;
+        const pool = discoveryDrop && showcase.length && this.discoveryDrops.size < 2 ? showcase : discoveryDrop ? undiscovered : available;
         const weapon = favorCurrent ? this.weapon : pool[Math.floor(Math.random() * pool.length)];
+        if (this.weaponLevels[weapon] === 0) this.discoveryDrops.add(weapon);
         this.pickups.push({
           x: firstDrop ? clamp(this.player.x, this.arenaLeft + 70, this.arenaRight - 70) : random(this.arenaLeft + 55, this.arenaRight - 55),
           y: firstDrop ? clamp(this.height * .22, 145, 190) : 105,
@@ -1008,8 +1011,8 @@ export class Game {
           discoveryDrop,
         });
         this.pickupCount += 1;
-        const remainingDiscoveries = unowned.length - 1;
-        const [delayMin, delayMax] = remainingDiscoveries > 0 && this.pickupCount < 4
+        const remainingDiscoveries = unowned.filter(key => !this.discoveryDrops.has(key)).length;
+        const [delayMin, delayMax] = remainingDiscoveries > 0 && this.discoveryDrops.size < 4
           ? CONFIG.weaponProgression.discoveryInterval
           : CONFIG.weaponProgression.upgradeInterval;
         this.pickupTimer = random(delayMin, delayMax);

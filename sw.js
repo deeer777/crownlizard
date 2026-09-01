@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v104-mobile-controls';
+const CACHE_VERSION = 'crown-lizard-shell-v105-responsive-flight';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260901-104-mobile-controls',
+  '/styles.css?v=20260902-105-responsive-flight',
   '/site.css?v=20260828-90-seo',
   '/about/',
   '/how-to-play/',
@@ -13,8 +13,8 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/main.js?v=20260901-104-mobile-controls',
-  '/src/config.js?v=20260901-104-mobile-controls',
+  '/src/main.js?v=20260902-105-responsive-flight',
+  '/src/config.js?v=20260902-105-responsive-flight',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
   '/src/audio.js?v=20260828-91-weapon-skins4',

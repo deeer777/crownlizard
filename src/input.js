@@ -110,10 +110,10 @@ export class Input {
       const dx = this.pointer.type === 'mouse' ? this.pointer.x - player.x : this.pointer.x - this.pointer.originX;
       const dy = this.pointer.type === 'mouse' ? this.pointer.y - player.y : this.pointer.y - this.pointer.originY;
       const distance = Math.hypot(dx, dy);
-      const deadZone = this.pointer.type === 'mouse' ? 10 : 10;
+      const deadZone = this.pointer.type === 'mouse' ? 10 : 6;
       if (distance > deadZone) {
-        const normalized = Math.min(1, (distance - deadZone) / 32);
-        const strength = this.pointer.type === 'mouse' ? 1 : normalized ** 1.15;
+        const normalized = Math.min(1, (distance - deadZone) / 36);
+        const strength = this.pointer.type === 'mouse' ? 1 : normalized ** .72;
         x = dx / distance * strength;
         y = dy / distance * strength;
       }

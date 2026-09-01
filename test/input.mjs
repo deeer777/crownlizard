@@ -54,7 +54,7 @@ globalThis.innerHeight = 844;
 touchCanvas.listeners.get('pointerdown')(touchEvent(1, 100, 200));
 touchCanvas.listeners.get('pointermove')(touchEvent(1, 126, 200));
 const preciseMovement = touchInput.movement({ x: 0, y: 0 });
-assert.ok(preciseMovement.x > .4 && preciseMovement.x < .5, 'the touch curve preserves precise mid-stick steering');
+assert.ok(preciseMovement.x > .62 && preciseMovement.x < .69, 'mid-stick movement responds quickly without reaching full speed');
 
 touchCanvas.listeners.get('pointerdown')(touchEvent(2, 300, 500));
 touchCanvas.listeners.get('pointermove')(touchEvent(2, 300, 550));
@@ -63,5 +63,9 @@ touchCanvas.listeners.get('pointerup')(touchEvent(2, 300, 550));
 assert.deepEqual(touchInput.movement({ x: 0, y: 0 }), preciseMovement, 'releasing an unrelated finger cannot cancel steering');
 touchCanvas.listeners.get('lostpointercapture')(touchEvent(1, 126, 200));
 assert.deepEqual(touchInput.movement({ x: 0, y: 0 }), { x: 0, y: 0 }, 'lost pointer capture always releases mobile steering');
+
+touchCanvas.listeners.get('pointerdown')(touchEvent(3, 100, 200));
+touchCanvas.listeners.get('pointermove')(touchEvent(3, 110, 200));
+assert.ok(touchInput.movement({ x: 0, y: 0 }).x > .18, 'small deliberate thumb movement produces an immediate response');
 
 console.log('Keyboard and focus-release input tests passed');
