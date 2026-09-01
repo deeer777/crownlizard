@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260901-102-duel-verified-final">
+  <link rel="stylesheet" href="./styles.css?v=20260901-103-menu-focus-final4">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -131,13 +131,13 @@
       </div>
       <p class="tagline">DASH · SURVIVE · CLAIM THE HIGH SCORE</p>
       <div class="menu-choices" aria-label="Main menu">
-        <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
-        <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></button>
-        <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" aria-label="Global Warden event status syncing"><span><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em><small id="menuWardenCountdown">CHECKING SIGNAL</small></button>
-        <button id="menuDuel" class="primary menu-choice menu-duel" data-menu-choice="duel"><span><i>♛</i> CROWN DUEL</span><em>BETA</em></button>
-        <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
-        <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
-        <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
+        <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><span class="menu-label"><i>♛</i> START GAME</span></button>
+        <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><span class="menu-label"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></span></button>
+        <button id="menuDuel" class="primary menu-choice" data-menu-choice="duel"><span class="menu-label"><i>♛</i> CROWN DUEL</span></button>
+        <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" aria-label="Global Warden event status syncing"><span class="menu-label"><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em></button>
+        <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><span class="menu-label"><i>♛</i> CROWN VAULT</span></button>
+        <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><span class="menu-label"><i>♛</i> HIGH SCORES</span></button>
+        <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><span class="menu-label"><i>♛</i> SETTINGS</span></button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
       <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version"></span><strong id="best">0</strong></div>
@@ -711,6 +711,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260901-102-duel-verified-final"></script>
+  <script type="module" src="./src/main.js?v=20260901-103-menu-focus"></script>
 </body>
 </html>

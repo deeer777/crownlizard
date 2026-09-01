@@ -21,10 +21,18 @@ assert.match(html, /class="status-shards"><small>◆ SHARDS<\/small><b id="menuS
 assert.match(main, /ui\.menuShards\.textContent = walletState\(\)\.balance\.toLocaleString\('en-US'\);/, 'the shard value does not repeat its label inline');
 assert.doesNotMatch(main, /menuShards\.textContent = `◆ \$\{walletState/, 'the old inline shard presentation cannot return');
 assert.match(css, /\.arcade-status \{[\s\S]*?transform: translateY\(-22px\);/, 'the player status row uses the free space above the logo');
+assert.match(html, /id="play"[\s\S]*?class="menu-label"><i>♛<\/i> START GAME<\/span>/, 'the selected crown and its menu text remain one compact visual label');
+assert.match(html, /id="menuWarden"[\s\S]*?class="menu-label"><i>♛<\/i> GLOBAL WARDEN<\/span><em id="menuWardenState"/, 'the Warden badge follows the same compact label instead of occupying a distant column');
+assert.match(css, /\.hero-panel \.menu-choice \.menu-label \{[\s\S]*display: inline-flex;[\s\S]*margin: 0;/, 'main-menu labels are centered as single inline groups');
+assert.match(css, /\.hero-panel \.menu-choice i \{[\s\S]*position: static;[\s\S]*margin: 0 8px 0 0;/, 'the selection crown stays directly beside the label and cannot drift to the button edge');
+assert.match(css, /\.hero-panel \.menu-choice i \{[^}]*transform: translateY\(-1px\);/, 'the crown glyph receives the optical vertical correction needed by the pixel font');
+assert.doesNotMatch(css, /\.hero-panel \.menu-choice i \{[^}]*position: absolute;/, 'the old edge-pinned selection crown cannot return');
+assert.doesNotMatch(html, /menu-meta-start/, 'the removed countdown row cannot leave an artificial gap below Global Warden');
 assert.match(mobileReadability, /\.leaderboard-list li \{ font-size: 11px; \}/, 'mobile leaderboard rows stay readable');
 assert.match(mobileReadability, /\.setting-list button,\s*\.setting-list a \{ min-height: 52px; font-size: 11px; \}/, 'settings buttons and crawlable links remain readable and touch-friendly');
-assert.match(mobileReadability, /\.hero-panel \.menu-event \{[\s\S]*grid-template-areas: "event-name event-state" "event-time event-time"[\s\S]*width: min\(300px,calc\(100vw - 24px\)\)/, 'the Warden mobile choice uses an intentional two-level layout instead of three squeezed columns');
-assert.match(mobileReadability, /\.hero-panel \.menu-event > span \{[\s\S]*white-space: nowrap/, 'the Global Warden name cannot wrap on narrow phones');
-assert.match(mobileReadability, /\.hero-panel \.menu-event small \{[\s\S]*grid-area: event-time[\s\S]*text-align: center/, 'the event countdown owns a centered second line');
+assert.match(mobileReadability, /\.hero-panel \.menu-event \{[\s\S]*gap: 9px;[\s\S]*width: min\(332px,calc\(100vw - 28px\)\);[\s\S]*min-height: 44px;/, 'the Warden mobile choice follows the same single-row dimensions as every main-menu action');
+assert.match(mobileReadability, /\.hero-panel \.menu-event > \.menu-label \{[\s\S]*font-size: inherit;[\s\S]*line-height: inherit;/, 'the Global Warden name inherits the shared arcade-menu typography');
+assert.doesNotMatch(html, /id="menuWardenCountdown"/, 'the main menu does not render a second Warden countdown line');
+assert.doesNotMatch(html, /id="menuDuel"[^>]*>[\s\S]*?<em>BETA<\/em>/, 'Crown Duel keeps its release status inside the lobby rather than inside the main menu');
 
 console.log('Mobile typography hierarchy test passed');

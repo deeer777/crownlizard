@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v102-duel-verified-final';
+const CACHE_VERSION = 'crown-lizard-shell-v103-menu-focus-final4';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260901-102-duel-verified-final',
+  '/styles.css?v=20260901-103-menu-focus-final4',
   '/site.css?v=20260828-90-seo',
   '/about/',
   '/how-to-play/',
@@ -13,8 +13,8 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/main.js?v=20260901-102-duel-verified-final',
-  '/src/config.js?v=20260901-102-duel-verified-final',
+  '/src/main.js?v=20260901-103-menu-focus',
+  '/src/config.js?v=20260901-103-menu-focus',
   '/src/engine.js?v=20260820-18',
   '/src/input.js?v=20260827-82-input-release',
   '/src/audio.js?v=20260828-91-weapon-skins4',
