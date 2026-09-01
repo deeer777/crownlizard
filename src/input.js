@@ -2,19 +2,23 @@ export class Input {
   constructor(canvas, dashButton, joystick) {
     this.canvas = canvas;
     this.keys = new Set();
-    this.pointer = { active: false, x: 0, y: 0, originX: 0, originY: 0, type: 'mouse' };
+    this.pointer = { active: false, id: null, x: 0, y: 0, originX: 0, originY: 0, type: 'mouse' };
     this.joystick = joystick;
     this.dashQueued = false;
 
     const gameplayKeys = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ShiftLeft', 'ShiftRight']);
     const editableTarget = target => Boolean(target?.matches?.('input, textarea, select, [contenteditable="true"]'));
-    const clearHeldInput = () => {
-      this.keys.clear();
+    const resetPointer = () => {
       this.pointer.active = false;
-      this.dashQueued = false;
+      this.pointer.id = null;
       joystick.classList.add('hidden');
       joystick.style.setProperty('--stick-x', '0px');
       joystick.style.setProperty('--stick-y', '0px');
+    };
+    const clearHeldInput = () => {
+      this.keys.clear();
+      resetPointer();
+      this.dashQueued = false;
     };
 
     addEventListener('keydown', event => {
@@ -31,6 +35,9 @@ export class Input {
     });
     addEventListener('blur', clearHeldInput);
     addEventListener('pagehide', clearHeldInput);
+    addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') clearHeldInput();
+    });
 
     const point = event => {
       const rect = canvas.getBoundingClientRect();
@@ -46,7 +53,9 @@ export class Input {
       }
     };
     canvas.addEventListener('pointerdown', event => {
+      if (this.pointer.active && event.pointerId !== this.pointer.id) return;
       this.pointer.active = true;
+      this.pointer.id = event.pointerId;
       this.pointer.type = event.pointerType || 'mouse';
       const rect = canvas.getBoundingClientRect();
       this.pointer.originX = event.clientX - rect.left;
@@ -64,15 +73,20 @@ export class Input {
       }
       canvas.setPointerCapture?.(event.pointerId);
     });
-    canvas.addEventListener('pointermove', event => { if (this.pointer.active) point(event); });
+    canvas.addEventListener('pointermove', event => {
+      if (this.pointer.active && event.pointerId === this.pointer.id) point(event);
+    });
     canvas.addEventListener('pointerup', event => {
-      this.pointer.active = false;
-      joystick.classList.add('hidden');
-      joystick.style.setProperty('--stick-x', '0px');
-      joystick.style.setProperty('--stick-y', '0px');
+      if (event.pointerId !== this.pointer.id) return;
+      resetPointer();
       canvas.releasePointerCapture?.(event.pointerId);
     });
-    canvas.addEventListener('pointercancel', () => { this.pointer.active = false; joystick.classList.add('hidden'); });
+    canvas.addEventListener('pointercancel', event => {
+      if (event.pointerId === this.pointer.id) resetPointer();
+    });
+    canvas.addEventListener('lostpointercapture', event => {
+      if (event.pointerId === this.pointer.id) resetPointer();
+    });
     dashButton.addEventListener('pointerdown', event => {
       event.preventDefault();
       event.stopPropagation();
@@ -96,9 +110,10 @@ export class Input {
       const dx = this.pointer.type === 'mouse' ? this.pointer.x - player.x : this.pointer.x - this.pointer.originX;
       const dy = this.pointer.type === 'mouse' ? this.pointer.y - player.y : this.pointer.y - this.pointer.originY;
       const distance = Math.hypot(dx, dy);
-      const deadZone = this.pointer.type === 'mouse' ? 10 : 7;
+      const deadZone = this.pointer.type === 'mouse' ? 10 : 10;
       if (distance > deadZone) {
-        const strength = this.pointer.type === 'mouse' ? 1 : Math.min(1, (distance - deadZone) / 38);
+        const normalized = Math.min(1, (distance - deadZone) / 32);
+        const strength = this.pointer.type === 'mouse' ? 1 : normalized ** 1.15;
         x = dx / distance * strength;
         y = dy / distance * strength;
       }
@@ -116,6 +131,7 @@ export class Input {
   clear() {
     this.keys.clear();
     this.pointer.active = false;
+    this.pointer.id = null;
     this.dashQueued = false;
     this.joystick.classList.add('hidden');
     this.joystick.style.setProperty('--stick-x', '0px');
