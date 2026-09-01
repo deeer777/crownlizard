@@ -3499,3 +3499,413 @@ grant execute on function public.start_verified_run(uuid,text,text,text,text) to
 
 commit;
 
+
+-- SOURCE: supabase/pvp-lobby-build100.sql
+-- Build 100 / PvP Pass 1: server-owned challenge discovery and membership.
+-- Durable Objects own per-room coordination; this table is the durable discovery index.
+
+create table if not exists public.pvp_challenges (
+  id uuid primary key,
+  invite_code text not null unique check (invite_code ~ '^[A-HJ-NP-Z2-9]{8}$'),
+  host_user_id uuid not null references auth.users(id) on delete cascade,
+  guest_user_id uuid references auth.users(id) on delete set null,
+  status text not null default 'waiting' check (status in ('waiting', 'matched', 'cancelled', 'expired')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  matched_at timestamptz,
+  closed_at timestamptz,
+  check (guest_user_id is null or guest_user_id <> host_user_id),
+  check (expires_at > created_at)
+);
+
+create index if not exists pvp_challenges_open_idx
+  on public.pvp_challenges (created_at desc)
+  where status = 'waiting';
+create index if not exists pvp_challenges_expiry_idx
+  on public.pvp_challenges (expires_at)
+  where status in ('waiting', 'matched');
+create unique index if not exists pvp_challenges_one_active_host
+  on public.pvp_challenges (host_user_id)
+  where status in ('waiting', 'matched');
+create unique index if not exists pvp_challenges_one_active_guest
+  on public.pvp_challenges (guest_user_id)
+  where guest_user_id is not null and status = 'matched';
+
+alter table public.pvp_challenges enable row level security;
+revoke all on table public.pvp_challenges from public, anon, authenticated;
+
+create or replace function public.expire_pvp_challenges(p_limit integer default 100)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare affected integer := 0;
+begin
+  with due as (
+    select id
+      from public.pvp_challenges
+     where status in ('waiting', 'matched') and expires_at <= now()
+     order by expires_at
+     for update skip locked
+     limit least(greatest(coalesce(p_limit, 100), 1), 500)
+  )
+  update public.pvp_challenges c
+     set status = 'expired', updated_at = now(), closed_at = coalesce(closed_at, now())
+    from due
+   where c.id = due.id;
+  get diagnostics affected = row_count;
+  return affected;
+end;
+$$;
+
+create or replace function public.create_pvp_challenge(
+  p_host_user_id uuid,
+  p_challenge_id uuid,
+  p_invite_code text,
+  p_expires_at timestamptz
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare existing public.pvp_challenges%rowtype;
+declare created public.pvp_challenges%rowtype;
+begin
+  if p_host_user_id is null or p_challenge_id is null
+     or p_invite_code !~ '^[A-HJ-NP-Z2-9]{8}$'
+     or p_expires_at <= now() or p_expires_at > now() + interval '20 minutes' then
+    return jsonb_build_object('error', 'INVALID_CHALLENGE');
+  end if;
+  if not exists (
+    select 1 from auth.users u where u.id = p_host_user_id and not u.is_anonymous
+  ) or not exists (select 1 from public.player_profiles p where p.user_id = p_host_user_id) then
+    return jsonb_build_object('error', 'ACCOUNT_REQUIRED');
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('pvp-player:' || p_host_user_id::text, 0));
+  perform public.expire_pvp_challenges(100);
+  if exists (
+    select 1 from public.pvp_challenges
+     where guest_user_id = p_host_user_id and status = 'matched'
+  ) then return jsonb_build_object('error', 'PLAYER_BUSY'); end if;
+  select * into existing
+    from public.pvp_challenges
+   where host_user_id = p_host_user_id and status in ('waiting', 'matched')
+   order by created_at desc limit 1 for update;
+  if found then
+    return jsonb_build_object(
+      'challengeId', existing.id, 'inviteCode', existing.invite_code,
+      'status', existing.status, 'expiresAt', existing.expires_at,
+      'duplicateRequest', true
+    );
+  end if;
+
+  insert into public.pvp_challenges (id, invite_code, host_user_id, expires_at)
+  values (p_challenge_id, p_invite_code, p_host_user_id, p_expires_at)
+  returning * into created;
+  return jsonb_build_object(
+    'challengeId', created.id, 'inviteCode', created.invite_code,
+    'status', created.status, 'expiresAt', created.expires_at,
+    'duplicateRequest', false
+  );
+exception
+  when unique_violation then
+    return jsonb_build_object('error', 'CHALLENGE_CONFLICT');
+end;
+$$;
+
+create or replace function public.join_pvp_challenge(p_guest_user_id uuid, p_challenge_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare challenge public.pvp_challenges%rowtype;
+begin
+  if p_guest_user_id is null or p_challenge_id is null then
+    return jsonb_build_object('error', 'INVALID_CHALLENGE');
+  end if;
+  if not exists (
+    select 1 from auth.users u where u.id = p_guest_user_id and not u.is_anonymous
+  ) or not exists (select 1 from public.player_profiles p where p.user_id = p_guest_user_id) then
+    return jsonb_build_object('error', 'ACCOUNT_REQUIRED');
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('pvp-player:' || p_guest_user_id::text, 0));
+  select * into challenge from public.pvp_challenges where id = p_challenge_id for update;
+  if not found then return jsonb_build_object('error', 'CHALLENGE_NOT_FOUND'); end if;
+  if challenge.expires_at <= now() and challenge.status in ('waiting', 'matched') then
+    update public.pvp_challenges set status = 'expired', updated_at = now(), closed_at = now() where id = challenge.id;
+    return jsonb_build_object('error', 'CHALLENGE_EXPIRED');
+  end if;
+  if challenge.host_user_id = p_guest_user_id then return jsonb_build_object('error', 'SELF_JOIN'); end if;
+  if challenge.status = 'matched' and challenge.guest_user_id = p_guest_user_id then
+    return jsonb_build_object('challengeId', challenge.id, 'status', 'matched', 'duplicateRequest', true);
+  end if;
+  if challenge.status <> 'waiting' or challenge.guest_user_id is not null then
+    return jsonb_build_object('error', 'CHALLENGE_UNAVAILABLE');
+  end if;
+  if exists (
+    select 1 from public.pvp_challenges
+     where status in ('waiting', 'matched')
+       and (host_user_id = p_guest_user_id or guest_user_id = p_guest_user_id)
+  ) then return jsonb_build_object('error', 'PLAYER_BUSY'); end if;
+
+  update public.pvp_challenges
+     set guest_user_id = p_guest_user_id, status = 'matched', matched_at = now(), updated_at = now()
+   where id = challenge.id;
+  return jsonb_build_object('challengeId', challenge.id, 'status', 'matched', 'duplicateRequest', false);
+end;
+$$;
+
+create or replace function public.cancel_pvp_challenge(p_user_id uuid, p_challenge_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare challenge public.pvp_challenges%rowtype;
+begin
+  select * into challenge from public.pvp_challenges where id = p_challenge_id for update;
+  if not found then return jsonb_build_object('error', 'CHALLENGE_NOT_FOUND'); end if;
+  if p_user_id is distinct from challenge.host_user_id and p_user_id is distinct from challenge.guest_user_id then
+    return jsonb_build_object('error', 'NOT_PARTICIPANT');
+  end if;
+  if challenge.status in ('cancelled', 'expired') then
+    return jsonb_build_object('challengeId', challenge.id, 'status', challenge.status, 'duplicateRequest', true);
+  end if;
+  update public.pvp_challenges
+     set status = 'cancelled', updated_at = now(), closed_at = now()
+   where id = challenge.id;
+  return jsonb_build_object('challengeId', challenge.id, 'status', 'cancelled', 'duplicateRequest', false);
+end;
+$$;
+
+create or replace function public.leave_pvp_challenge(p_guest_user_id uuid, p_challenge_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare challenge public.pvp_challenges%rowtype;
+begin
+  select * into challenge from public.pvp_challenges where id = p_challenge_id for update;
+  if not found then return jsonb_build_object('error', 'CHALLENGE_NOT_FOUND'); end if;
+  if challenge.status = 'waiting' and challenge.guest_user_id is null then
+    return jsonb_build_object('challengeId', challenge.id, 'status', 'waiting', 'duplicateRequest', true);
+  end if;
+  if challenge.status <> 'matched' or p_guest_user_id is distinct from challenge.guest_user_id then
+    return jsonb_build_object('error', 'NOT_GUEST');
+  end if;
+  update public.pvp_challenges
+     set guest_user_id = null, status = 'waiting', matched_at = null, updated_at = now()
+   where id = challenge.id;
+  return jsonb_build_object('challengeId', challenge.id, 'status', 'waiting', 'duplicateRequest', false);
+end;
+$$;
+
+create or replace function public.pvp_open_challenges(p_limit integer default 20)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare result jsonb;
+begin
+  perform public.expire_pvp_challenges(100);
+  select coalesce(jsonb_agg(item order by item_created_at desc), '[]'::jsonb) into result
+  from (
+    select c.created_at as item_created_at,
+      jsonb_build_object(
+        'challengeId', c.id,
+        'status', c.status,
+        'createdAt', c.created_at,
+        'expiresAt', c.expires_at,
+        'host', jsonb_build_object(
+          'callsign', p.display_name,
+          'publicId', case when p.is_public then p.public_id else null end,
+          'equippedShip', coalesce(w.equipped_ship, 'ship_default')
+        )
+      ) as item
+    from public.pvp_challenges c
+    join public.player_profiles p on p.user_id = c.host_user_id
+    left join public.player_wallets w on w.user_id = c.host_user_id
+    where c.status = 'waiting' and c.expires_at > now()
+    order by c.created_at desc
+    limit least(greatest(coalesce(p_limit, 20), 1), 40)
+  ) listed;
+  return result;
+end;
+$$;
+
+create or replace function public.pvp_challenge_snapshot(
+  p_viewer_user_id uuid,
+  p_challenge_id uuid default null,
+  p_invite_code text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare c public.pvp_challenges%rowtype;
+declare viewer_role text := 'spectator';
+declare host jsonb;
+declare guest jsonb;
+begin
+  perform public.expire_pvp_challenges(100);
+  select * into c from public.pvp_challenges
+   where (p_challenge_id is not null and id = p_challenge_id)
+      or (p_challenge_id is null and p_invite_code is not null and invite_code = upper(p_invite_code))
+   order by created_at desc limit 1;
+  if not found then return jsonb_build_object('error', 'CHALLENGE_NOT_FOUND'); end if;
+  if p_viewer_user_id = c.host_user_id then viewer_role := 'host';
+  elsif p_viewer_user_id = c.guest_user_id then viewer_role := 'guest'; end if;
+  if viewer_role = 'spectator' and c.status <> 'waiting' then
+    return jsonb_build_object('error', 'CHALLENGE_NOT_FOUND');
+  end if;
+
+  select jsonb_build_object(
+    'callsign', p.display_name,
+    'publicId', case when p.is_public then p.public_id else null end,
+    'equippedShip', coalesce(w.equipped_ship, 'ship_default')
+  ) into host
+  from public.player_profiles p left join public.player_wallets w on w.user_id = p.user_id
+  where p.user_id = c.host_user_id;
+
+  if viewer_role <> 'spectator' and c.guest_user_id is not null then
+    select jsonb_build_object(
+      'callsign', p.display_name,
+      'publicId', case when p.is_public then p.public_id else null end,
+      'equippedShip', coalesce(w.equipped_ship, 'ship_default')
+    ) into guest
+    from public.player_profiles p left join public.player_wallets w on w.user_id = p.user_id
+    where p.user_id = c.guest_user_id;
+  end if;
+
+  return jsonb_build_object(
+    'challengeId', c.id,
+    'inviteCode', case when viewer_role <> 'spectator' then c.invite_code else null end,
+    'status', c.status,
+    'viewerRole', viewer_role,
+    'createdAt', c.created_at,
+    'expiresAt', c.expires_at,
+    'matchedAt', c.matched_at,
+    'host', host,
+    'guest', guest
+  );
+end;
+$$;
+
+revoke all on function public.expire_pvp_challenges(integer) from public, anon, authenticated;
+revoke all on function public.create_pvp_challenge(uuid, uuid, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.join_pvp_challenge(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.cancel_pvp_challenge(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.leave_pvp_challenge(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.pvp_open_challenges(integer) from public, anon, authenticated;
+revoke all on function public.pvp_challenge_snapshot(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.expire_pvp_challenges(integer) to service_role;
+grant execute on function public.create_pvp_challenge(uuid, uuid, text, timestamptz) to service_role;
+grant execute on function public.join_pvp_challenge(uuid, uuid) to service_role;
+grant execute on function public.cancel_pvp_challenge(uuid, uuid) to service_role;
+grant execute on function public.leave_pvp_challenge(uuid, uuid) to service_role;
+grant execute on function public.pvp_open_challenges(integer) to service_role;
+grant execute on function public.pvp_challenge_snapshot(uuid, uuid, text) to service_role;
+
+
+-- SOURCE: supabase/pvp-results-build102.sql
+-- Build 102 / PvP Pass 4: verified, idempotent duel history.
+
+create table if not exists public.pvp_match_results (
+  challenge_id uuid not null references public.pvp_challenges(id) on delete cascade,
+  round integer not null check (round between 1 and 1000),
+  host_user_id uuid not null references auth.users(id) on delete cascade,
+  guest_user_id uuid not null references auth.users(id) on delete cascade,
+  host_score integer not null check (host_score between 0 and 1000000000),
+  guest_score integer not null check (guest_score between 0 and 1000000000),
+  winner_user_id uuid references auth.users(id) on delete set null,
+  outcome text not null check (outcome in ('host', 'guest', 'draw', 'no_contest')),
+  completed_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  primary key (challenge_id, round),
+  check (host_user_id <> guest_user_id),
+  check (winner_user_id is null or winner_user_id in (host_user_id, guest_user_id))
+);
+
+create index if not exists pvp_match_results_host_idx on public.pvp_match_results (host_user_id, completed_at desc);
+create index if not exists pvp_match_results_guest_idx on public.pvp_match_results (guest_user_id, completed_at desc);
+alter table public.pvp_match_results enable row level security;
+revoke all on table public.pvp_match_results from public, anon, authenticated;
+
+create or replace function public.record_pvp_match_result(
+  p_challenge_id uuid, p_round integer, p_host_user_id uuid, p_guest_user_id uuid,
+  p_host_score integer, p_guest_score integer, p_winner_role text, p_completed_at timestamptz
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare existing public.pvp_match_results%rowtype;
+declare outcome_value text;
+declare winner_value uuid;
+begin
+  if p_challenge_id is null or p_round < 1 or p_host_user_id is null or p_guest_user_id is null
+     or p_host_user_id = p_guest_user_id or p_host_score < 0 or p_guest_score < 0
+     or p_winner_role not in ('host', 'guest', 'draw', 'no_contest') or p_completed_at is null then
+    return jsonb_build_object('error', 'INVALID_DUEL_RESULT');
+  end if;
+  if not exists (
+    select 1 from public.pvp_challenges c
+     where c.id = p_challenge_id and c.host_user_id = p_host_user_id and c.guest_user_id = p_guest_user_id
+  ) then return jsonb_build_object('error', 'DUEL_MEMBERSHIP_MISMATCH'); end if;
+
+  outcome_value := p_winner_role;
+  winner_value := case p_winner_role when 'host' then p_host_user_id when 'guest' then p_guest_user_id else null end;
+  insert into public.pvp_match_results (
+    challenge_id, round, host_user_id, guest_user_id, host_score, guest_score, winner_user_id, outcome, completed_at
+  ) values (
+    p_challenge_id, p_round, p_host_user_id, p_guest_user_id, p_host_score, p_guest_score, winner_value, outcome_value, p_completed_at
+  ) on conflict (challenge_id, round) do nothing;
+
+  select * into existing from public.pvp_match_results where challenge_id = p_challenge_id and round = p_round;
+  return jsonb_build_object('recorded', true, 'duplicateRequest', existing.created_at < now() - interval '10 milliseconds');
+end;
+$$;
+
+create or replace function public.public_pvp_history(p_public_id uuid, p_limit integer default 5)
+returns jsonb
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  with target as (
+    select p.user_id from public.player_profiles p where p.public_id = p_public_id and p.is_public = true
+  ), rows as (
+    select r.*, target.user_id,
+      case when r.host_user_id = target.user_id then r.guest_user_id else r.host_user_id end as opponent_id,
+      case when r.host_user_id = target.user_id then r.host_score else r.guest_score end as own_score,
+      case when r.host_user_id = target.user_id then r.guest_score else r.host_score end as rival_score
+    from public.pvp_match_results r join target on target.user_id in (r.host_user_id, r.guest_user_id)
+    order by r.completed_at desc limit least(greatest(coalesce(p_limit, 5), 1), 10)
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'outcome', case when rows.outcome = 'no_contest' then 'no_contest' when rows.outcome = 'draw' then 'draw'
+      when rows.winner_user_id = rows.user_id then 'win' else 'loss' end,
+    'score', rows.own_score, 'rivalScore', rows.rival_score,
+    'opponent', opponent.display_name,
+    'opponentPublicId', case when opponent.is_public then opponent.public_id else null end,
+    'completedAt', rows.completed_at
+  ) order by rows.completed_at desc), '[]'::jsonb)
+  from rows join public.player_profiles opponent on opponent.user_id = rows.opponent_id;
+$$;
+
+revoke all on function public.record_pvp_match_result(uuid, integer, uuid, uuid, integer, integer, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.public_pvp_history(uuid, integer) from public, anon, authenticated;
+grant execute on function public.record_pvp_match_result(uuid, integer, uuid, uuid, integer, integer, text, timestamptz) to service_role;
+grant execute on function public.public_pvp_history(uuid, integer) to service_role;
+

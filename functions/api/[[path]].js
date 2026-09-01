@@ -5,6 +5,12 @@ SUPPORTED_GAME_VERSIONS.add('0.38.0-98');
 ARMORY_UNLOCK_VERSIONS.add('0.38.0-98');
 SUPPORTED_GAME_VERSIONS.add('0.39.0-99');
 ARMORY_UNLOCK_VERSIONS.add('0.39.0-99');
+SUPPORTED_GAME_VERSIONS.add('0.40.0-100');
+ARMORY_UNLOCK_VERSIONS.add('0.40.0-100');
+SUPPORTED_GAME_VERSIONS.add('0.41.0-101');
+ARMORY_UNLOCK_VERSIONS.add('0.41.0-101');
+SUPPORTED_GAME_VERSIONS.add('0.42.0-102');
+ARMORY_UNLOCK_VERSIONS.add('0.42.0-102');
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -24,6 +30,10 @@ const PROMO_SHARD_MIN = 25;
 const PROMO_SHARD_MAX = 2500;
 const PROMO_CRATE_MIN = 1;
 const PROMO_CRATE_MAX = 5;
+const PVP_INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const PVP_INVITE_LENGTH = 8;
+const PVP_LOBBY_LIFETIME_MS = 10 * 60 * 1000;
+const PVP_INVITE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
 const MARKET_PRICE_BOUNDS = Object.freeze({
   uncommon: Object.freeze({ minimum: 50, maximum: 750 }),
   rare: Object.freeze({ minimum: 100, maximum: 1500 }),
@@ -416,6 +426,11 @@ export const secureServerInt = maximum => {
   do { crypto.getRandomValues(values); } while (values[0] >= limit);
   return values[0] % maximum;
 };
+
+export const generatePvpInviteCode = () => Array.from(
+  { length: PVP_INVITE_LENGTH },
+  () => PVP_INVITE_ALPHABET[secureServerInt(PVP_INVITE_ALPHABET.length)],
+).join('');
 
 const authenticatePlayer = async (request, config) => {
   const token = bearerToken(request);
@@ -1586,7 +1601,10 @@ const getPublicPlayerProfile = async (config, publicId) => {
     body: JSON.stringify({ p_public_id: publicId }),
   });
   if (!profile?.publicId) return json({ error: 'Profile not found.' }, 404);
-  return json({ profile }, 200, 'public, max-age=20, s-maxage=20');
+  const duelHistory = await supabaseFetch(config, 'rpc/public_pvp_history', {
+    method: 'POST', body: JSON.stringify({ p_public_id: publicId, p_limit: 5 }),
+  });
+  return json({ profile: { ...profile, duelHistory: Array.isArray(duelHistory) ? duelHistory : [] } }, 200, 'public, max-age=20, s-maxage=20');
 };
 
 const setPlayerProfileVisibility = async (request, config) => {
@@ -1663,6 +1681,352 @@ const renamePlayerCallsign = async (request, config) => {
   const failure = profileErrorResponse(result);
   if (failure) return failure;
   return json({ ...result, rules: profileRules() }, result.duplicateRequest || result.duplicateName ? 200 : 201);
+};
+
+const pvpBinding = env => {
+  const namespace = env?.DUEL_ROOMS;
+  return namespace && typeof namespace.getByName === 'function' ? namespace : null;
+};
+
+const pvpAccount = async (request, config) => {
+  const user = await authenticatePlayer(request, config);
+  if (!user || user.is_anonymous) return { response: json({ error: 'Signed-in player account required.', code: 'ACCOUNT_REQUIRED' }, 401) };
+  const profile = await playerProfileSnapshot(config, user.id);
+  if (!profile?.displayName) return { response: json({ error: 'Choose a callsign before entering PvP.', code: 'PROFILE_REQUIRED' }, 409) };
+  return { user, profile };
+};
+
+const pvpFailure = (code, fallback = 'Duel lobby unavailable.') => {
+  const statuses = {
+    ACCOUNT_REQUIRED: 401, PROFILE_REQUIRED: 409, INVALID_CHALLENGE: 400, INVALID_READY: 400, INVALID_LOADOUT: 400, INVALID_PROGRESS: 400,
+    CHALLENGE_NOT_FOUND: 404, CHALLENGE_EXPIRED: 410, ROOM_EXPIRED: 410,
+    SELF_JOIN: 409, PLAYER_BUSY: 409, CHALLENGE_UNAVAILABLE: 409, ROOM_UNAVAILABLE: 409,
+    NOT_PARTICIPANT: 403, NOT_GUEST: 409, CHALLENGE_CONFLICT: 409, LOADOUT_REQUIRED: 409, RESULT_PENDING: 409,
+    LOADOUT_NOT_OFFERED: 409, MATCH_LOCKED: 409, MATCH_NOT_STARTED: 409, PROGRESS_REWIND: 409, PROGRESS_CEILING: 422, INVALID_FINISH: 422,
+  };
+  const messages = {
+    CHALLENGE_NOT_FOUND: 'Duel challenge not found.', CHALLENGE_EXPIRED: 'This duel invite has expired.', ROOM_EXPIRED: 'This duel invite has expired.',
+    SELF_JOIN: 'You cannot join your own duel.', PLAYER_BUSY: 'This player is already in an active duel.',
+    CHALLENGE_UNAVAILABLE: 'This duel already has an opponent.', ROOM_UNAVAILABLE: 'This duel already has an opponent.',
+    NOT_PARTICIPANT: 'Only duel participants can close this lobby.',
+    NOT_GUEST: 'Only the challenger can leave this seat.',
+    LOADOUT_REQUIRED: 'Choose a match blueprint before Ready.',
+    LOADOUT_NOT_OFFERED: 'That blueprint is not available in this duel.',
+    MATCH_LOCKED: 'The duel loadouts are already locked.',
+    MATCH_NOT_STARTED: 'The duel has not started yet.',
+    PROGRESS_REWIND: 'Duel progress cannot move backwards.',
+    PROGRESS_CEILING: 'Duel progress exceeded the provisional safety limit.',
+    INVALID_FINISH: 'Duel finish signal could not be verified.',
+    RESULT_PENDING: 'Waiting for the rival finish signal.',
+  };
+  return json({ error: messages[code] || fallback, code: code || 'PVP_OPERATION_FAILED' }, statuses[code] || 503);
+};
+
+const pvpChallengeSnapshot = async (config, userId, { challengeId = null, inviteCode = null } = {}) => supabaseFetch(config, 'rpc/pvp_challenge_snapshot', {
+  method: 'POST',
+  body: JSON.stringify({ p_viewer_user_id: userId || null, p_challenge_id: challengeId, p_invite_code: inviteCode }),
+});
+
+const pvpClientRoomSnapshot = (snapshot, room, now = Date.now()) => {
+  if (!snapshot || !room || snapshot.challengeId !== room.roomId) return snapshot;
+  const connected = seenAt => Number.isSafeInteger(seenAt) && now - seenAt <= 20_000;
+  const host = snapshot.host ? { ...snapshot.host, ready: Boolean(room.hostReady), connected: connected(room.hostSeenAt) } : null;
+  const guest = snapshot.guest ? { ...snapshot.guest, ready: Boolean(room.guestReady), connected: connected(room.guestSeenAt) } : null;
+  const viewerRole = snapshot.viewerRole;
+  const participant = viewerRole === 'host' || viewerRole === 'guest';
+  const matchPhase = !room.matchStartAt ? 'lobby' : now < room.matchStartAt ? 'countdown' : now < room.matchEndAt ? 'active' : 'finished';
+  return {
+    ...snapshot,
+    status: room.status,
+    host,
+    guest,
+    allReady: Boolean(guest && room.status === 'matched' && room.hostReady && room.guestReady),
+    blueprintOffer: participant && Array.isArray(room.blueprintOffer) ? room.blueprintOffer : [],
+    selectedBlueprint: participant ? (viewerRole === 'guest' ? room.guestBlueprint : room.hostBlueprint) : null,
+    opponentBlueprint: participant ? (viewerRole === 'guest' ? room.hostBlueprint : room.guestBlueprint) : null,
+    match: participant && room.matchStartAt ? {
+      phase: matchPhase, seed: room.matchSeed, startAt: new Date(room.matchStartAt).toISOString(),
+      endAt: new Date(room.matchEndAt).toISOString(), durationMs: 90_000,
+      yourScore: viewerRole === 'guest' ? room.guestScore : room.hostScore,
+      rivalScore: viewerRole === 'guest' ? room.hostScore : room.guestScore,
+      rivalSignalAt: new Date((viewerRole === 'guest' ? room.hostProgressAt : room.guestProgressAt) || room.updatedAt).toISOString(),
+      round: room.round || 1,
+      verification: room.resultStatus || 'playing',
+      yourVerification: viewerRole === 'guest' ? room.guestVerification : room.hostVerification,
+      rivalVerification: viewerRole === 'guest' ? room.hostVerification : room.guestVerification,
+      winner: room.winnerRole === 'draw' ? 'draw' : room.winnerRole ? (room.winnerRole === viewerRole ? 'you' : 'rival') : null,
+      finalizedAt: room.finalizedAt ? new Date(room.finalizedAt).toISOString() : null,
+      yourRematch: viewerRole === 'guest' ? Boolean(room.guestRematch) : Boolean(room.hostRematch),
+      rivalRematch: viewerRole === 'guest' ? Boolean(room.hostRematch) : Boolean(room.guestRematch),
+    } : null,
+  };
+};
+
+const pvpInviteUrl = (request, inviteCode) => `${new URL(request.url).origin}/?duel=${encodeURIComponent(inviteCode)}`;
+
+const persistPvpResult = async (config, room) => {
+  if (!room || room.resultStatus !== 'final' || !room.finalizedAt || !room.guestUserId) return null;
+  return supabaseFetch(config, 'rpc/record_pvp_match_result', {
+    method: 'POST', body: JSON.stringify({
+      p_challenge_id: room.roomId, p_round: room.round || 1,
+      p_host_user_id: room.hostUserId, p_guest_user_id: room.guestUserId,
+      p_host_score: room.hostScore, p_guest_score: room.guestScore,
+      p_winner_role: room.winnerRole || 'no_contest', p_completed_at: new Date(room.finalizedAt).toISOString(),
+    }),
+  });
+};
+
+const listPvpChallenges = async config => {
+  const challenges = await supabaseFetch(config, 'rpc/pvp_open_challenges', { method: 'POST', body: JSON.stringify({ p_limit: 24 }) });
+  return json({ challenges: Array.isArray(challenges) ? challenges : [] }, 200, 'public, max-age=3, s-maxage=3');
+};
+
+const createPvpChallenge = async (request, env, config) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+
+  const createdAt = Date.now();
+  const expiresAt = createdAt + PVP_LOBBY_LIFETIME_MS;
+  let result = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    result = await supabaseFetch(config, 'rpc/create_pvp_challenge', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_host_user_id: account.user.id,
+        p_challenge_id: crypto.randomUUID(),
+        p_invite_code: generatePvpInviteCode(),
+        p_expires_at: new Date(expiresAt).toISOString(),
+      }),
+    });
+    if (result?.error !== 'CHALLENGE_CONFLICT') break;
+  }
+  if (result?.error) return pvpFailure(result.error);
+  const challengeId = String(result?.challengeId || '');
+  const inviteCode = String(result?.inviteCode || '');
+  const serverExpiresAt = Date.parse(result?.expiresAt || '');
+  if (!UUID_PATTERN.test(challengeId) || !PVP_INVITE_PATTERN.test(inviteCode) || !Number.isFinite(serverExpiresAt)) throw new Error('PVP_CREATE_INVALID');
+
+  const room = namespace.getByName(challengeId);
+  const coordinated = await room.createRoom({
+    roomId: challengeId, inviteCode, hostUserId: account.user.id,
+    createdAt, expiresAt: serverExpiresAt,
+  });
+  if (!coordinated?.ok) {
+    if (!result.duplicateRequest) {
+      await supabaseFetch(config, 'rpc/cancel_pvp_challenge', {
+        method: 'POST', body: JSON.stringify({ p_user_id: account.user.id, p_challenge_id: challengeId }),
+      });
+    }
+    return pvpFailure(String(coordinated?.error || ''), 'Duel room could not be opened.');
+  }
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  if (snapshot?.error) return pvpFailure(snapshot.error);
+  console.log(JSON.stringify({ event: 'pvp_challenge_created', challengeId, duplicateRequest: Boolean(result.duplicateRequest) }));
+  return json({ challenge: pvpClientRoomSnapshot(snapshot, coordinated.room), invite: { code: inviteCode, url: pvpInviteUrl(request, inviteCode) } }, result.duplicateRequest ? 200 : 201);
+};
+
+const getPvpChallenge = async (request, env, config, challengeId) => {
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const state = await namespace.getByName(challengeId).getState();
+  if (state?.ok && state.room?.status === 'expired') {
+    await supabaseFetch(config, 'rpc/expire_pvp_challenges', { method: 'POST', body: JSON.stringify({ p_limit: 100 }) });
+  }
+  if (state?.ok) await persistPvpResult(config, state.room);
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: state?.ok ? pvpClientRoomSnapshot(snapshot, state.room) : snapshot });
+};
+
+const getPvpInvite = async (request, config, inviteCode) => {
+  const normalized = String(inviteCode || '').toUpperCase();
+  if (!PVP_INVITE_PATTERN.test(normalized)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const user = bearerToken(request) ? await authenticatePlayer(request, config) : null;
+  const snapshot = await pvpChallengeSnapshot(config, user?.id || null, { inviteCode: normalized });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: snapshot });
+};
+
+const joinPvpChallenge = async (request, env, config, locator) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const byId = UUID_PATTERN.test(locator);
+  const inviteCode = byId ? null : String(locator || '').toUpperCase();
+  if (!byId && !PVP_INVITE_PATTERN.test(inviteCode)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const pending = await pvpChallengeSnapshot(config, account.user.id, byId ? { challengeId: locator } : { inviteCode });
+  if (pending?.error) return pvpFailure(pending.error);
+  const challengeId = String(pending.challengeId || '');
+  if (!UUID_PATTERN.test(challengeId)) throw new Error('PVP_SNAPSHOT_INVALID');
+
+  const room = namespace.getByName(challengeId);
+  const claimed = await room.claimGuest(account.user.id);
+  if (!claimed?.ok) return pvpFailure(String(claimed?.error || ''));
+  let joined;
+  try {
+    joined = await supabaseFetch(config, 'rpc/join_pvp_challenge', {
+      method: 'POST', body: JSON.stringify({ p_guest_user_id: account.user.id, p_challenge_id: challengeId }),
+    });
+  } catch (error) {
+    await room.releaseGuest(account.user.id);
+    throw error;
+  }
+  if (joined?.error) {
+    await room.releaseGuest(account.user.id);
+    return pvpFailure(joined.error);
+  }
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  if (snapshot?.error) return pvpFailure(snapshot.error);
+  console.log(JSON.stringify({ event: 'pvp_challenge_joined', challengeId, duplicateRequest: Boolean(joined.duplicateRequest) }));
+  return json({ challenge: pvpClientRoomSnapshot(snapshot, claimed.room) }, joined.duplicateRequest ? 200 : 201);
+};
+
+const updatePvpReady = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  let body;
+  try { body = await readJson(request); } catch { return pvpFailure('INVALID_READY', 'Invalid Ready signal.'); }
+  if (typeof body.ready !== 'boolean') return pvpFailure('INVALID_READY', 'Invalid Ready signal.');
+  const state = await namespace.getByName(challengeId).setReady(account.user.id, body.ready);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const selectPvpBlueprint = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  let body;
+  try { body = await readJson(request); } catch { return pvpFailure('INVALID_LOADOUT', 'Invalid duel blueprint.'); }
+  const blueprintId = String(body.blueprintId || '');
+  if (!/^[a-z0-9_]{8,40}$/.test(blueprintId)) return pvpFailure('INVALID_LOADOUT', 'Invalid duel blueprint.');
+  const state = await namespace.getByName(challengeId).selectBlueprint(account.user.id, blueprintId);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const submitPvpProgress = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  let body;
+  try { body = await readJson(request); } catch { return pvpFailure('INVALID_PROGRESS', 'Invalid duel progress.'); }
+  const score = Number(body.score);
+  const elapsedMs = Number(body.elapsedMs);
+  if (!Number.isSafeInteger(score) || !Number.isSafeInteger(elapsedMs)) return pvpFailure('INVALID_PROGRESS', 'Invalid duel progress.');
+  const enemies = Number(body.enemies || 0);
+  if (!Number.isSafeInteger(enemies)) return pvpFailure('INVALID_PROGRESS', 'Invalid duel progress.');
+  const state = await namespace.getByName(challengeId).submitProgress(account.user.id, score, elapsedMs, Date.now(), enemies);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const finishPvpRun = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  let body;
+  try { body = await readJson(request); } catch { return pvpFailure('INVALID_FINISH', 'Invalid duel finish signal.'); }
+  const score = Number(body.score), elapsedMs = Number(body.elapsedMs), enemies = Number(body.enemies || 0);
+  const outcome = String(body.outcome || '');
+  if (![score, elapsedMs, enemies].every(Number.isSafeInteger)) return pvpFailure('INVALID_FINISH', 'Invalid duel finish signal.');
+  const state = await namespace.getByName(challengeId).finishRun(account.user.id, score, elapsedMs, enemies, outcome);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  await persistPvpResult(config, state.room);
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const requestPvpRematch = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const state = await namespace.getByName(challengeId).requestRematch(account.user.id);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const heartbeatPvpChallenge = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const state = await namespace.getByName(challengeId).heartbeat(account.user.id);
+  if (!state?.ok) return pvpFailure(String(state?.error || ''));
+  const snapshot = await pvpChallengeSnapshot(config, account.user.id, { challengeId });
+  return snapshot?.error ? pvpFailure(snapshot.error) : json({ challenge: pvpClientRoomSnapshot(snapshot, state.room) });
+};
+
+const cancelPvpChallenge = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const closed = await namespace.getByName(challengeId).cancelRoom(account.user.id);
+  if (!closed?.ok) return pvpFailure(String(closed?.error || ''));
+  const result = await supabaseFetch(config, 'rpc/cancel_pvp_challenge', {
+    method: 'POST', body: JSON.stringify({ p_user_id: account.user.id, p_challenge_id: challengeId }),
+  });
+  if (result?.error) return pvpFailure(result.error);
+  console.log(JSON.stringify({ event: 'pvp_challenge_cancelled', challengeId, duplicateRequest: Boolean(result.duplicateRequest) }));
+  return json({ challengeId, status: result.status || 'cancelled' });
+};
+
+const leavePvpChallenge = async (request, env, config, challengeId) => {
+  if (!isSameOriginRequest(request)) return json({ error: 'Invalid request origin.' }, 403);
+  if (!UUID_PATTERN.test(challengeId)) return pvpFailure('CHALLENGE_NOT_FOUND');
+  const namespace = pvpBinding(env);
+  if (!namespace) return json({ error: 'Duel rooms are not configured.', code: 'PVP_NOT_CONFIGURED' }, 503);
+  const account = await pvpAccount(request, config);
+  if (account.response) return account.response;
+  const room = namespace.getByName(challengeId);
+  const released = await room.releaseGuest(account.user.id);
+  if (!released?.ok) return pvpFailure(String(released?.error || ''));
+  let result;
+  try {
+    result = await supabaseFetch(config, 'rpc/leave_pvp_challenge', {
+      method: 'POST', body: JSON.stringify({ p_guest_user_id: account.user.id, p_challenge_id: challengeId }),
+    });
+  } catch (error) {
+    await room.claimGuest(account.user.id);
+    throw error;
+  }
+  if (result?.error) {
+    await room.claimGuest(account.user.id);
+    return pvpFailure(result.error);
+  }
+  console.log(JSON.stringify({ event: 'pvp_challenge_left', challengeId, duplicateRequest: Boolean(result.duplicateRequest) }));
+  return json({ challengeId, status: result.status || 'waiting' });
 };
 
 const submitScore = async (request, config) => {
@@ -1769,6 +2133,44 @@ export const onRequest = async context => {
       return await setAdminRewardCodeStatus(request, config, path.slice('admin/codes/'.length, -'/status'.length));
     }
     if (path.startsWith('profiles/') && request.method === 'GET') return await getPublicPlayerProfile(config, path.slice('profiles/'.length));
+    if (path === 'pvp/challenges' && request.method === 'GET') return await listPvpChallenges(config);
+    if (path === 'pvp/challenges' && request.method === 'POST') return await createPvpChallenge(request, env, config);
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/join') && request.method === 'POST') {
+      return await joinPvpChallenge(request, env, config, path.slice('pvp/challenges/'.length, -'/join'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/cancel') && request.method === 'POST') {
+      return await cancelPvpChallenge(request, env, config, path.slice('pvp/challenges/'.length, -'/cancel'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/leave') && request.method === 'POST') {
+      return await leavePvpChallenge(request, env, config, path.slice('pvp/challenges/'.length, -'/leave'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/ready') && request.method === 'POST') {
+      return await updatePvpReady(request, env, config, path.slice('pvp/challenges/'.length, -'/ready'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/blueprint') && request.method === 'POST') {
+      return await selectPvpBlueprint(request, env, config, path.slice('pvp/challenges/'.length, -'/blueprint'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/progress') && request.method === 'POST') {
+      return await submitPvpProgress(request, env, config, path.slice('pvp/challenges/'.length, -'/progress'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/finish') && request.method === 'POST') {
+      return await finishPvpRun(request, env, config, path.slice('pvp/challenges/'.length, -'/finish'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/rematch') && request.method === 'POST') {
+      return await requestPvpRematch(request, env, config, path.slice('pvp/challenges/'.length, -'/rematch'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && path.endsWith('/heartbeat') && request.method === 'POST') {
+      return await heartbeatPvpChallenge(request, env, config, path.slice('pvp/challenges/'.length, -'/heartbeat'.length));
+    }
+    if (path.startsWith('pvp/challenges/') && request.method === 'GET') {
+      return await getPvpChallenge(request, env, config, path.slice('pvp/challenges/'.length));
+    }
+    if (path.startsWith('pvp/invites/') && path.endsWith('/join') && request.method === 'POST') {
+      return await joinPvpChallenge(request, env, config, path.slice('pvp/invites/'.length, -'/join'.length));
+    }
+    if (path.startsWith('pvp/invites/') && request.method === 'GET') {
+      return await getPvpInvite(request, config, path.slice('pvp/invites/'.length));
+    }
     if (path === 'runs' && request.method === 'POST') return await beginRun(request, config);
     if (path === 'runs/checkpoint' && request.method === 'POST') return await recordRunCheckpoint(request, config);
     if (path === 'scores' && request.method === 'GET') {

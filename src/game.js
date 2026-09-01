@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-91-weapon-skins4';
+import { buildDuelWavePlan, DUEL_BLUEPRINT_BY_ID, DUEL_DURATION_SECONDS } from './duel-match.js?v=20260901-102-duel-verified-final';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -208,6 +209,7 @@ export class Game {
   reset() {
     this.mode = 'endless';
     this.assault = null;
+    this.duel = null;
     this.time = 0;
     this.stageIndex = 0;
     this.lastStageIndex = 0;
@@ -332,6 +334,34 @@ export class Game {
     this.events.assaultPhase?.(assaultPhaseAt(0));
     this.events.hud?.(this.snapshot());
   }
+
+  startDuel({ seed = '', blueprintId = '', elapsedSeconds = 0, endAt = 0 } = {}) {
+    const blueprint = DUEL_BLUEPRINT_BY_ID[blueprintId];
+    if (!blueprint || !String(seed || '')) return false;
+    this.difficulty = 'arcade';
+    this.reset();
+    this.mode = 'duel';
+    this.weapon = blueprint.weaponKey;
+    this.weaponLevels = { blaster: 0, spread: 0, pulse: 0, laser: 0, tesla: 0, [this.weapon]: 5 };
+    this.weaponMasteries = { blaster: '', spread: '', pulse: '', laser: '', tesla: '', [this.weapon]: blueprint.masteryKey };
+    this.modifiers.damage = blueprint.damageScale;
+    this.player.health = CONFIG.difficulties.arcade.health;
+    const elapsed = clamp(Number(elapsedSeconds) || 0, 0, DUEL_DURATION_SECONDS);
+    const waves = buildDuelWavePlan(seed);
+    let waveIndex = 0;
+    while (waveIndex < waves.length && waves[waveIndex].at <= elapsed) waveIndex += 1;
+    this.duel = {
+      seed: String(seed), blueprintId, elapsed, remaining: DUEL_DURATION_SECONDS - elapsed,
+      waveIndex, waves, outcome: '', finishing: false,
+      endAt: Number.isFinite(Number(endAt)) && Number(endAt) > Date.now() ? Number(endAt) : Date.now() + (DUEL_DURATION_SECONDS - elapsed) * 1000,
+    };
+    this.active = true;
+    this.paused = false;
+    this.events.stage?.({ ...CONFIG.stages[3], number: 1, progress: 0, name: 'CROWN DUEL' });
+    this.events.hud?.(this.snapshot());
+    return true;
+  }
+
   stop() { this.active = false; this.paused = false; }
 
   snapshot() {
@@ -371,6 +401,10 @@ export class Game {
         phaseInfo: assaultPhaseAt(this.assault.elapsed),
         globalHp: Math.max(0, this.assault.globalHp - Math.round(this.assault.damage)),
         targetsDestroyed: this.assault.targetsDestroyed,
+      } : null,
+      duel: this.duel ? {
+        remaining: Math.max(0, this.duel.remaining), elapsed: this.duel.elapsed,
+        blueprintId: this.duel.blueprintId, outcome: this.duel.outcome,
       } : null,
     };
   }
@@ -656,6 +690,59 @@ export class Game {
     return true;
   }
 
+  finishDuel(outcome = 'timeout') {
+    const duel = this.duel;
+    if (!duel || duel.finishing) return false;
+    duel.finishing = true;
+    duel.outcome = outcome;
+    duel.remaining = Math.max(0, DUEL_DURATION_SECONDS - duel.elapsed);
+    this.active = false;
+    this.enemyBullets = [];
+    this.bossWarnings = [];
+    this.hazards = [];
+    this.events.duelover?.({
+      score: Math.max(0, Math.floor(this.score)), elapsedMs: Math.round(duel.elapsed * 1000),
+      outcome, blueprintId: duel.blueprintId, enemies: this.runStats.enemies,
+    });
+    return true;
+  }
+
+  updateDuel(dt) {
+    const duel = this.duel;
+    if (!duel) return;
+    const priorElapsed = duel.elapsed;
+    const wallElapsed = DUEL_DURATION_SECONDS - Math.max(0, duel.endAt - Date.now()) / 1000;
+    duel.elapsed = Math.min(DUEL_DURATION_SECONDS, Math.max(duel.elapsed + dt, wallElapsed));
+    duel.remaining = Math.max(0, DUEL_DURATION_SECONDS - duel.elapsed);
+    this.time = duel.elapsed;
+    this.stageIndex = Math.min(3, Math.floor(duel.elapsed / (DUEL_DURATION_SECONDS / 4)));
+    this.updateStars(dt);
+    this.flash = Math.max(0, this.flash - dt * 3.5);
+    this.shake = Math.max(0, this.shake - dt * 18);
+    this.score += dt * 18;
+    this.comboTimer -= dt;
+    if (this.comboTimer <= 0 && this.combo > 1) this.combo = Math.max(1, this.combo - dt * 1.8);
+    const resumedAfterThrottle = duel.elapsed - priorElapsed > 1.25;
+    while (duel.waveIndex < duel.waves.length && duel.waves[duel.waveIndex].at <= duel.elapsed) {
+      const wave = duel.waves[duel.waveIndex++];
+      if (resumedAfterThrottle && wave.at < duel.elapsed - .6) continue;
+      this.spawnEnemy(wave.type, {
+        x: this.arenaLeft + 35 + wave.xRatio * Math.max(70, this.arenaWidth - 70),
+        y: wave.type === 'skimmer' ? 120 + wave.yRatio * Math.max(80, this.height - 250) : undefined,
+        side: wave.side, elite: null, formation: true, shoot: wave.shoot, phase: wave.phase,
+        holdY: 120 + wave.holdRatio * Math.max(120, this.height - 280),
+      });
+    }
+    this.updatePlayer(dt);
+    this.updateWeapons(dt);
+    this.updateEnemies(dt);
+    this.updateBossWarnings(dt);
+    this.updateProjectiles(dt);
+    this.updateEffects(dt);
+    this.events.hud?.(this.snapshot());
+    if (duel.elapsed >= DUEL_DURATION_SECONDS) this.finishDuel('timeout');
+  }
+
   update(dt) {
     if (this.paused) return;
     if (!this.active) return;
@@ -665,6 +752,10 @@ export class Game {
     }
     if (this.assault) {
       this.updateAssault(dt);
+      return;
+    }
+    if (this.duel) {
+      this.updateDuel(dt);
       return;
     }
     this.updateStars(dt);
@@ -748,7 +839,8 @@ export class Game {
     this.cinematic = null;
     if (cinematic.type === 'death') {
       this.active = false;
-      this.events.gameover?.(cinematic.score, cinematic.summary);
+      if (this.duel) this.finishDuel('destroyed');
+      else this.events.gameover?.(cinematic.score, cinematic.summary);
     } else {
       this.offerWardenReward();
     }
@@ -1092,8 +1184,8 @@ export class Game {
       speed,
       value,
       elite,
-      shoot: random(1.2, 2.2),
-      phase: random(0, TAU),
+      shoot: options.shoot ?? random(1.2, 2.2),
+      phase: options.phase ?? random(0, TAU),
       burst: 1.8,
       intro: type === 'boss' ? 2.35 : 0,
       introMax: type === 'boss' ? 2.35 : 0,
@@ -1108,7 +1200,7 @@ export class Game {
       side,
       skimmerIntro: type === 'skimmer' ? .95 + (options.introDelay || 0) : 0,
       skimmerIntroMax: type === 'skimmer' ? .95 + (options.introDelay || 0) : 0,
-      holdY: type === 'weaver' ? random(150, Math.min(285, this.height * .42)) : 0,
+      holdY: type === 'weaver' ? (options.holdY ?? random(150, Math.min(285, this.height * .42))) : 0,
       linkTargets: [],
       formation: Boolean(options.formation),
       hitTime: 0,
@@ -1541,7 +1633,7 @@ export class Game {
     this.shake = enemy.type === 'boss' ? 16 : dashed ? 7 : enemy.type === 'tank' || enemy.type === 'weaver' ? 6 : 2;
     this.burst(enemy.x, enemy.y, enemy.color, enemy.type === 'boss' ? 60 : enemy.type === 'tank' || enemy.type === 'weaver' ? 24 : 12, enemy.type === 'boss' ? 360 : 210);
     this.events.combo?.();
-    if (!this.assault && enemy.type !== 'boss' && this.stageIndex % CONFIG.stages.length === 0 && Math.random() < .38) {
+    if (!this.assault && !this.duel && enemy.type !== 'boss' && this.stageIndex % CONFIG.stages.length === 0 && Math.random() < .38) {
       this.hazards.push({ type: 'poison', x: enemy.x, y: enemy.y, radius: enemy.elite ? 48 : 36, age: 0, warning: .65, life: 5.15 });
     }
     if (enemy.elite === 'volatile') {

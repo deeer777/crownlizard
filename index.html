@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260831-99-security">
+  <link rel="stylesheet" href="./styles.css?v=20260901-102-duel-verified-final">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -85,7 +85,30 @@
       <div class="assault-damage"><span>LOCAL DAMAGE</span><strong id="assaultDamage">0</strong></div>
       <div class="assault-global"><span>GLOBAL HP SNAPSHOT</span><strong id="assaultGlobalHp">68,420,000</strong></div>
     </div>
+    <div id="duelHud" class="duel-live-hud hidden">
+      <div class="duel-live-score own"><span>YOU</span><strong id="duelLiveOwnScore">0</strong></div>
+      <div class="duel-live-clock"><span>CROWN DUEL</span><strong id="duelLiveTime">01:30</strong><b id="duelLiveSignal">LIVE SIGNAL</b></div>
+      <div class="duel-live-score rival"><span id="duelLiveRivalName">RIVAL</span><strong id="duelLiveRivalScore">0</strong></div>
+    </div>
   </div>
+
+  <section id="duelCountdown" class="overlay duel-countdown hidden" aria-live="assertive">
+    <div><small>MIRRORED SIGNAL LOCKED</small><strong id="duelCountdownValue">3</strong><span id="duelCountdownLoadout">NORMALIZED LOADOUT</span></div>
+  </section>
+
+  <section id="duelResult" class="overlay system-overlay duel-result hidden" aria-modal="true" role="dialog" aria-labelledby="duelResultTitle">
+    <div class="system-panel duel-result-panel">
+      <div id="duelResultEyebrow" class="eyebrow">CROWN NETWORK · VERIFYING</div>
+      <h2 id="duelResultTitle">VERIFYING DUEL</h2>
+      <div class="duel-result-scores"><span><small>YOUR SCORE</small><strong id="duelResultOwn">0</strong></span><b>VS</b><span><small>RIVAL SIGNAL</small><strong id="duelResultRival">0</strong></span></div>
+      <div id="duelResultGap" class="duel-result-gap">WAITING FOR RIVAL SIGNAL</div>
+      <p id="duelResultMessage">KEEP THIS SCREEN OPEN WHILE THE CROWN NETWORK VERIFIES BOTH RUNS.</p>
+      <div class="duel-result-actions">
+        <button id="duelRematch" class="system-action hidden" type="button"><i>♛</i> REMATCH</button>
+        <button id="duelResultBack" class="system-action" type="button"><i>♛</i> BACK TO DUEL LOBBY</button>
+      </div>
+    </div>
+  </section>
 
   <main id="menu" class="overlay">
     <section class="panel hero-panel">
@@ -111,6 +134,7 @@
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><i>♛</i> START GAME</button>
         <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></button>
         <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" aria-label="Global Warden event status syncing"><span><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em><small id="menuWardenCountdown">CHECKING SIGNAL</small></button>
+        <button id="menuDuel" class="primary menu-choice menu-duel" data-menu-choice="duel"><span><i>♛</i> CROWN DUEL</span><em>BETA</em></button>
         <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><i>♛</i> HIGH SCORES</button>
         <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><i>♛</i> CROWN VAULT</button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><i>♛</i> SETTINGS</button>
@@ -381,6 +405,55 @@
     </div>
   </section>
 
+  <section id="duelOverlay" class="overlay system-overlay duel-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="duelTitle">
+    <div class="system-panel duel-panel">
+      <div class="eyebrow">CROWN NETWORK · UNRANKED TEST</div>
+      <h2 id="duelTitle">CROWN DUEL</h2>
+      <div id="duelBrowser" class="duel-browser">
+        <div class="duel-briefing">
+          <strong>FACE ANOTHER PILOT</strong>
+          <p>SAME SEED · NORMALIZED LOADOUT · COSMETICS ONLY</p>
+          <span>CHOOSE A TEMPORARY BLUEPRINT · READY UP · RACE FOR 90 SECONDS</span>
+        </div>
+        <button id="duelCreate" class="system-action duel-primary" type="button"><i>♛</i> CREATE CHALLENGE</button>
+        <div class="duel-open-heading"><span>OPEN CHALLENGES</span><button id="duelRefresh" type="button">REFRESH</button></div>
+        <div id="duelChallengeList" class="duel-challenge-list" aria-live="polite"></div>
+      </div>
+      <div id="duelRoom" class="duel-room hidden">
+        <div class="duel-room-signal"><span id="duelRoomState">WAITING FOR RIVAL</span><strong id="duelRoomTimer">10:00</strong></div>
+        <div id="duelBlueprintPicker" class="duel-blueprint-picker">
+          <span>CHOOSE MATCH BLUEPRINT</span>
+          <div id="duelBlueprintList" role="radiogroup" aria-label="Normalized match blueprint"></div>
+        </div>
+        <div class="duel-room-body">
+          <div class="duel-pilot-grid">
+            <article id="duelHostCard" class="duel-pilot-card" data-state="connected">
+              <small>HOST PILOT</small>
+              <div class="duel-pilot-ship"><span></span><img id="duelHostShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Host pilot ship"></div>
+              <strong id="duelHostName">PILOT</strong>
+              <b id="duelHostState">CONNECTED</b>
+            </article>
+            <div class="duel-versus" aria-hidden="true"><span>V</span><span>S</span></div>
+            <article id="duelGuestCard" class="duel-pilot-card waiting" data-state="waiting">
+              <small>CHALLENGER</small>
+              <div class="duel-pilot-ship"><span></span><img id="duelGuestShip" src="./assets/runtime/sprites/crown-lizard-player-v1.png" alt="Challenger ship"></div>
+              <strong id="duelGuestName">OPEN SEAT</strong>
+              <b id="duelGuestState">AWAITING SIGNAL</b>
+            </article>
+          </div>
+          <div class="duel-room-console">
+            <button id="duelShare" class="system-action duel-share" type="button"><i>♛</i> SHARE CHALLENGE</button>
+            <p id="duelRoomNote" class="duel-room-note">THE DUEL BEGINS WHEN BOTH PILOTS ARE READY</p>
+            <button id="duelReady" class="system-action duel-ready" type="button" aria-pressed="false"><i>♛</i> READY UP</button>
+            <button id="duelLeave" class="system-action duel-leave" type="button"><i>♛</i> LEAVE LOBBY</button>
+          </div>
+        </div>
+      </div>
+      <p id="duelStatus" class="duel-status" role="status"></p>
+      <button id="closeDuel" class="system-action" type="button"><i>♛</i> BACK TO MENU</button>
+    </div>
+  </section>
+
   <section id="pilotProfileOverlay" class="overlay system-overlay pilot-profile-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="pilotProfileName">
     <div class="system-panel pilot-profile-panel">
       <div class="eyebrow">CROWN NETWORK · PILOT FILE</div>
@@ -406,6 +479,10 @@
           <div><span>BEST BOSS STRIKE</span><strong id="pilotBossBest">0</strong></div>
           <div><span>TOTAL BOSS DAMAGE</span><strong id="pilotBossTotal">0</strong></div>
         </div>
+        <section class="pilot-duel-history" aria-labelledby="pilotDuelHistoryTitle">
+          <div class="pilot-duel-history-head"><span id="pilotDuelHistoryTitle">CROWN DUEL · RECENT</span><b>VERIFIED</b></div>
+          <div id="pilotDuelHistory" class="pilot-duel-history-list"><p>NO VERIFIED DUELS YET</p></div>
+        </section>
       </div>
       <p id="pilotProfileStatus" class="pilot-profile-status"></p>
       <p id="pilotProfileShareStatus" class="pilot-profile-share-status" role="status"></p>
@@ -634,6 +711,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/main.js?v=20260831-99-security"></script>
+  <script type="module" src="./src/main.js?v=20260901-102-duel-verified-final"></script>
 </body>
 </html>

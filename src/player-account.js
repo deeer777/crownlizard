@@ -492,6 +492,67 @@ export class PlayerAccount {
     });
   }
 
+  listPvpChallenges() {
+    return requestJson('/api/pvp/challenges');
+  }
+
+  createPvpChallenge() {
+    return this.authorizedRequest('/api/pvp/challenges', { method: 'POST', body: '{}' });
+  }
+
+  getPvpChallenge(challengeId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}`);
+  }
+
+  getPvpInvite(inviteCode) {
+    return requestJson(`/api/pvp/invites/${encodeURIComponent(String(inviteCode || '').toUpperCase())}`);
+  }
+
+  joinPvpChallenge(locator, invite = false) {
+    const base = invite ? 'invites' : 'challenges';
+    return this.authorizedRequest(`/api/pvp/${base}/${encodeURIComponent(String(locator || '').toUpperCase())}/join`, { method: 'POST', body: '{}' });
+  }
+
+  cancelPvpChallenge(challengeId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/cancel`, { method: 'POST', body: '{}' });
+  }
+
+  leavePvpChallenge(challengeId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/leave`, { method: 'POST', body: '{}' });
+  }
+
+  setPvpReady(challengeId, ready) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/ready`, {
+      method: 'POST', body: JSON.stringify({ ready: Boolean(ready) }),
+    });
+  }
+
+  selectPvpBlueprint(challengeId, blueprintId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/blueprint`, {
+      method: 'POST', body: JSON.stringify({ blueprintId }),
+    });
+  }
+
+  submitPvpProgress(challengeId, score, elapsedMs, enemies = 0) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/progress`, {
+      method: 'POST', body: JSON.stringify({ score, elapsedMs, enemies }),
+    });
+  }
+
+  finishPvpRun(challengeId, summary) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/finish`, {
+      method: 'POST', body: JSON.stringify(summary),
+    });
+  }
+
+  requestPvpRematch(challengeId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/rematch`, { method: 'POST', body: '{}' });
+  }
+
+  heartbeatPvpChallenge(challengeId) {
+    return this.authorizedRequest(`/api/pvp/challenges/${encodeURIComponent(String(challengeId || ''))}/heartbeat`, { method: 'POST', body: '{}' });
+  }
+
   getAdminSession() {
     return this.authorizedRequest('/api/admin/session');
   }

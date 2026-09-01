@@ -29,6 +29,7 @@ const publicProfile = {
     bossTotalDamage: 123000,
   },
 };
+const duelHistory = [{ outcome: 'win', score: 4200, rivalScore: 3900, opponent: 'RIVAL', opponentPublicId: publicId, completedAt: '2026-09-01T12:00:00.000Z' }];
 
 const env = {
   SUPABASE_URL: 'https://project.supabase.co',
@@ -44,6 +45,7 @@ globalThis.fetch = async (url, options = {}) => {
   calls.push({ target, options });
   if (target.endsWith('/auth/v1/user')) return Response.json({ id: userId, is_anonymous: false, email: 'pilot@example.com' });
   if (target.endsWith('/rest/v1/rpc/public_player_profile')) return Response.json(publicRpcResult);
+  if (target.endsWith('/rest/v1/rpc/public_pvp_history')) return Response.json(duelHistory);
   if (target.endsWith('/rest/v1/rpc/set_player_profile_visibility')) return Response.json({ publicId, isPublic: false });
   if (target.includes('/rest/v1/player_profiles?')) return Response.json([{
     user_id: userId, public_id: publicId, is_public: false, display_name: 'PILOT_ONE', rename_count: 0,
@@ -64,7 +66,7 @@ const route = (path, method = 'GET', body, authorized = false) => onRequest({
 
 const publicResponse = await route(`profiles/${publicId}`);
 assert.equal(publicResponse.status, 200);
-assert.deepEqual((await publicResponse.json()).profile, publicProfile, 'the public endpoint returns only the server-built pilot card');
+assert.deepEqual((await publicResponse.json()).profile, { ...publicProfile, duelHistory }, 'the public endpoint returns only server-built pilot card and verified duel history');
 assert.deepEqual(JSON.parse(calls.find(call => call.target.endsWith('/rpc/public_player_profile')).options.body), { p_public_id: publicId });
 
 publicRpcResult = null;

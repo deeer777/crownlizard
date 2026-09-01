@@ -35,7 +35,7 @@ Profilen får aldrig exponera e-postadress, autentiseringsuppgifter eller andra 
 
 - MVP:n är ett synkroniserat 1v1-scorelopp, inte två skepp med kollisionsbaserad realtidsstrid i samma arena.
 - Båda spelarna kör lokalt men får samma serverutfärdade seed, crateordning, fiender, formationer, startvillkor och svårighetsgrad.
-- Supabase Realtime används endast för lobby-state och begränsad matchstatus: score, liv, zone, Warden-status och anslutning.
+- Ett Durable Object per match äger lobby-state och senare begränsad realtidsstatus: score, liv, zone, Warden-status och anslutning. Supabase används som säker katalog för öppna utmaningar och beständig matchhistorik.
 - Duel-HUD ska vara diskret och visa scoreavstånd utan att skymma spelet.
 - Frånkoppling får en kort återanslutningsperiod. Timeout och eventuell async-fallback bestäms före ranked release.
 
@@ -57,6 +57,15 @@ Profilen får aldrig exponera e-postadress, autentiseringsuppgifter eller andra 
 - Matchen startar först när servern låst båda deltagarna, seed och villkor.
 - Score och run-data verifieras mot serverägd match och rimliga gränser.
 - Ranked release kräver starkare run-verifiering än dagens highscoreflöde, helst deterministisk input/event-digest eller replayvalidering.
+
+### Implementeringspass
+
+1. **Serverägd lobbygrund:** separat Cloudflare Worker med ett SQLite-backed Durable Object per duell, Supabase-katalog för öppna utmaningar, kryptografiska åttateckenskoder, invite-länkar, en atomisk gästplats och tio minuters timeout. Endast permanenta konton med callsign får skapa eller ansluta. Ingen reward, rating eller gameplay kopplas in.
+2. **Visuell lobby:** mobile-first tvåspelarvy med Pilot Cards, utrustade skins, host/guest-status, Ready, reconnect och tydlig invite/copy/share-UX.
+3. **Speglad duell:** 90 sekunders scorelopp med serverutfärdad seed, identiska vågor och tre normaliserade tillfälliga blueprint-val samt ett diskret realtids-HUD.
+4. **Verifierat resultat:** serverägd vinnare, replay-/telemetrykontroll, rematch, historik och lanseringspolish. Shards, rating och daglig bonus förblir avstängda tills missbruksgränserna är verifierade.
+
+Status Build 101: Pass 1–3 är implementerade lokalt. Båda Ready-signalerna och presence/reconnect ägs av Durable Object. Servern erbjuder tre normaliserade tillfälliga blueprints, låser loadouts och utfärdar kryptografisk seed samt gemensam start- och sluttid. Klienterna spelar samma deterministiska 90-sekunders vågplan och skickar endast begränsade, monotona preliminära poängsignaler. Matchen kan inte förlängas genom paus eller bakgrundsläge. Pass 4 ska göra vinnare och resultat auktoritativa genom replay-/telemetryverifiering; rating och rewards är fortsatt avstängda.
 
 ## Global Serverboss — MVP
 

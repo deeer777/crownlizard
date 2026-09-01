@@ -2,5 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crownlizard",
   "compatibility_date": "2026-08-31",
-  "pages_build_output_dir": "./dist"
+  "pages_build_output_dir": "./dist",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DUEL_ROOMS",
+        "class_name": "DuelRoom",
+        "script_name": "crownlizard-pvp"
+      }
+    ]
+  }
 }

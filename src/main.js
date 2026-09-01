@@ -1,12 +1,12 @@
-import { CONFIG } from './config.js?v=20260831-99-security';
+import { CONFIG } from './config.js?v=20260901-102-duel-verified-final';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260827-82-input-release';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
-import { Game } from './game.js?v=20260828-91-weapon-skins4';
+import { Game } from './game.js?v=20260901-102-duel-verified-final';
 import { ShardWallet } from './economy.js?v=20260830-95-score-fix';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
-import { PlayerAccount } from './player-account.js?v=20260831-99-security';
+import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
@@ -14,6 +14,7 @@ import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } 
 import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-91-weapon-skins4';
 import { BossNetwork } from './boss-network.js?v=20260831-99-security';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
+import { DUEL_BLUEPRINT_BY_ID, duelTimeLabel } from './duel-match.js?v=20260901-102-duel-verified-final';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.slot?.startsWith('weapon_')
@@ -30,23 +31,29 @@ const requestedPilotProfileId = publicProfileIdPattern.test(requestedPilotParam)
   || (localPreview && /^preview:[a-z0-9_]{3,24}$/i.test(requestedPilotParam))
   ? requestedPilotParam
   : '';
+const duelInvitePattern = /^[A-HJ-NP-Z2-9]{8}$/;
+const requestedDuelParam = String(debugParams.get('duel') || '').trim().toUpperCase();
+const requestedDuelCode = duelInvitePattern.test(requestedDuelParam) ? requestedDuelParam : '';
 const callsignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('callsign');
 const profilePreviewMode = localPreview && debugParams.has('debug') && debugParams.has('profile');
 const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
 const campaignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('admin');
+const duelPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('duel');
 const serverEconomy = !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'), openRedeem: $('openRedeem'), openAdmin: $('openAdmin'),
-  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuWardenState: $('menuWardenState'), menuWardenCountdown: $('menuWardenCountdown'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
+  menuSettings: $('menuSettings'), menuLeaderboard: $('menuLeaderboard'), menuVault: $('menuVault'), menuWarden: $('menuWarden'), menuWardenState: $('menuWardenState'), menuWardenCountdown: $('menuWardenCountdown'), menuDuel: $('menuDuel'), menuMode: $('menuMode'), menuModeValue: $('menuModeValue'), menuStatus: $('menuStatus'), menuPlayer: $('menuPlayer'), closeSettings: $('closeSettings'), resetTutorial: $('resetTutorial'), settingButtons: [...document.querySelectorAll('[data-setting]')],
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'), accountSignedInActions: $('accountSignedInActions'), accountLogout: $('accountLogout'), accountLogoutConfirm: $('accountLogoutConfirm'), confirmAccountLogout: $('confirmAccountLogout'), cancelAccountLogout: $('cancelAccountLogout'),
   redeemOverlay: $('redeemOverlay'), redeemForm: $('redeemForm'), redeemCode: $('redeemCode'), redeemSubmit: $('redeemSubmit'), redeemReward: $('redeemReward'), redeemRewardAmount: $('redeemRewardAmount'), redeemRewardCampaign: $('redeemRewardCampaign'), redeemStatus: $('redeemStatus'), closeRedeem: $('closeRedeem'),
   adminOverlay: $('adminOverlay'), adminCreateTab: $('adminCreateTab'), adminCampaignsTab: $('adminCampaignsTab'), adminCreatePanel: $('adminCreatePanel'), adminCampaignsPanel: $('adminCampaignsPanel'), adminCodeForm: $('adminCodeForm'), adminCampaignName: $('adminCampaignName'), adminRewardType: $('adminRewardType'), adminRewardAmount: $('adminRewardAmount'), adminMaxRedemptions: $('adminMaxRedemptions'), adminExpiresAt: $('adminExpiresAt'), adminNote: $('adminNote'), adminCreateCode: $('adminCreateCode'), adminCodeReveal: $('adminCodeReveal'), adminCreatedCode: $('adminCreatedCode'), adminCopyCode: $('adminCopyCode'), adminCampaignCount: $('adminCampaignCount'), adminCampaignList: $('adminCampaignList'), adminStatus: $('adminStatus'), closeAdmin: $('closeAdmin'),
   leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
-  pilotProfileOverlay: $('pilotProfileOverlay'), pilotProfileLoading: $('pilotProfileLoading'), pilotProfileContent: $('pilotProfileContent'), pilotProfileShip: $('pilotProfileShip'), pilotProfileName: $('pilotProfileName'), pilotProfileJoined: $('pilotProfileJoined'), pilotProfileArsenal: $('pilotProfileArsenal'), pilotBestChill: $('pilotBestChill'), pilotBestArcade: $('pilotBestArcade'), pilotBestCrowned: $('pilotBestCrowned'), pilotHighestZone: $('pilotHighestZone'), pilotQualifiedRuns: $('pilotQualifiedRuns'), pilotBossBest: $('pilotBossBest'), pilotBossTotal: $('pilotBossTotal'), pilotProfileStatus: $('pilotProfileStatus'), pilotProfileShareStatus: $('pilotProfileShareStatus'), sharePilotProfile: $('sharePilotProfile'), closePilotProfile: $('closePilotProfile'),
+  duelOverlay: $('duelOverlay'), duelBrowser: $('duelBrowser'), duelRoom: $('duelRoom'), duelCreate: $('duelCreate'), duelRefresh: $('duelRefresh'), duelChallengeList: $('duelChallengeList'), duelRoomState: $('duelRoomState'), duelRoomTimer: $('duelRoomTimer'), duelBlueprintPicker: $('duelBlueprintPicker'), duelBlueprintList: $('duelBlueprintList'), duelHostCard: $('duelHostCard'), duelHostShip: $('duelHostShip'), duelHostName: $('duelHostName'), duelHostState: $('duelHostState'), duelGuestCard: $('duelGuestCard'), duelGuestShip: $('duelGuestShip'), duelGuestName: $('duelGuestName'), duelGuestState: $('duelGuestState'), duelShare: $('duelShare'), duelRoomNote: $('duelRoomNote'), duelReady: $('duelReady'), duelLeave: $('duelLeave'), duelStatus: $('duelStatus'), closeDuel: $('closeDuel'),
+  duelHud: $('duelHud'), duelLiveOwnScore: $('duelLiveOwnScore'), duelLiveRivalName: $('duelLiveRivalName'), duelLiveRivalScore: $('duelLiveRivalScore'), duelLiveTime: $('duelLiveTime'), duelLiveSignal: $('duelLiveSignal'), duelCountdown: $('duelCountdown'), duelCountdownValue: $('duelCountdownValue'), duelCountdownLoadout: $('duelCountdownLoadout'), duelResult: $('duelResult'), duelResultEyebrow: $('duelResultEyebrow'), duelResultTitle: $('duelResultTitle'), duelResultOwn: $('duelResultOwn'), duelResultRival: $('duelResultRival'), duelResultGap: $('duelResultGap'), duelResultMessage: $('duelResultMessage'), duelRematch: $('duelRematch'), duelResultBack: $('duelResultBack'),
+  pilotProfileOverlay: $('pilotProfileOverlay'), pilotProfileLoading: $('pilotProfileLoading'), pilotProfileContent: $('pilotProfileContent'), pilotProfileShip: $('pilotProfileShip'), pilotProfileName: $('pilotProfileName'), pilotProfileJoined: $('pilotProfileJoined'), pilotProfileArsenal: $('pilotProfileArsenal'), pilotBestChill: $('pilotBestChill'), pilotBestArcade: $('pilotBestArcade'), pilotBestCrowned: $('pilotBestCrowned'), pilotHighestZone: $('pilotHighestZone'), pilotQualifiedRuns: $('pilotQualifiedRuns'), pilotBossBest: $('pilotBossBest'), pilotBossTotal: $('pilotBossTotal'), pilotDuelHistory: $('pilotDuelHistory'), pilotProfileStatus: $('pilotProfileStatus'), pilotProfileShareStatus: $('pilotProfileShareStatus'), sharePilotProfile: $('sharePilotProfile'), closePilotProfile: $('closePilotProfile'),
   vaultOverlay: $('vaultOverlay'), vaultBalance: $('vaultBalance'), vaultSyncStatus: $('vaultSyncStatus'), vaultGuarantee: $('vaultGuarantee'), vaultGuaranteeFill: $('vaultGuaranteeFill'), vaultOdds: $('vaultOdds'), vaultOddsToggle: $('vaultOddsToggle'), vaultCollectionTitle: $('vaultCollectionTitle'), vaultOwned: $('vaultOwned'), vaultCollection: $('vaultCollection'), vaultStatus: $('vaultStatus'), openCrate: $('openCrate'), closeVault: $('closeVault'), crownCrate: document.querySelector('.crown-crate'), crownCrateSprite: $('crownCrateSprite'), vaultSponsoredSignal: $('vaultSponsoredSignal'), vaultSponsoredStatus: $('vaultSponsoredStatus'), vaultWatchAd: $('vaultWatchAd'), vaultAnimationToggle: $('vaultAnimationToggle'), vaultCratesTab: $('vaultCratesTab'), vaultStoreTab: $('vaultStoreTab'), vaultMarketTab: $('vaultMarketTab'), vaultBody: $('vaultBody'), vaultStore: $('vaultStore'), vaultMarket: $('vaultMarket'), storeCatalog: $('storeCatalog'), storeStatus: $('storeStatus'), cosmeticCategoryTabs: [...document.querySelectorAll('[data-cosmetic-category]')],
   marketBrowseTab: $('marketBrowseTab'), marketSellTab: $('marketSellTab'), marketMineTab: $('marketMineTab'), marketActivityTab: $('marketActivityTab'), marketCatalog: $('marketCatalog'), marketActivity: $('marketActivity'), marketStatus: $('marketStatus'), marketConfirm: $('marketConfirm'), marketConfirmForm: $('marketConfirmForm'), marketConfirmImage: $('marketConfirmImage'), marketConfirmTitle: $('marketConfirmTitle'), marketConfirmCopy: $('marketConfirmCopy'), marketPriceLabel: $('marketPriceLabel'), marketPriceInput: $('marketPriceInput'), marketConfirmHint: $('marketConfirmHint'), marketConfirmStatus: $('marketConfirmStatus'), marketConfirmSubmit: $('marketConfirmSubmit'), closeMarketConfirm: $('closeMarketConfirm'),
   marketFilters: $('marketFilters'), marketCategoryFilter: $('marketCategoryFilter'), marketRarityFilter: $('marketRarityFilter'), marketSortFilter: $('marketSortFilter'), marketHideOwned: $('marketHideOwned'),
@@ -166,8 +173,8 @@ try {
 } catch {}
 const playerAccount = new PlayerAccount();
 let accountPreviewSignedOut = false;
-const currentAccountState = () => (profilePreviewMode || campaignPreviewMode) && accountPreviewSignedOut ? 'guest' : callsignPreviewMode || profilePreviewMode || campaignPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
-let playerProfile = profilePreviewMode || campaignPreviewMode ? { publicId: 'preview:you', isPublic: true, displayName: campaignPreviewMode ? 'OWNER' : 'PREVIEW' } : null;
+const currentAccountState = () => (profilePreviewMode || campaignPreviewMode || duelPreviewMode) && accountPreviewSignedOut ? 'guest' : callsignPreviewMode || profilePreviewMode || campaignPreviewMode || duelPreviewMode ? 'signed-in' : localPreview ? 'preview' : playerAccount.getAccountState();
+let playerProfile = profilePreviewMode || campaignPreviewMode || duelPreviewMode ? { publicId: 'preview:you', isPublic: true, displayName: campaignPreviewMode ? 'OWNER' : duelPreviewMode ? 'CROWNACE' : 'PREVIEW' } : null;
 const bossNetwork = new BossNetwork({
   preview: localPreview,
   accessToken: () => playerAccount.getAccessToken(),
@@ -1578,6 +1585,11 @@ const previewPilotProfile = publicProfileId => {
     joined: '2026-08',
     equippedShip: ships[seeds % ships.length],
     arsenalRank: Math.min(10, 3 + seeds % 8),
+    duelHistory: [
+      { outcome: 'win', score: 68420, rivalScore: 63110, opponent: 'VOIDLIZARD' },
+      { outcome: 'loss', score: 51980, rivalScore: 54200, opponent: 'PIXELACE' },
+      { outcome: 'draw', score: 47750, rivalScore: 47750, opponent: 'NOVA_KING' },
+    ],
     stats: {
       bestScores: {
         chill: { score: 72000 + seeds * 31, zone: 5 },
@@ -1610,6 +1622,19 @@ const renderPilotProfile = profile => {
   ui.pilotQualifiedRuns.textContent = Number(stats.qualifiedRuns || 0).toLocaleString('en-US');
   ui.pilotBossBest.textContent = Number(stats.bossBestDamage || 0).toLocaleString('en-US');
   ui.pilotBossTotal.textContent = Number(stats.bossTotalDamage || 0).toLocaleString('en-US');
+  const duels = Array.isArray(profile.duelHistory) ? profile.duelHistory : [];
+  ui.pilotDuelHistory.replaceChildren(...(duels.length ? duels.map(duel => {
+    const row = document.createElement('div');
+    row.dataset.outcome = duel.outcome || 'no_contest';
+    const outcome = document.createElement('b');
+    outcome.textContent = duel.outcome === 'win' ? 'W' : duel.outcome === 'loss' ? 'L' : duel.outcome === 'draw' ? 'D' : '—';
+    const rival = document.createElement('span');
+    rival.textContent = `VS ${duel.opponent || 'CROWN PILOT'}`;
+    const score = document.createElement('strong');
+    score.textContent = `${Number(duel.score || 0).toLocaleString('en-US')} · ${Number(duel.rivalScore || 0).toLocaleString('en-US')}`;
+    row.append(outcome, rival, score);
+    return row;
+  }) : [Object.assign(document.createElement('p'), { textContent: 'NO VERIFIED DUELS YET' })]));
   ui.pilotProfileLoading.classList.add('hidden');
   ui.pilotProfileContent.classList.remove('hidden');
   ui.pilotProfileStatus.textContent = `${cosmetic.name} · VERIFIED CROWN NETWORK STATS`;
@@ -1724,6 +1749,520 @@ const createPilotProfileLink = (entry, origin) => {
   button.setAttribute('aria-label', `View ${button.textContent} pilot profile`);
   button.addEventListener('click', () => openPilotProfile(profileId, button, origin));
   return button;
+};
+
+const DUEL_RECONNECT_KEY = 'cl:duel-room:v1';
+let duelChallenge = null;
+let duelChallenges = [];
+let duelBusy = false;
+let duelPollTimer = 0;
+let duelHeartbeatTimer = 0;
+let duelClockTimer = 0;
+let duelCountdownTimer = 0;
+let duelProgressTimer = 0;
+let duelGameplayActive = false;
+let duelRunComplete = false;
+let duelFinalScore = 0;
+let duelFinishPending = null;
+
+const duelAccountReady = () => currentAccountState() === 'signed-in' && Boolean(playerProfile?.displayName);
+const duelShipUrl = shipId => cosmeticSpriteUrl(COSMETIC_BY_ID[shipId] || COSMETIC_BY_ID.ship_default || { id: 'ship_default' });
+const duelInviteUrl = code => {
+  const url = new URL(location.origin + location.pathname);
+  url.searchParams.set('duel', code);
+  return url.toString();
+};
+const duelTimeLeft = expiresAt => formatBossCountdown(Date.parse(expiresAt || '') - Date.now());
+const setDuelStatus = (message = '', error = false) => {
+  ui.duelStatus.textContent = message;
+  ui.duelStatus.classList.toggle('error', error);
+};
+const setDuelBusy = busy => {
+  duelBusy = busy;
+  [ui.duelCreate, ui.duelRefresh, ui.duelReady, ui.duelLeave, ui.duelRematch].forEach(button => { button.disabled = busy; });
+};
+const saveDuelReconnect = challenge => {
+  try {
+    if (challenge?.challengeId && ['waiting', 'matched'].includes(challenge.status) && challenge.viewerRole !== 'spectator') {
+      localStorage.setItem(DUEL_RECONNECT_KEY, JSON.stringify({ challengeId: challenge.challengeId, inviteCode: challenge.inviteCode || '' }));
+    } else localStorage.removeItem(DUEL_RECONNECT_KEY);
+  } catch {}
+};
+const readDuelReconnect = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(DUEL_RECONNECT_KEY) || 'null');
+    return publicProfileIdPattern.test(String(value?.challengeId || '')) ? value : null;
+  } catch { return null; }
+};
+const stopDuelSignals = () => {
+  clearInterval(duelPollTimer);
+  clearInterval(duelHeartbeatTimer);
+  clearInterval(duelClockTimer);
+  clearInterval(duelCountdownTimer);
+  clearInterval(duelProgressTimer);
+  duelPollTimer = duelHeartbeatTimer = duelClockTimer = duelCountdownTimer = duelProgressTimer = 0;
+};
+const renderDuelPilot = (card, image, name, state, pilot, waiting = false) => {
+  const connected = Boolean(pilot?.connected ?? true);
+  card.classList.toggle('waiting', waiting || !pilot);
+  card.classList.toggle('ready', Boolean(pilot?.ready));
+  card.dataset.state = !pilot || waiting ? 'waiting' : connected ? 'connected' : 'offline';
+  image.src = duelShipUrl(pilot?.equippedShip || 'ship_default');
+  name.textContent = pilot?.callsign || 'OPEN SEAT';
+  state.textContent = !pilot || waiting ? 'AWAITING SIGNAL' : pilot.ready ? 'READY' : connected ? 'CONNECTED' : 'RECONNECTING';
+};
+const renderDuelBlueprints = challenge => {
+  const offer = Array.isArray(challenge?.blueprintOffer) ? challenge.blueprintOffer : [];
+  ui.duelBlueprintList.replaceChildren(...offer.map(blueprintId => {
+    const blueprint = DUEL_BLUEPRINT_BY_ID[blueprintId];
+    if (!blueprint) return document.createTextNode('');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `duel-blueprint${challenge.selectedBlueprint === blueprintId ? ' selected' : ''}`;
+    button.setAttribute('role', 'radio');
+    button.setAttribute('aria-checked', String(challenge.selectedBlueprint === blueprintId));
+    button.disabled = duelBusy || Boolean(challenge.match);
+    const image = document.createElement('img');
+    image.src = `./assets/weapons/${blueprint.weaponKey}-mount-v1.png`;
+    image.alt = '';
+    const name = Object.assign(document.createElement('strong'), { textContent: blueprint.name });
+    const role = Object.assign(document.createElement('small'), { textContent: blueprint.role });
+    button.append(image, name, role);
+    button.addEventListener('click', () => { void selectDuelBlueprint(blueprintId); });
+    return button;
+  }));
+  ui.duelBlueprintPicker.classList.toggle('hidden', !offer.length);
+};
+const updateDuelClock = () => {
+  if (!duelChallenge) return;
+  ui.duelRoomTimer.textContent = duelTimeLeft(duelChallenge.expiresAt);
+};
+const renderDuelRoom = () => {
+  const challenge = duelChallenge;
+  ui.duelBrowser.classList.toggle('hidden', Boolean(challenge));
+  ui.duelRoom.classList.toggle('hidden', !challenge);
+  if (!challenge) return;
+  renderDuelPilot(ui.duelHostCard, ui.duelHostShip, ui.duelHostName, ui.duelHostState, challenge.host);
+  renderDuelPilot(ui.duelGuestCard, ui.duelGuestShip, ui.duelGuestName, ui.duelGuestState, challenge.guest, !challenge.guest);
+  renderDuelBlueprints(challenge);
+  ui.duelRoomState.textContent = challenge.match?.phase === 'countdown' ? 'MATCH SIGNAL LOCKED'
+    : challenge.match?.phase === 'active' ? 'DUEL IN PROGRESS'
+      : challenge.match?.phase === 'finished' ? 'DUEL SIGNAL COMPLETE'
+        : challenge.status === 'matched' ? challenge.allReady ? 'BOTH PILOTS READY' : 'RIVAL SIGNAL LOCKED' : 'WAITING FOR RIVAL';
+  ui.duelShare.classList.toggle('hidden', !challenge.inviteCode);
+  const ownPilot = challenge.viewerRole === 'guest' ? challenge.guest : challenge.host;
+  ui.duelReady.setAttribute('aria-pressed', String(Boolean(ownPilot?.ready)));
+  ui.duelReady.innerHTML = ownPilot?.ready ? '<i>♛</i> READY · STAND BY' : '<i>♛</i> READY UP';
+  ui.duelReady.disabled = duelBusy || !challenge.selectedBlueprint || Boolean(challenge.match) || !['waiting', 'matched'].includes(challenge.status);
+  ui.duelRoomNote.textContent = challenge.match?.phase === 'countdown' ? 'MIRRORED WAVE SIGNAL LOCKED · PREPARE TO LAUNCH'
+    : challenge.match?.phase === 'active' ? '90-SECOND SCORE RACE IN PROGRESS'
+      : challenge.match?.phase === 'finished' ? 'PROVISIONAL SIGNAL COMPLETE · PASS 4 WILL VERIFY THE WINNER'
+        : challenge.guest ? 'CHOOSE A BLUEPRINT · BOTH PILOTS READY TO LAUNCH' : 'SHARE THE LINK OR WAIT FOR AN OPEN CHALLENGER';
+  ui.duelLeave.innerHTML = challenge.match ? '<i>♛</i> BACK TO MENU'
+    : challenge.viewerRole === 'host' ? '<i>♛</i> CLOSE CHALLENGE' : '<i>♛</i> LEAVE LOBBY';
+  updateDuelClock();
+  saveDuelReconnect(challenge);
+  if (challenge.match && !duelGameplayActive && !duelRunComplete) queueMicrotask(() => syncDuelMatch(challenge));
+};
+const renderDuelResult = challenge => {
+  const match = challenge?.match;
+  if (!match || !duelRunComplete) return;
+  const own = Number(match.yourScore ?? duelFinalScore) || 0;
+  const rival = Number(match.rivalScore) || 0;
+  ui.duelResultOwn.textContent = own.toLocaleString('en-US');
+  ui.duelResultRival.textContent = rival.toLocaleString('en-US');
+  if (match.verification !== 'final') {
+    ui.duelResultEyebrow.textContent = 'CROWN NETWORK · VERIFYING';
+    ui.duelResultTitle.textContent = 'VERIFYING DUEL';
+    ui.duelResultGap.textContent = match.rivalVerification === 'pending' ? 'WAITING FOR RIVAL SIGNAL' : 'CHECKING RUN TELEMETRY';
+    ui.duelResultMessage.textContent = 'YOUR SCORE IS FROZEN · NETWORK RECOVERY IS ACTIVE';
+    ui.duelRematch.classList.add('hidden');
+    return;
+  }
+  const invalid = match.yourVerification === 'invalid';
+  const gap = Math.abs(own - rival).toLocaleString('en-US');
+  ui.duelResultEyebrow.textContent = invalid ? 'CROWN NETWORK · NO CONTEST' : 'CROWN NETWORK · VERIFIED';
+  ui.duelResultTitle.textContent = invalid ? 'RUN INVALID' : match.winner === 'draw' ? 'DRAW' : match.winner === 'you' ? 'VICTORY' : 'DEFEAT';
+  ui.duelResultGap.textContent = invalid ? 'RESULT NOT RANKED' : match.winner === 'draw' ? 'PERFECT SCORE TIE' : `${match.winner === 'you' ? 'WIN' : 'LOSS'} BY ${gap}`;
+  ui.duelResultMessage.textContent = invalid ? 'THE SERVER COULD NOT VERIFY ENOUGH RUN TELEMETRY' : `ROUND ${String(match.round || 1).padStart(2, '0')} · BOTH RUNS VERIFIED`;
+  ui.duelRematch.classList.remove('hidden');
+  ui.duelRematch.innerHTML = match.yourRematch ? '<i>♛</i> REMATCH SENT · WAITING' : '<i>♛</i> REMATCH';
+  ui.duelRematch.disabled = duelBusy || Boolean(match.yourRematch);
+};
+const setDuelChallenge = challenge => {
+  duelChallenge = challenge && ['waiting', 'matched'].includes(challenge.status) ? challenge : null;
+  renderDuelRoom();
+  renderDuelResult(duelChallenge);
+};
+const previewDuelHost = (callsign, ship = 'ship_void_hunter') => ({ callsign, publicId: `preview:${callsign.toLowerCase()}`, equippedShip: ship, ready: false, connected: true });
+const previewDuelBlueprintOffer = ['blaster_royal_barrage', 'pulse_comet_cores', 'tesla_storm_web'];
+const previewDuelOpenChallenges = () => {
+  const expiresAt = new Date(Date.now() + 9 * 60_000).toISOString();
+  return [
+    { challengeId: 'b1000000-0000-4000-8000-000000000001', status: 'waiting', expiresAt, host: previewDuelHost('VOIDLIZARD', 'ship_void_hunter') },
+    { challengeId: 'b1000000-0000-4000-8000-000000000002', status: 'waiting', expiresAt, host: previewDuelHost('PIXELACE', 'ship_royal_vanguard') },
+    { challengeId: 'b1000000-0000-4000-8000-000000000003', status: 'waiting', expiresAt, host: previewDuelHost('NOVA_KING', 'ship_solar_guard') },
+  ];
+};
+const renderDuelChallenges = () => {
+  ui.duelChallengeList.replaceChildren();
+  if (!duelChallenges.length) {
+    const empty = document.createElement('div');
+    empty.className = 'duel-challenge-empty';
+    empty.textContent = 'NO OPEN SIGNALS · CREATE THE FIRST CHALLENGE';
+    ui.duelChallengeList.append(empty);
+    return;
+  }
+  duelChallenges.forEach(challenge => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'duel-challenge';
+    button.disabled = duelBusy || !duelAccountReady();
+    const image = document.createElement('img');
+    image.src = duelShipUrl(challenge.host?.equippedShip || 'ship_default');
+    image.alt = '';
+    const identity = document.createElement('span');
+    const callsign = document.createElement('strong');
+    callsign.textContent = challenge.host?.callsign || 'CROWN PILOT';
+    const rule = document.createElement('small');
+    rule.textContent = 'UNRANKED · NORMALIZED';
+    identity.append(callsign, rule);
+    const action = document.createElement('b');
+    action.textContent = `JOIN · ${duelTimeLeft(challenge.expiresAt)}`;
+    button.append(image, identity, action);
+    button.addEventListener('click', () => joinDuelChallenge(challenge.challengeId, false));
+    ui.duelChallengeList.append(button);
+  });
+};
+const refreshDuelChallenges = async (quiet = false) => {
+  if (!quiet) setDuelStatus('SCANNING CROWN NETWORK...');
+  try {
+    duelChallenges = duelPreviewMode ? previewDuelOpenChallenges() : (await playerAccount.listPvpChallenges()).challenges || [];
+    renderDuelChallenges();
+    if (!quiet) setDuelStatus(duelAccountReady() ? 'SELECT A SIGNAL OR CREATE YOUR OWN' : 'SIGN IN AND CHOOSE A CALLSIGN TO ENTER');
+  } catch { if (!quiet) setDuelStatus('DUEL SIGNALS TEMPORARILY UNAVAILABLE', true); }
+};
+const previewJoinedDuel = host => ({
+  challengeId: host.challengeId, inviteCode: 'CRWNDUEL', status: 'matched', viewerRole: 'guest',
+  createdAt: new Date().toISOString(), expiresAt: host.expiresAt,
+  host: { ...host.host, ready: false, connected: true },
+  guest: { callsign: playerProfile?.displayName || 'CROWNACE', publicId: playerProfile?.publicId, equippedShip: walletState().inventory?.equipped?.ship || 'ship_default', ready: false, connected: true },
+  allReady: false, blueprintOffer: previewDuelBlueprintOffer, selectedBlueprint: null, opponentBlueprint: 'pulse_comet_cores', match: null,
+});
+const updateDuelLiveHud = state => {
+  if (!state?.duel) return;
+  ui.duelLiveOwnScore.textContent = Number(state.score || 0).toLocaleString('en-US');
+  ui.duelLiveTime.textContent = duelTimeLabel(state.duel.remaining);
+  ui.duelLiveRivalScore.textContent = Number(duelChallenge?.match?.rivalScore || 0).toLocaleString('en-US');
+  const rivalSignalAt = Date.parse(duelChallenge?.match?.rivalSignalAt || '');
+  const signalAge = Date.now() - rivalSignalAt;
+  ui.duelLiveSignal.textContent = duelPreviewMode || !Number.isFinite(rivalSignalAt) || signalAge < 7_000 ? 'LIVE SIGNAL'
+    : signalAge < 20_000 ? 'SIGNAL DELAY' : 'RIVAL OFFLINE';
+};
+const transmitDuelProgress = async final => {
+  if (!duelChallenge?.match || !game.duel) return;
+  const score = Math.max(0, Math.floor(game.score || duelFinalScore || 0));
+  const elapsedMs = Math.max(0, Math.min(90_000, Math.round(game.duel.elapsed * 1000)));
+  try {
+    if (duelPreviewMode) {
+      const elapsed = elapsedMs / 1000;
+      const rivalScore = Math.floor(elapsed * 680 + Math.pow(elapsed, 1.32) * 43);
+      duelChallenge = { ...duelChallenge, match: { ...duelChallenge.match, yourScore: score, rivalScore, phase: final || elapsedMs >= 90_000 ? 'finished' : 'active' } };
+    } else {
+      const payload = await playerAccount.submitPvpProgress(duelChallenge.challengeId, score, elapsedMs, game.runStats?.enemies || 0);
+      if (payload.challenge) duelChallenge = payload.challenge;
+    }
+    ui.duelLiveRivalScore.textContent = Number(duelChallenge.match?.rivalScore || 0).toLocaleString('en-US');
+    updateDuelLiveHud(game.snapshot());
+  } catch { ui.duelLiveSignal.textContent = 'RECONNECTING'; }
+};
+const beginDuelGameplay = challenge => {
+  if (duelGameplayActive || !challenge?.match?.seed || !challenge.selectedBlueprint) return;
+  clearInterval(duelCountdownTimer);
+  duelCountdownTimer = 0;
+  const elapsedSeconds = Math.max(0, Math.min(89.5, (Date.now() - Date.parse(challenge.match.startAt)) / 1000));
+  duelGameplayActive = true;
+  duelRunComplete = false;
+  duelFinalScore = 0;
+  input.clear();
+  ui.duelCountdown.classList.add('hidden');
+  ui.duelOverlay.classList.add('hidden');
+  ui.duelResult.classList.add('hidden');
+  ui.menu.classList.add('hidden');
+  ui.gameover.classList.add('hidden');
+  ui.hud.classList.remove('hidden');
+  ui.duelHud.classList.remove('hidden');
+  ui.assaultHud.classList.add('hidden');
+  ui.dashButton.classList.remove('hidden');
+  ui.pauseButton.classList.add('hidden');
+  document.documentElement.classList.add('duel-active');
+  applyRunShip();
+  ui.duelLiveRivalName.textContent = (challenge.viewerRole === 'guest' ? challenge.host : challenge.guest)?.callsign || 'RIVAL';
+  ui.duelLiveRivalScore.textContent = Number(challenge.match.rivalScore || 0).toLocaleString('en-US');
+  game.reducedEffects = reducedEffects;
+  game.startDuel({ seed: challenge.match.seed, blueprintId: challenge.selectedBlueprint, elapsedSeconds, endAt: Date.parse(challenge.match.endAt) });
+  clearInterval(duelProgressTimer);
+  duelProgressTimer = setInterval(() => { void transmitDuelProgress(false); }, 1800);
+  music.playGame();
+  focusGameInput();
+};
+function syncDuelMatch(challenge) {
+  if (!challenge?.match || duelGameplayActive || duelRunComplete || duelCountdownTimer) return;
+  const startAt = Date.parse(challenge.match.startAt || '');
+  const endAt = Date.parse(challenge.match.endAt || '');
+  if (!Number.isFinite(startAt) || !Number.isFinite(endAt)) return;
+  if (Date.now() >= endAt || challenge.match.phase === 'finished') return;
+  if (Date.now() >= startAt || challenge.match.phase === 'active') return beginDuelGameplay(challenge);
+  const blueprint = DUEL_BLUEPRINT_BY_ID[challenge.selectedBlueprint];
+  ui.duelCountdownLoadout.textContent = `${blueprint?.name || 'NORMALIZED LOADOUT'} · SAME WAVES`;
+  ui.duelCountdown.classList.remove('hidden');
+  const tick = () => {
+    const remaining = startAt - Date.now();
+    ui.duelCountdownValue.textContent = remaining <= 550 ? 'GO' : String(Math.max(1, Math.ceil(remaining / 1000)));
+    if (remaining <= 0) {
+      clearInterval(duelCountdownTimer);
+      duelCountdownTimer = 0;
+      beginDuelGameplay(challenge);
+    }
+  };
+  tick();
+  duelCountdownTimer = setInterval(tick, 100);
+}
+const completeDuelRun = async summary => {
+  duelFinalScore = Math.max(0, Math.floor(summary?.score || game.score || 0));
+  clearInterval(duelProgressTimer);
+  duelProgressTimer = 0;
+  duelFinishPending = {
+    score: duelFinalScore,
+    elapsedMs: Math.max(0, Math.min(90_000, Math.round(Number(summary?.elapsedMs) || game.duel?.elapsed * 1000 || 0))),
+    enemies: Math.max(0, Math.floor(Number(summary?.enemies) || 0)),
+    outcome: summary?.outcome === 'destroyed' ? 'destroyed' : 'timeout',
+  };
+  try {
+    if (duelPreviewMode) {
+      await transmitDuelProgress(true);
+      duelChallenge = { ...duelChallenge, match: { ...duelChallenge.match, verification: 'final', yourVerification: 'verified', rivalVerification: 'verified', winner: duelFinalScore >= Number(duelChallenge.match.rivalScore || 0) ? 'you' : 'rival', finalizedAt: new Date().toISOString() } };
+    } else {
+      const payload = await playerAccount.finishPvpRun(duelChallenge.challengeId, duelFinishPending);
+      if (payload.challenge) duelChallenge = payload.challenge;
+    }
+    duelFinishPending = null;
+  } catch { ui.duelLiveSignal.textContent = 'RECONNECTING'; }
+  duelGameplayActive = false;
+  duelRunComplete = true;
+  input.clear();
+  ui.hud.classList.add('hidden');
+  ui.duelHud.classList.add('hidden');
+  ui.dashButton.classList.add('hidden');
+  ui.pauseButton.classList.add('hidden');
+  document.documentElement.classList.remove('duel-active');
+  ui.duelResult.classList.remove('hidden');
+  renderDuelResult(duelChallenge);
+  music.playMenu();
+  ui.duelResultBack.focus({ preventScroll: true });
+};
+const scheduleDuelSignals = () => {
+  stopDuelSignals();
+  if (!duelChallenge) return;
+  duelClockTimer = setInterval(updateDuelClock, 1000);
+  if (duelPreviewMode) return;
+  duelPollTimer = setInterval(async () => {
+    if (document.hidden || !duelChallenge || duelBusy) return;
+    try {
+      if (duelFinishPending) {
+        const finished = await playerAccount.finishPvpRun(duelChallenge.challengeId, duelFinishPending);
+        if (finished.challenge) setDuelChallenge(finished.challenge);
+        duelFinishPending = null;
+      }
+      const payload = await playerAccount.getPvpChallenge(duelChallenge.challengeId);
+      if (!payload.challenge || !['waiting', 'matched'].includes(payload.challenge.status)) throw new Error('Lobby closed');
+      setDuelChallenge(payload.challenge);
+    } catch (error) {
+      if ([404, 410].includes(error?.status)) {
+        stopDuelSignals();
+        setDuelChallenge(null);
+        setDuelStatus('THIS DUEL SIGNAL HAS EXPIRED', true);
+        void refreshDuelChallenges(true);
+      } else setDuelStatus('LOBBY SIGNAL INTERRUPTED · RECONNECTING', true);
+    }
+  }, 3000);
+  duelHeartbeatTimer = setInterval(async () => {
+    if (document.hidden || !duelChallenge || duelBusy) return;
+    try {
+      const payload = await playerAccount.heartbeatPvpChallenge(duelChallenge.challengeId);
+      if (payload.challenge) setDuelChallenge(payload.challenge);
+    } catch {}
+  }, 9000);
+};
+const requestDuelRematch = async () => {
+  if (!duelChallenge?.match || duelBusy || duelChallenge.match.verification !== 'final') return;
+  setDuelBusy(true);
+  try {
+    if (duelPreviewMode) {
+      duelChallenge = { ...duelChallenge, match: { ...duelChallenge.match, yourRematch: true, rivalRematch: false } };
+    } else {
+      const payload = await playerAccount.requestPvpRematch(duelChallenge.challengeId);
+      if (payload.challenge) duelChallenge = payload.challenge;
+    }
+    if (!duelChallenge.match) {
+      duelRunComplete = false;
+      duelFinalScore = 0;
+      ui.duelResult.classList.add('hidden');
+      ui.duelOverlay.classList.remove('hidden');
+    }
+    renderDuelRoom();
+    renderDuelResult(duelChallenge);
+  } catch (error) { ui.duelResultMessage.textContent = error?.message || 'REMATCH SIGNAL FAILED'; }
+  finally { setDuelBusy(false); renderDuelResult(duelChallenge); }
+};
+const enterDuelRoom = challenge => {
+  setDuelChallenge(challenge);
+  setDuelStatus(challenge.status === 'matched' ? 'RIVAL CONNECTED · READY SIGNAL OPEN' : 'CHALLENGE LIVE · SHARE YOUR INVITE');
+  scheduleDuelSignals();
+  ui.duelOverlay.scrollTop = 0;
+  ui.duelReady.focus({ preventScroll: true });
+  if (!duelPreviewMode) {
+    const challengeId = challenge.challengeId;
+    void playerAccount.heartbeatPvpChallenge(challengeId).then(payload => {
+      if (duelChallenge?.challengeId === challengeId && payload.challenge) setDuelChallenge(payload.challenge);
+    }).catch(() => {});
+  }
+};
+const createDuelChallenge = async () => {
+  if (duelBusy) return;
+  if (!duelAccountReady()) return setDuelStatus('SIGN IN AND CHOOSE A CALLSIGN FIRST', true);
+  setDuelBusy(true);
+  setDuelStatus('OPENING SECURE DUEL ROOM...');
+  try {
+    const challenge = duelPreviewMode ? {
+      challengeId: 'b1000000-0000-4000-8000-000000000099', inviteCode: 'CRWNDUEL', status: 'waiting', viewerRole: 'host',
+      createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      host: { callsign: playerProfile.displayName, publicId: playerProfile.publicId, equippedShip: walletState().inventory?.equipped?.ship || 'ship_default', ready: false, connected: true }, guest: null, allReady: false,
+      blueprintOffer: previewDuelBlueprintOffer, selectedBlueprint: null, opponentBlueprint: null, match: null,
+    } : (await playerAccount.createPvpChallenge()).challenge;
+    enterDuelRoom(challenge);
+    triggerHaptic([16, 35, 20]);
+  } catch (error) { setDuelStatus(error?.message || 'CHALLENGE COULD NOT BE CREATED', true); }
+  finally { setDuelBusy(false); renderDuelRoom(); }
+};
+async function joinDuelChallenge(locator, invite = false) {
+  if (duelBusy) return;
+  if (!duelAccountReady()) return setDuelStatus('SIGN IN AND CHOOSE A CALLSIGN FIRST', true);
+  setDuelBusy(true);
+  setDuelStatus('CLAIMING CHALLENGER SEAT...');
+  try {
+    let challenge;
+    if (duelPreviewMode) {
+      const host = duelChallenges.find(item => item.challengeId === locator) || previewDuelOpenChallenges()[0];
+      challenge = previewJoinedDuel(host);
+    } else challenge = (await playerAccount.joinPvpChallenge(locator, invite)).challenge;
+    enterDuelRoom(challenge);
+    triggerHaptic([16, 35, 20]);
+  } catch (error) { setDuelStatus(error?.message || 'CHALLENGE COULD NOT BE JOINED', true); }
+  finally { setDuelBusy(false); renderDuelRoom(); }
+}
+async function selectDuelBlueprint(blueprintId) {
+  if (!duelChallenge || duelBusy || duelChallenge.match || !DUEL_BLUEPRINT_BY_ID[blueprintId]) return;
+  setDuelBusy(true);
+  setDuelStatus('LOCKING NORMALIZED BLUEPRINT...');
+  try {
+    duelChallenge = duelPreviewMode
+      ? { ...duelChallenge, selectedBlueprint: blueprintId, host: duelChallenge.viewerRole === 'host' ? { ...duelChallenge.host, ready: false } : duelChallenge.host, guest: duelChallenge.viewerRole === 'guest' ? { ...duelChallenge.guest, ready: false } : duelChallenge.guest }
+      : (await playerAccount.selectPvpBlueprint(duelChallenge.challengeId, blueprintId)).challenge;
+    setDuelStatus(`${DUEL_BLUEPRINT_BY_ID[blueprintId].name} · MATCH LOADOUT SELECTED`);
+    triggerHaptic(14);
+  } catch (error) { setDuelStatus(error?.message || 'BLUEPRINT SIGNAL FAILED', true); }
+  finally { setDuelBusy(false); renderDuelRoom(); }
+}
+const toggleDuelReady = async () => {
+  if (!duelChallenge || duelBusy) return;
+  const ownPilot = duelChallenge.viewerRole === 'guest' ? duelChallenge.guest : duelChallenge.host;
+  const ready = !ownPilot?.ready;
+  setDuelBusy(true);
+  setDuelStatus(ready ? 'TRANSMITTING READY SIGNAL...' : 'STANDING DOWN...');
+  try {
+    if (duelPreviewMode) {
+      const key = duelChallenge.viewerRole === 'guest' ? 'guest' : 'host';
+      duelChallenge = { ...duelChallenge, [key]: { ...duelChallenge[key], ready } };
+      if (ready && duelChallenge.guest) {
+        const rivalKey = key === 'guest' ? 'host' : 'guest';
+        duelChallenge[rivalKey] = { ...duelChallenge[rivalKey], ready: true };
+      }
+      duelChallenge.allReady = Boolean(duelChallenge.guest && duelChallenge.host.ready && duelChallenge.guest.ready);
+      if (duelChallenge.allReady && !duelChallenge.match) {
+        const startAt = Date.now() + 3200;
+        duelChallenge.match = {
+          phase: 'countdown', seed: 'crown-duel-preview-seed-100', startAt: new Date(startAt).toISOString(),
+          endAt: new Date(startAt + 90_000).toISOString(), durationMs: 90_000, yourScore: 0, rivalScore: 0,
+        };
+      }
+    } else duelChallenge = (await playerAccount.setPvpReady(duelChallenge.challengeId, ready)).challenge;
+    setDuelStatus(ready ? 'READY SIGNAL LOCKED' : 'READY SIGNAL CLEARED');
+    triggerHaptic(18);
+  } catch (error) { setDuelStatus(error?.message || 'READY SIGNAL FAILED', true); }
+  finally { setDuelBusy(false); renderDuelRoom(); }
+};
+const leaveDuelRoom = async () => {
+  if (!duelChallenge || duelBusy) return;
+  setDuelBusy(true);
+  setDuelStatus('CLOSING DUEL SIGNAL...');
+  try {
+    if (!duelPreviewMode) {
+      if (duelChallenge.viewerRole === 'guest') await playerAccount.leavePvpChallenge(duelChallenge.challengeId);
+      else await playerAccount.cancelPvpChallenge(duelChallenge.challengeId);
+    }
+    stopDuelSignals();
+    setDuelChallenge(null);
+    setDuelStatus('DUEL LOBBY CLOSED');
+    await refreshDuelChallenges(true);
+  } catch (error) { setDuelStatus(error?.message || 'LOBBY COULD NOT BE CLOSED', true); }
+  finally { setDuelBusy(false); renderDuelChallenges(); }
+};
+const shareDuel = async forceCopy => {
+  if (!duelChallenge?.inviteCode) return;
+  const url = duelInviteUrl(duelChallenge.inviteCode);
+  try {
+    if (!forceCopy && navigator.share && !localPreview) await navigator.share({ title: 'Crown Duel · Crown Lizard', text: `Challenge ${duelChallenge.host?.callsign || 'a Crown pilot'} in Crown Duel.`, url });
+    else await copyPilotProfileUrl(url);
+    setDuelStatus(forceCopy || !navigator.share ? 'DUEL LINK COPIED' : 'DUEL INVITE SHARED');
+    triggerHaptic(18);
+  } catch (error) { if (error?.name !== 'AbortError') setDuelStatus('SHARING UNAVAILABLE · TRY AGAIN', true); }
+};
+const closeDuel = () => {
+  stopDuelSignals();
+  ui.duelCountdown.classList.add('hidden');
+  ui.duelOverlay.classList.add('hidden');
+  selectMenuChoice(ui.menuChoices.indexOf(ui.menuDuel), true);
+};
+const loadDuelInvite = async code => {
+  setDuelStatus('LOCATING INVITE SIGNAL...');
+  try {
+    const challenge = duelPreviewMode ? previewDuelOpenChallenges()[0] : (await playerAccount.getPvpInvite(code)).challenge;
+    duelChallenges = challenge ? [challenge] : [];
+    renderDuelChallenges();
+    setDuelStatus(challenge ? `INVITE FROM ${challenge.host?.callsign || 'CROWN PILOT'} · PRESS JOIN` : 'INVITE NOT FOUND', !challenge);
+  } catch (error) { setDuelStatus(error?.message || 'INVITE SIGNAL UNAVAILABLE', true); }
+};
+const openDuel = async (inviteCode = '') => {
+  ui.duelOverlay.classList.remove('hidden');
+  ui.duelOverlay.scrollTop = 0;
+  duelRunComplete = false;
+  setDuelChallenge(null);
+  setDuelBusy(false);
+  const accountReady = duelAccountReady();
+  ui.duelCreate.disabled = !accountReady;
+  setDuelStatus(accountReady ? 'SCANNING CROWN NETWORK...' : 'SIGN IN AND CHOOSE A CALLSIGN TO ENTER', !accountReady);
+  const reconnect = accountReady && !inviteCode && !duelPreviewMode ? readDuelReconnect() : null;
+  if (reconnect) {
+    try {
+      const payload = await playerAccount.getPvpChallenge(reconnect.challengeId);
+      if (payload.challenge && ['waiting', 'matched'].includes(payload.challenge.status)) return enterDuelRoom(payload.challenge);
+      saveDuelReconnect(null);
+    } catch { saveDuelReconnect(null); }
+  }
+  if (inviteCode) await loadDuelInvite(inviteCode);
+  else await refreshDuelChallenges();
+  (accountReady ? ui.duelCreate : ui.closeDuel).focus({ preventScroll: true });
 };
 
 const previewLeaderboardScores = difficulty => {
@@ -2088,6 +2627,7 @@ const game = new Game($('game'), input, {
       ui.assaultGlobalHp.textContent = state.assault.globalHp.toLocaleString('en-US');
       ui.assaultHud.style.setProperty('--assault-phase-color', state.assault.phaseInfo.color);
     }
+    if (state.duel) updateDuelLiveHud(state);
   },
   combo: () => {
     ui.combo.classList.remove('bump');
@@ -2136,6 +2676,7 @@ const game = new Game($('game'), input, {
     ui.pauseButton.classList.add('hidden');
     music.pause();
   },
+  duelover: summary => { void completeDuelRun(summary); },
   assaultPhase: phase => {
     showToast(`PHASE ${phase.number} · ${phase.name}`, 'threat', phase.color);
     sfx.play('stage');
@@ -2341,7 +2882,7 @@ const resumeRun = () => {
 };
 
 const pauseRun = automatic => {
-  if (!game.active || game.paused || game.awaitingPerk || !runVisible()) return;
+  if (game.mode === 'duel' || !game.active || game.paused || game.awaitingPerk || !runVisible()) return;
   game.paused = true;
   input.clear();
   hideToast();
@@ -2357,9 +2898,13 @@ const returnToMenu = () => {
   rewardedAdViewing = false;
   closeRewardedAdOverlay();
   game.stop();
+  duelGameplayActive = false;
+  duelRunComplete = false;
+  duelFinalScore = 0;
   economyRunId = '';
   input.clear();
-  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.redeemOverlay, ui.adminOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.pilotProfileOverlay].forEach(element => element.classList.add('hidden'));
+  stopDuelSignals();
+  [ui.gameover, ui.assaultResult, ui.perkOverlay, ui.pauseOverlay, ui.settingsOverlay, ui.accountOverlay, ui.redeemOverlay, ui.adminOverlay, ui.tutorialOverlay, ui.vaultOverlay, ui.wardenOverlay, ui.duelOverlay, ui.duelCountdown, ui.duelResult, ui.duelHud, ui.pilotProfileOverlay].forEach(element => element.classList.add('hidden'));
   ui.crateReveal.classList.add('hidden');
   ui.crateOpeningCinematic.className = 'crate-opening-cinematic hidden';
   ui.cosmeticDetail.classList.add('hidden');
@@ -2367,7 +2912,7 @@ const returnToMenu = () => {
   ui.storePurchaseReveal.classList.add('hidden');
   ui.hud.classList.add('hidden');
   ui.assaultHud.classList.add('hidden');
-  document.documentElement.classList.remove('assault-active');
+  document.documentElement.classList.remove('assault-active', 'duel-active');
   ui.dashButton.classList.add('hidden');
   ui.pauseButton.classList.add('hidden');
   ui.menu.classList.remove('hidden');
@@ -2784,6 +3329,23 @@ ui.menuMode.addEventListener('click', () => { cycleDifficulty(1); sfx.play('conf
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.menuVault.addEventListener('click', openVault);
 ui.menuWarden.addEventListener('click', openWarden);
+ui.menuDuel.addEventListener('click', () => { void openDuel(); });
+ui.closeDuel.addEventListener('click', closeDuel);
+ui.duelCreate.addEventListener('click', createDuelChallenge);
+ui.duelRefresh.addEventListener('click', () => { void refreshDuelChallenges(); });
+ui.duelReady.addEventListener('click', toggleDuelReady);
+ui.duelRematch.addEventListener('click', () => { void requestDuelRematch(); });
+ui.duelResultBack.addEventListener('click', () => {
+  ui.duelResult.classList.add('hidden');
+  ui.duelOverlay.classList.remove('hidden');
+  renderDuelRoom();
+  ui.duelLeave.focus({ preventScroll: true });
+});
+ui.duelLeave.addEventListener('click', () => {
+  if (duelChallenge?.match) closeDuel();
+  else void leaveDuelRoom();
+});
+ui.duelShare.addEventListener('click', () => { void shareDuel(false); });
 ui.openOwnProfile.addEventListener('click', () => {
   if (!playerProfile?.publicId) return;
   ui.settingsOverlay.classList.add('hidden');
@@ -3500,6 +4062,7 @@ addEventListener('keydown', event => {
   else if (!ui.cosmeticDetail.classList.contains('hidden')) closeCosmeticDetail();
   else if (!ui.crateReveal.classList.contains('hidden')) closeCrateReveal();
   else if (!ui.assaultResult.classList.contains('hidden')) returnToMenu();
+  else if (!ui.duelOverlay.classList.contains('hidden')) closeDuel();
   else if (!ui.wardenOverlay.classList.contains('hidden')) closeWarden();
   else if (!ui.vaultOverlay.classList.contains('hidden')) closeVault();
   else if (!ui.leaderboardOverlay.classList.contains('hidden')) closeLeaderboard();
@@ -3539,7 +4102,7 @@ addEventListener('keydown', event => {
   }
 });
 addEventListener('keydown', event => {
-  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.redeemOverlay.classList.contains('hidden') || !ui.adminOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden')) return;
+  if (ui.menu.classList.contains('hidden') || !ui.settingsOverlay.classList.contains('hidden') || !ui.accountOverlay.classList.contains('hidden') || !ui.redeemOverlay.classList.contains('hidden') || !ui.adminOverlay.classList.contains('hidden') || !ui.leaderboardOverlay.classList.contains('hidden') || !ui.vaultOverlay.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden') || !ui.duelOverlay.classList.contains('hidden')) return;
   if (event.code === 'ArrowDown' || event.code === 'KeyS') {
     event.preventDefault();
     input.clear();
@@ -3569,7 +4132,7 @@ pwaManager = new PwaManager({
     pwaReleaseInfo = releaseInfo || pwaReleaseInfo;
     pwaUpdateReady = true;
     renderSettings();
-    if (!requestedPilotProfileId && !game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
+    if (!requestedPilotProfileId && !requestedDuelCode && !duelPreviewMode && !game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden') && ui.duelOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
   },
 });
 pwaManager.register();
@@ -3589,6 +4152,11 @@ if (requestedPilotProfileId) {
     pilotDeepLinkActive = true;
     openPilotProfile(requestedPilotProfileId, null, 'direct');
   });
+}
+if (requestedDuelCode) {
+  void (serverEconomy ? playerReadyPromise : Promise.resolve()).finally(() => { void openDuel(requestedDuelCode); });
+} else if (duelPreviewMode) {
+  void (serverEconomy ? playerReadyPromise : Promise.resolve()).finally(() => { void openDuel(); });
 }
 
 // Local provspelningsgenväg; finns inte när spelet körs på crownlizard.com.
@@ -3760,5 +4328,22 @@ if (debugMode) {
         renderArmory();
       }
     })();
+  }
+  if (debugParams.has('duelresult')) {
+    setTimeout(() => {
+      duelRunComplete = true;
+      duelFinalScore = 68420;
+      duelChallenge = {
+        challengeId: 'preview-duel-result', status: 'matched', viewerRole: 'host',
+        host: previewDuelHost('CROWNACE'), guest: previewDuelHost('VOIDLIZARD', 'ship_void_hunter'),
+        match: { phase: 'finished', round: 1, yourScore: 68420, rivalScore: 63110, verification: 'final',
+          yourVerification: 'verified', rivalVerification: 'verified', winner: debugParams.get('duelresult') || 'you',
+          finalizedAt: new Date().toISOString(), yourRematch: false, rivalRematch: false },
+      };
+      ui.duelOverlay.classList.add('hidden');
+      ui.menu.classList.add('hidden');
+      ui.duelResult.classList.remove('hidden');
+      renderDuelResult(duelChallenge);
+    }, 1_200);
   }
 }

@@ -1,20 +1,28 @@
 {
   "name": "crown-lizard",
-  "version": "0.39.0",
+  "version": "0.42.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node tools/build-site.mjs",
     "schema": "node tools/build-canonical-schema.mjs",
     "test": "node tools/run-tests.mjs",
+    "test:pvp": "vitest run --config workers/pvp/vitest.config.ts",
+    "pvp:types": "wrangler types workers/pvp/worker-configuration.d.ts --config workers/pvp/wrangler.jsonc",
+    "pvp:check": "npm run pvp:types && tsc --project workers/pvp/tsconfig.json && npm run test:pvp && wrangler deploy --dry-run --config workers/pvp/wrangler.jsonc",
     "test:integration": "node tools/security-integration.mjs",
     "release:gate": "node tools/release-gate.mjs",
-    "release:verify": "npm run schema && npm test && npm run build && npm run release:gate",
+    "release:verify": "npm run schema && npm test && npm run pvp:check && npm run build && npm run release:gate",
     "cloudflare:secrets": "node tools/check-pages-secrets.mjs",
     "smoke:production": "node tools/production-smoke.mjs https://crownlizard.com",
-    "deploy:production": "npm run release:verify && npm run cloudflare:secrets && wrangler pages deploy dist --project-name crownlizard --branch main && npm run smoke:production"
+    "pvp:publish": "wrangler deploy --config workers/pvp/wrangler.jsonc",
+    "deploy:production": "npm run release:verify && npm run cloudflare:secrets && npm run pvp:publish && wrangler pages deploy dist --project-name crownlizard --branch main && npm run smoke:production"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.2",
+    "@types/node": "^26.4.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
     "wrangler": "^4.127.1"
   }
 }
