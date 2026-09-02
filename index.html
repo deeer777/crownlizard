@@ -60,7 +60,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260902-107-arcade-flight">
+  <link rel="stylesheet" href="./styles.css?v=20260902-108-bootstrap-hotfix">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -711,11 +711,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module">
-    const params = new URLSearchParams(location.search);
-    const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-    if (localPreview && params.has('controls')) import('./src/control-lab.js?v=20260902-107-arcade-flight');
-    else import('./src/main.js?v=20260902-107-arcade-flight');
-  </script>
+  <script type="module" src="./src/bootstrap.js?v=20260902-108-bootstrap-hotfix"></script>
 </body>
 </html>

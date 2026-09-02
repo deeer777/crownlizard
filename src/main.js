@@ -1,8 +1,8 @@
-import { CONFIG } from './config.js?v=20260902-107-arcade-flight';
+import { CONFIG } from './config.js?v=20260902-108-bootstrap-hotfix';
 import { Engine } from './engine.js?v=20260820-18';
-import { Input } from './input.js?v=20260902-107-arcade-flight';
+import { Input } from './input.js?v=20260902-108-bootstrap-hotfix';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
-import { Game } from './game.js?v=20260902-107-arcade-flight';
+import { Game } from './game.js?v=20260902-108-bootstrap-hotfix';
 import { ShardWallet } from './economy.js?v=20260830-95-score-fix';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';

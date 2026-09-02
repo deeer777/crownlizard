@@ -6,11 +6,12 @@ const accessToken = String(process.env.CROWNLIZARD_SMOKE_ACCESS_TOKEN || '');
 const expectedRelease = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
 const request = async (path, validate, token = '') => {
   const url = new URL(path, baseUrl);
+  const textResponse = path === '/' || path.endsWith('.js');
   const response = await fetch(url, {
-    headers: { Accept: path === '/' ? 'text/html' : 'application/json', 'Cache-Control': 'no-cache', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { Accept: textResponse ? 'text/*' : 'application/json', 'Cache-Control': 'no-cache', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     signal: AbortSignal.timeout(12_000),
   });
-  const body = path === '/' ? await response.text() : await response.json().catch(() => null);
+  const body = textResponse ? await response.text() : await response.json().catch(() => null);
   assert.equal(response.ok, true, `${url.pathname} returned ${response.status}: ${JSON.stringify(body)}`);
   assert.ok(!body?.code || body.code !== 'NETWORK_NOT_CONFIGURED', `${url.pathname} reports missing production configuration`);
   validate(body, response);
@@ -18,7 +19,15 @@ const request = async (path, validate, token = '') => {
   return body;
 };
 
-await request('/', html => assert.match(html, /Crown Lizard/i));
+await request('/', html => {
+  assert.match(html, /Crown Lizard/i);
+  assert.match(html, /<script type="module" src="\.\/src\/bootstrap\.js\?v=[^"]+"><\/script>/, 'production must load its bootstrap through a CSP-compliant external module');
+  assert.doesNotMatch(html, /<script\s+type="module">/, 'production must not ship an inline module blocked by its own CSP');
+});
+await request('/src/bootstrap.js', (source, response) => {
+  assert.match(String(response.headers.get('content-type') || ''), /javascript/i);
+  assert.match(source, /import\('\.\/main\.js\?v=/);
+});
 const release = await request('/release.json', value => {
   assert.ok(Number.isInteger(value?.build) && value.build > 0);
   assert.match(String(value?.release || ''), /^\d+\.\d+\.\d+$/);

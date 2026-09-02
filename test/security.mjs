@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { secureRandom } from '../src/cosmetics.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const bootstrap = readFileSync(new URL('../src/bootstrap.js', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const headers = readFileSync(new URL('../_headers', import.meta.url), 'utf8');
@@ -11,7 +12,9 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /main\.js\?v=20260902-107-arcade-flight/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260902-108-bootstrap-hotfix"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
+assert.doesNotMatch(index, /<script\s+type="module">/, 'production cannot rely on executable inline modules blocked by its CSP');
+assert.match(bootstrap, /main\.js\?v=20260902-108-bootstrap-hotfix/, 'the current frontend ships behind the bootstrap cache boundary');
 assert.match(main, /player-account\.js\?v=20260901-102-duel-verified-final/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /account-presentation\.js\?v=20260826-73-cinematic-endings/, 'the single account presentation model ships behind the same cache boundary');
 assert.match(index, /id="menuPlayer">GUEST/, 'the title screen reserves a clear arcade player identity slot');

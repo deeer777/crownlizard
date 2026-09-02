@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-91-weapon-skins4';
 import { buildDuelWavePlan, DUEL_BLUEPRINT_BY_ID, DUEL_DURATION_SECONDS } from './duel-match.js?v=20260901-102-duel-verified-final';
-import { FLIGHT_PROFILES, stepFlightMotion } from './flight-control.js?v=20260902-107-arcade-flight';
+import { FLIGHT_PROFILES, stepFlightMotion } from './flight-control.js?v=20260902-108-bootstrap-hotfix';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
