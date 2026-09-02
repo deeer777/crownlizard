@@ -1,9 +1,10 @@
 export class Input {
-  constructor(canvas, dashButton, joystick) {
+  constructor(canvas, dashButton, joystick, options = {}) {
     this.canvas = canvas;
     this.keys = new Set();
     this.pointer = { active: false, id: null, x: 0, y: 0, originX: 0, originY: 0, type: 'mouse' };
     this.joystick = joystick;
+    this.forceTouch = Boolean(options.forceTouch);
     this.dashQueued = false;
 
     const gameplayKeys = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ShiftLeft', 'ShiftRight']);
@@ -56,7 +57,7 @@ export class Input {
       if (this.pointer.active && event.pointerId !== this.pointer.id) return;
       this.pointer.active = true;
       this.pointer.id = event.pointerId;
-      this.pointer.type = event.pointerType || 'mouse';
+      this.pointer.type = this.forceTouch ? 'touch' : event.pointerType || 'mouse';
       const rect = canvas.getBoundingClientRect();
       this.pointer.originX = event.clientX - rect.left;
       this.pointer.originY = event.clientY - rect.top;

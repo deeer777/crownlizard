@@ -36,7 +36,7 @@ assert.match(styles, /\.admin-campaign-actions button[\s\S]*min-height: 44px/);
 assert.match(styles, /@media \(max-width: 600px\)[\s\S]*\.admin-campaign-actions button \{ min-height: 48px/);
 
 assert.equal(release.release, '0.44.0');
-assert.equal(release.build, 105);
-assert.match(serviceWorker, /crown-lizard-shell-v105-responsive-flight/);
+assert.equal(release.build, 107);
+assert.match(serviceWorker, /crown-lizard-shell-v107-arcade-flight/);
 
 console.log('Crown Control admin and reward-code UX security tests passed');

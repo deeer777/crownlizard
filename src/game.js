@@ -1,6 +1,7 @@
 import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-91-weapon-skins4';
 import { buildDuelWavePlan, DUEL_BLUEPRINT_BY_ID, DUEL_DURATION_SECONDS } from './duel-match.js?v=20260901-102-duel-verified-final';
+import { FLIGHT_PROFILES, stepFlightMotion } from './flight-control.js?v=20260902-107-arcade-flight';
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -888,17 +889,11 @@ export class Game {
         player.facingY = movement.y;
       }
       const poisonMovement = 1 - player.poisonExposure * .18;
-      player.vx += movement.x * CONFIG.player.acceleration * this.modifiers.movement * poisonMovement * dt;
-      player.vy += movement.y * CONFIG.player.acceleration * this.modifiers.movement * poisonMovement * dt;
-      const drag = Math.exp(-CONFIG.player.drag * dt);
-      player.vx *= drag;
-      player.vy *= drag;
-      const speed = Math.hypot(player.vx, player.vy);
       const maxSpeed = CONFIG.player.maxSpeed * this.modifiers.movement * poisonMovement;
-      if (speed > maxSpeed) {
-        player.vx *= maxSpeed / speed;
-        player.vy *= maxSpeed / speed;
-      }
+      const responseScale = 1 / Math.max(1, this.modifiers.movement);
+      const velocity = stepFlightMotion(player, movement, FLIGHT_PROFILES.arcade, dt, maxSpeed, responseScale);
+      player.vx = velocity.vx;
+      player.vy = velocity.vy;
     }
 
     player.x = clamp(player.x + player.vx * dt, this.arenaLeft + player.radius + 8, this.arenaRight - player.radius - 8);

@@ -11,7 +11,7 @@ const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.me
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /main\.js\?v=20260902-105-responsive-flight/, 'the current frontend ships behind a fresh browser cache key');
+assert.match(index, /main\.js\?v=20260902-107-arcade-flight/, 'the current frontend ships behind a fresh browser cache key');
 assert.match(main, /player-account\.js\?v=20260901-102-duel-verified-final/, 'the account client cannot be served from an older browser cache');
 assert.match(main, /account-presentation\.js\?v=20260826-73-cinematic-endings/, 'the single account presentation model ships behind the same cache boundary');
 assert.match(index, /id="menuPlayer">GUEST/, 'the title screen reserves a clear arcade player identity slot');
