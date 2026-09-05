@@ -6,7 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, 'dist');
 const publicPaths = [
   'about', 'assets', 'audio', 'contact', 'how-to-play', 'privacy', 'src', 'terms', 'updates',
-  '_headers', '_routes.json', 'index.html', 'manifest.webmanifest', 'release.json',
+  '_headers', '_routes.json', 'ads.txt', 'index.html', 'manifest.webmanifest', 'release.json',
   'robots.txt', 'sitemap.xml', 'site.css', 'styles.css', 'sw.js',
 ];
 

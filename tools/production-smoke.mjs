@@ -6,7 +6,7 @@ const accessToken = String(process.env.CROWNLIZARD_SMOKE_ACCESS_TOKEN || '');
 const expectedRelease = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
 const request = async (path, validate, token = '') => {
   const url = new URL(path, baseUrl);
-  const textResponse = path === '/' || path.endsWith('.js') || (!path.startsWith('/api/') && path.endsWith('/'));
+  const textResponse = path === '/' || path.endsWith('.js') || path.endsWith('.txt') || (!path.startsWith('/api/') && path.endsWith('/'));
   const response = await fetch(url, {
     headers: { Accept: textResponse ? 'text/*' : 'application/json', 'Cache-Control': 'no-cache', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     signal: AbortSignal.timeout(12_000),
@@ -28,6 +28,10 @@ await request('/', html => {
 await request('/src/bootstrap.js', (source, response) => {
   assert.match(String(response.headers.get('content-type') || ''), /javascript/i);
   assert.match(source, /import\('\.\/main\.js\?v=/);
+});
+await request('/ads.txt', (source, response) => {
+  assert.match(String(response.headers.get('content-type') || ''), /text\/plain/i);
+  assert.equal(source.trim(), 'google.com, pub-8438094910600730, DIRECT, f08c47fec0942fa0');
 });
 for (const path of ['/about/', '/how-to-play/', '/updates/', '/privacy/', '/terms/', '/contact/']) {
   await request(path, html => {
