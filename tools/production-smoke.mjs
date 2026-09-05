@@ -21,6 +21,7 @@ const request = async (path, validate, token = '') => {
 
 await request('/', html => {
   assert.match(html, /Crown Lizard/i);
+  assert.match(html, /<meta name="google-adsense-account" content="ca-pub-8438094910600730">/, 'production must expose the verified AdSense publisher meta tag');
   assert.match(html, /<script type="module" src="\.\/src\/bootstrap\.js\?v=[^"]+"><\/script>/, 'production must load its bootstrap through a CSP-compliant external module');
   assert.doesNotMatch(html, /<script\s+type="module">/, 'production must not ship an inline module blocked by its own CSP');
 });

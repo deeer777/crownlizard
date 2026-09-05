@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'crown-lizard-shell-v108-bootstrap-hotfix';
+const CACHE_VERSION = 'crown-lizard-shell-v109-adsense-verification';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -13,15 +13,15 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/bootstrap.js?v=20260902-108-bootstrap-hotfix',
-  '/src/main.js?v=20260902-108-bootstrap-hotfix',
-  '/src/config.js?v=20260902-108-bootstrap-hotfix',
-  '/src/control-lab.js?v=20260902-108-bootstrap-hotfix',
-  '/src/flight-control.js?v=20260902-108-bootstrap-hotfix',
-  '/src/input.js?v=20260902-108-bootstrap-hotfix',
+  '/src/bootstrap.js?v=20260905-109-adsense-verification',
+  '/src/main.js?v=20260905-109-adsense-verification',
+  '/src/config.js?v=20260905-109-adsense-verification',
+  '/src/control-lab.js?v=20260905-109-adsense-verification',
+  '/src/flight-control.js?v=20260905-109-adsense-verification',
+  '/src/input.js?v=20260905-109-adsense-verification',
   '/src/engine.js?v=20260820-18',
   '/src/audio.js?v=20260828-91-weapon-skins4',
-  '/src/game.js?v=20260902-108-bootstrap-hotfix',
+  '/src/game.js?v=20260905-109-adsense-verification',
   '/src/duel-match.js?v=20260901-102-duel-verified-final',
   '/src/boss-assault.js?v=20260828-91-weapon-skins4',
   '/src/boss-network.js?v=20260831-99-security',
