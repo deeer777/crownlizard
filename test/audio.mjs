@@ -35,5 +35,11 @@ assert.equal(music.menuPlayer.paused, true, 'the menu theme fades out after ente
 music.playMenu();
 assert.equal(music.gamePlayer.paused, true, 'the gameplay track fades out after returning to the menu');
 assert.equal(music.menuPlayer.paused, false, 'the preserved menu track resumes after a run');
+music.setPlatformMuted(true);
+assert.equal(music.menuPlayer.paused, true, 'portal mute overrides the saved music preference');
+music.playMenu();
+assert.equal(music.menuPlayer.paused, true, 'the player cannot bypass portal mute by resuming music');
+music.setPlatformMuted(false);
+assert.equal(music.menuPlayer.paused, false, 'music resumes when the portal removes its mute override');
 
 console.log('Menu and gameplay music mode test passed');

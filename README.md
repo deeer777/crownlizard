@@ -53,6 +53,8 @@ Servera mappen med valfri statisk webbserver och öppna `index.html` via HTTP.
 - Each output receives a generated `src/platform-config.js`; a URL parameter cannot switch platforms.
 - Crown-only accounts, network events, public leaderboards, support links and PWA controls are capability-gated in the CrazyGames bundle.
 - AdSense metadata, `ads.txt`, the service worker and Cloudflare routing files are never copied to `dist-crazygames/`.
+- The CrazyGames bundle alone loads the official HTML5 v3 SDK. Its adapter reports real gameplay start/stop transitions, suppresses duplicate signals and honors the portal's `muteAudio` setting.
+- Basic Launch does not request ads. The `rewardedAds` capability remains disabled until CrazyGames approves a Full Launch integration.
 - `npm run deploy:production` refuses to run from a `codex/crazygames-*` branch. A reviewed change must reach `main` before crownlizard.com can be deployed.
 
 Never copy files manually between the two output folders. Both folders are generated and ignored by Git.

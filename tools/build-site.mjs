@@ -32,7 +32,8 @@ if (requestedPlatform === 'crazygames') {
     .replace(/\s*<link rel="canonical"[^>]*>/, '')
     .replace(/\s*<link rel="manifest"[^>]*>/, '')
     .replace(/\s*<link rel="apple-touch-icon"[^>]*>/, '')
-    .replace(/\s*<meta name="apple-mobile-web-app-[^>]*>/g, '');
+    .replace(/\s*<meta name="apple-mobile-web-app-[^>]*>/g, '')
+    .replace('</head>', '  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>\n</head>');
   await writeFile(indexPath, crazyGamesIndex);
 }
 

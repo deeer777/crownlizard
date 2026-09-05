@@ -16,6 +16,7 @@ import { BossNetwork } from './boss-network.js?v=20260831-99-security';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
 import { DUEL_BLUEPRINT_BY_ID, duelTimeLabel } from './duel-match.js?v=20260901-102-duel-verified-final';
 import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260905-platform-isolation';
+import { PlatformRuntime } from './platform-runtime.js?v=20260905-crazygames-sdk';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.slot?.startsWith('weapon_')
@@ -92,6 +93,14 @@ ui.menuModeValue.textContent = CONFIG.difficulties[selectedDifficulty].name;
 
 const music = new Music();
 const sfx = new SoundFx();
+const platformRuntime = new PlatformRuntime();
+void platformRuntime.initialize({
+  onMuteChange: muted => {
+    music.setPlatformMuted(muted);
+    sfx.setPlatformMuted(muted);
+    queueMicrotask(() => renderSettings());
+  },
+});
 music.playMenu();
 const unlockMenuMusic = () => music.playMenu();
 addEventListener('pointerdown', unlockMenuMusic, { once: true, capture: true });
@@ -776,12 +785,14 @@ const startBossAssault = async () => {
     damageBonus: activeBossAssault.damageBonus,
     globalHp: activeBossAssault.globalHp,
   });
+  void platformRuntime.gameplayStart();
   focusGameInput();
   music.playGame();
   showToast(`${blueprint.name} · ASSAULT READY`, 'weapon', armoryBlueprintColor(blueprint));
 };
 
 const showAssaultResult = async result => {
+  void platformRuntime.gameplayStop();
   let retryBlocked = false;
   hideToast();
   ui.assaultHud.classList.add('hidden');
@@ -1516,11 +1527,16 @@ const renderSettings = () => {
       button.querySelector('b').textContent = 'UNAVAILABLE';
       return;
     }
+    if (platformRuntime.muteAudio && ['music', 'sfx'].includes(button.dataset.setting)) {
+      button.setAttribute('aria-pressed', 'false');
+      button.querySelector('b').textContent = 'PORTAL MUTE';
+      return;
+    }
     const enabled = values[button.dataset.setting];
     button.setAttribute('aria-pressed', String(enabled));
     button.querySelector('b').textContent = enabled ? 'ON' : 'OFF';
   });
-  ui.sound.classList.toggle('off', !music.enabled);
+  ui.sound.classList.toggle('off', !music.enabled || platformRuntime.muteAudio);
   document.documentElement.classList.toggle('dash-left', dashSide === 'left');
   ui.accountBadge.textContent = accountPresentation().badge;
   const profileVisibilityAvailable = currentAccountState() === 'signed-in' && Boolean(playerProfile?.publicId);
@@ -2651,9 +2667,13 @@ const game = new Game($('game'), input, {
     hideToast();
     ui.dashButton.classList.add('hidden');
     ui.pauseButton.classList.add('hidden');
-    if (type === 'death') music.pause();
+    if (type === 'death') {
+      void platformRuntime.gameplayStop();
+      music.pause();
+    }
   },
   gameover: (score, summary) => {
+    void platformRuntime.gameplayStop();
     clearInterval(runCheckpointTimer);
     hideToast();
     ui.finalScore.textContent = score.toLocaleString('en-US');
@@ -2713,6 +2733,7 @@ const game = new Game($('game'), input, {
     sfx.play('stage');
   },
   perk: choices => {
+    void platformRuntime.gameplayStop();
     ui.perkOverlay.classList.remove('mastery-mode');
     ui.perkEyebrow.textContent = 'WARDEN DEFEATED';
     ui.perkTitle.textContent = 'CHOOSE A CROWN POWER';
@@ -2735,8 +2756,10 @@ const game = new Game($('game'), input, {
     ui.perkOverlay.classList.add('hidden');
     ui.dashButton.classList.remove('hidden');
     ui.pauseButton.classList.remove('hidden');
+    void platformRuntime.gameplayStart();
   },
   mastery: (weapon, choices) => {
+    void platformRuntime.gameplayStop();
     ui.perkOverlay.classList.add('mastery-mode');
     ui.perkEyebrow.textContent = `${weapon.name} · MK 5`;
     ui.perkTitle.textContent = 'CHOOSE YOUR FINAL FORM';
@@ -2762,6 +2785,7 @@ const game = new Game($('game'), input, {
     ui.perkOverlay.classList.remove('mastery-mode');
     ui.dashButton.classList.remove('hidden');
     ui.pauseButton.classList.remove('hidden');
+    void platformRuntime.gameplayStart();
     showToast(`MASTERED · ${mastery.name}`, 'weapon', weapon.color);
   },
   haptic: triggerHaptic,
@@ -2898,6 +2922,7 @@ const resumeRun = () => {
   ui.dashButton.classList.remove('hidden');
   focusGameInput();
   music.playGame();
+  void platformRuntime.gameplayStart();
 };
 
 const pauseRun = automatic => {
@@ -2910,9 +2935,11 @@ const pauseRun = automatic => {
   ui.pauseButton.classList.add('hidden');
   ui.dashButton.classList.add('hidden');
   music.pause();
+  if (!automatic) void platformRuntime.gameplayStop();
 };
 
 const returnToMenu = () => {
+  void platformRuntime.gameplayStop();
   rewardedAd.cancel();
   rewardedAdViewing = false;
   closeRewardedAdOverlay();
@@ -3264,6 +3291,7 @@ const finishTutorial = () => {
   ui.pauseButton.classList.remove('hidden');
   ui.dashButton.classList.remove('hidden');
   focusGameInput();
+  void platformRuntime.gameplayStart();
   sfx.play('confirm');
 };
 
@@ -3330,7 +3358,10 @@ const start = async () => {
   music.playGame();
   const needsTutorial = localStorage.getItem(tutorialKey) !== 'seen' || (tutorialForced && !tutorialForcedUsed);
   if (needsTutorial) openTutorial();
-  else focusGameInput();
+  else {
+    focusGameInput();
+    void platformRuntime.gameplayStart();
+  }
   ui.play.disabled = false;
   ui.retry.disabled = false;
   startingRun = false;

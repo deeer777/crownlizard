@@ -6,6 +6,7 @@
     "accounts": false,
     "supportPages": false,
     "pwa": false,
+    "portalSdk": true,
     "rewardedAds": false
   }
 }

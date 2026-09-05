@@ -8,6 +8,7 @@ export const PLATFORM_BUILD = Object.freeze({
     accounts: true,
     supportPages: true,
     pwa: true,
+    portalSdk: false,
     rewardedAds: false,
   }),
 });

@@ -3,6 +3,7 @@ import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
 export class Music {
   constructor() {
     this.enabled = localStorage.getItem('cl:music') !== 'off';
+    this.platformMuted = false;
     this.index = 0;
     this.mode = 'menu';
     this.fadeGeneration = 0;
@@ -17,7 +18,7 @@ export class Music {
   }
 
   play() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.platformMuted) return;
     this.activePlayer().play().catch(() => {});
   }
 
@@ -28,7 +29,7 @@ export class Music {
   playGame() { this.switchTo('game'); }
 
   switchTo(mode) {
-    if (!this.enabled) { this.mode = mode; return; }
+    if (!this.enabled || this.platformMuted) { this.mode = mode; return; }
     if (mode === this.mode) { this.play(); return; }
     const outgoing = this.activePlayer();
     this.mode = mode;
@@ -74,6 +75,13 @@ export class Music {
     return this.enabled;
   }
 
+  setPlatformMuted(muted) {
+    this.platformMuted = Boolean(muted);
+    if (this.platformMuted) this.pause();
+    else if (this.enabled) this.play();
+    return this.platformMuted;
+  }
+
   next() {
     this.index = (this.index + 1) % CONFIG.audio.gameTracks.length;
     this.gamePlayer.src = CONFIG.audio.gameTracks[this.index];
@@ -88,6 +96,7 @@ export class Music {
 export class SoundFx {
   constructor() {
     this.enabled = localStorage.getItem('cl:sfx') !== 'off';
+    this.platformMuted = false;
     this.context = null;
   }
 
@@ -100,8 +109,13 @@ export class SoundFx {
 
   toggle() { return this.setEnabled(!this.enabled); }
 
+  setPlatformMuted(muted) {
+    this.platformMuted = Boolean(muted);
+    return this.platformMuted;
+  }
+
   play(type = 'confirm') {
-    if (!this.enabled) return;
+    if (!this.enabled || this.platformMuted) return;
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!Context) return;
     this.context ||= new Context();
