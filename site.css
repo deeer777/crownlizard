@@ -30,6 +30,9 @@ li + li { margin-top:8px; }
 .arcade-card { min-height:150px; padding:18px 16px; background:rgba(5,18,17,.88); border-top:2px solid var(--line); border-bottom:2px solid #10251f; }
 .arcade-card b { display:block; margin-bottom:12px; color:var(--gold); font:400 11px/1.55 PressStart,monospace; }
 .arcade-card p { margin:0; font-size:13px; }
+.arcade-card p + p { margin-top:10px; }
+.contact-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin:24px 0; }
+.contact-grid .arcade-card { min-height:190px; }
 .arcade-action { display:inline-grid; min-height:52px; place-items:center; margin:18px 0; padding:12px 22px; color:var(--gold); font:400 12px/1.4 PressStart,monospace; text-decoration:none; }
 .arcade-action::before { content:'♛ '; color:var(--gold); }
 .release { display:grid; grid-template-columns:110px 1fr; gap:18px; padding:20px 0; border-bottom:1px solid var(--line); }
@@ -47,7 +50,9 @@ li + li { margin-top:8px; }
   .hero { grid-template-columns:1fr; text-align:center; }
   .hero img { grid-row:1; width:150px; }
   .arcade-grid { grid-template-columns:1fr; }
+  .contact-grid { grid-template-columns:1fr; }
   .arcade-card { min-height:0; }
+  .contact-grid .arcade-card { min-height:0; }
   .release { grid-template-columns:1fr; gap:8px; }
   p,li { font-size:13px; }
   .lead { font-size:15px; }

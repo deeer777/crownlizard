@@ -6,7 +6,7 @@ const accessToken = String(process.env.CROWNLIZARD_SMOKE_ACCESS_TOKEN || '');
 const expectedRelease = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
 const request = async (path, validate, token = '') => {
   const url = new URL(path, baseUrl);
-  const textResponse = path === '/' || path.endsWith('.js');
+  const textResponse = path === '/' || path.endsWith('.js') || (!path.startsWith('/api/') && path.endsWith('/'));
   const response = await fetch(url, {
     headers: { Accept: textResponse ? 'text/*' : 'application/json', 'Cache-Control': 'no-cache', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     signal: AbortSignal.timeout(12_000),
@@ -29,6 +29,12 @@ await request('/src/bootstrap.js', (source, response) => {
   assert.match(String(response.headers.get('content-type') || ''), /javascript/i);
   assert.match(source, /import\('\.\/main\.js\?v=/);
 });
+for (const path of ['/about/', '/how-to-play/', '/updates/', '/privacy/', '/terms/', '/contact/']) {
+  await request(path, html => {
+    assert.match(html, /Crown Lizard/i);
+    assert.match(html, /<meta name="robots" content="index,follow/);
+  });
+}
 const release = await request('/release.json', value => {
   assert.ok(Number.isInteger(value?.build) && value.build > 0);
   assert.match(String(value?.release || ''), /^\d+\.\d+\.\d+$/);

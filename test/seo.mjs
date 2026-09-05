@@ -9,6 +9,7 @@ const pages = [
   ['updates/index.html', 'https://crownlizard.com/updates/'],
   ['privacy/index.html', 'https://crownlizard.com/privacy/'],
   ['terms/index.html', 'https://crownlizard.com/terms/'],
+  ['contact/index.html', 'https://crownlizard.com/contact/'],
 ];
 const sitemap = read('sitemap.xml');
 const titles = new Set();
@@ -36,8 +37,10 @@ const structured = JSON.parse(jsonLd);
 assert.deepEqual(structured['@type'], ['VideoGame', 'WebApplication'], 'the game is co-typed for Google software-app eligibility');
 assert.equal(structured.offers.price, '0', 'structured data accurately describes the free game');
 assert.match(root, /href="\/how-to-play\/"[\s\S]*GAME GUIDE &amp; INFO/, 'the game exposes one focused crawlable information route');
+assert.match(root, /href="\/privacy\/"[\s\S]*PRIVACY &amp; COOKIES/, 'the game exposes its privacy policy directly');
+assert.match(root, /href="\/contact\/"[\s\S]*CONTACT &amp; SUPPORT/, 'the game exposes its support route directly');
 assert.match(read('robots.txt'), /Disallow: \/api\/[\s\S]*Sitemap: https:\/\/crownlizard\.com\/sitemap\.xml/, 'robots keeps APIs out and advertises the sitemap');
-assert.match(read('privacy/index.html'), /does not currently serve production advertising/, 'privacy copy does not claim the planned ad system is already active');
+assert.match(read('privacy/index.html'), /does not currently display production advertisements/, 'privacy copy does not claim the planned ad system is already active');
 assert.match(read('terms/index.html'), /Market purchases are final[\s\S]*cannot be sold, withdrawn or converted to money/, 'terms document the cosmetic-only shard market without implying cash value');
 
 console.log('SEO metadata, public content and publisher-readiness tests passed');
