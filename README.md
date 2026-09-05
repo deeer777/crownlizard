@@ -44,6 +44,19 @@ Detta är en separat, moderniserad spelbar version. Originalet finns orört i `.
 
 Servera mappen med valfri statisk webbserver och öppna `index.html` via HTTP.
 
+## Platform builds and Git isolation
+
+`main` remains the source of truth for crownlizard.com. Platform work must happen on a dedicated `codex/crazygames-*` branch in a separate worktree and must be reviewed before it is merged back.
+
+- `npm run build` and `npm run build:crown` create the Cloudflare/AdSense/PWA site in `dist/`.
+- `npm run build:crazygames` creates a separate portal bundle in `dist-crazygames/`.
+- Each output receives a generated `src/platform-config.js`; a URL parameter cannot switch platforms.
+- Crown-only accounts, network events, public leaderboards, support links and PWA controls are capability-gated in the CrazyGames bundle.
+- AdSense metadata, `ads.txt`, the service worker and Cloudflare routing files are never copied to `dist-crazygames/`.
+- `npm run deploy:production` refuses to run from a `codex/crazygames-*` branch. A reviewed change must reach `main` before crownlizard.com can be deployed.
+
+Never copy files manually between the two output folders. Both folders are generated and ignored by Git.
+
 Vid lokal provspelning byter tangenterna 1–5 direkt mellan Blaster, Spread, Pulse, Laser och Tesla. `M` maxar det aktiva vapnet för balansprov. `P` startar vid behov spelet och öppnar ett perk- eller mastery-val, `Z` hoppar till nästa zon, `L` hoppar till en sen världscykel och visar nästa late-game-formation, `G` skapar en giftpöl, `V` skapar ett Crown Weaver-möte, `X` skapar en Void Skimmer, `K` visar nästa wreck-animation och `B` startar vid behov spelet och ett Warden-möte direkt. Lägg till `?debug=1` i adressen för att aktivera provläget även på andra värdnamn.
 
 Warden möter spelaren med en egen entré och tre läsbara stridsfaser. Varje fas kombinerar förvarnade salvor, säkra luckor i projektilringarna och – i de senare faserna – markerade Crown Beams. HUD:ens zonmätare växlar till bossens hälsa under striden.

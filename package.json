@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node tools/build-site.mjs",
+    "build:crown": "node tools/build-site.mjs --platform=crownlizard",
+    "build:crazygames": "node tools/build-site.mjs --platform=crazygames",
     "schema": "node tools/build-canonical-schema.mjs",
     "test": "node tools/run-tests.mjs",
     "test:pvp": "vitest run --config workers/pvp/vitest.config.ts",
@@ -16,7 +18,7 @@
     "cloudflare:secrets": "node tools/check-pages-secrets.mjs",
     "smoke:production": "node tools/production-smoke.mjs https://crownlizard.com",
     "pvp:publish": "wrangler deploy --config workers/pvp/wrangler.jsonc",
-    "deploy:production": "npm run release:verify && npm run cloudflare:secrets && npm run pvp:publish && wrangler pages deploy dist --project-name crownlizard --branch main && npm run smoke:production"
+    "deploy:production": "node tools/assert-crown-deploy.mjs && npm run release:verify && npm run cloudflare:secrets && npm run pvp:publish && wrangler pages deploy dist --project-name crownlizard --branch main && npm run smoke:production"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.1.2",

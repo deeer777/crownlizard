@@ -15,6 +15,7 @@ import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-
 import { BossNetwork } from './boss-network.js?v=20260831-99-security';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
 import { DUEL_BLUEPRINT_BY_ID, duelTimeLabel } from './duel-match.js?v=20260901-102-duel-verified-final';
+import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260905-platform-isolation';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.slot?.startsWith('weapon_')
@@ -39,7 +40,7 @@ const profilePreviewMode = localPreview && debugParams.has('debug') && debugPara
 const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('pwa');
 const campaignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('admin');
 const duelPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('duel');
-const serverEconomy = !localPreview;
+const serverEconomy = PLATFORM.capabilities.crownServices && !localPreview;
 const ui = {
   menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
@@ -77,6 +78,8 @@ const ui = {
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
   networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), pwaUpdateVersion: $('pwaUpdateVersion'), pwaReleaseTitle: $('pwaReleaseTitle'), pwaReleaseNotes: $('pwaReleaseNotes'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
 };
+applyPlatformCapabilities();
+ui.menuChoices = ui.menuChoices.filter(button => !button.hidden && !button.classList.contains('hidden'));
 
 let selectedDifficulty = localStorage.getItem('crownlizard:difficulty') || 'arcade';
 if (!CONFIG.difficulties[selectedDifficulty]) selectedDifficulty = 'arcade';
@@ -539,6 +542,7 @@ const renderBossEvent = () => {
 };
 
 const loadBossEvent = async () => {
+  if (!PLATFORM.capabilities.crownServices) return;
   if (bossEventLoading) return;
   bossEventLoading = true;
   renderBossEvent();
@@ -572,6 +576,7 @@ const loadBossEvent = async () => {
 };
 
 setInterval(() => {
+  if (!PLATFORM.capabilities.crownServices) return;
   const scheduleVisible = !ui.menu.classList.contains('hidden') || !ui.wardenOverlay.classList.contains('hidden');
   if (scheduleVisible && document.visibilityState === 'visible' && !bossEventLoading && !game.active) void loadBossEvent();
 }, 30_000);
@@ -588,6 +593,7 @@ setInterval(() => {
 }, 1_000);
 
 document.addEventListener('visibilitychange', () => {
+  if (!PLATFORM.capabilities.crownServices) return;
   if (document.visibilityState === 'visible' && !game.active && !bossEventLoading) void loadBossEvent();
 });
 
@@ -2338,6 +2344,10 @@ const renderLeaderboard = (scores, highlightId = '', personal = null) => {
 
 const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = false) => {
   selectLeaderboardDifficulty(difficulty);
+  if (!PLATFORM.capabilities.crownServices) {
+    if (difficulty === selectedDifficulty) ui.menuBest.textContent = String(best).padStart(6, '0');
+    return { difficulty, scores: [], platformOnly: true };
+  }
   if (!silent) {
     renderLeaderboard([]);
     ui.leaderboardStatus.textContent = 'CONNECTING...';
@@ -2481,6 +2491,7 @@ const renderSponsoredOffer = offer => {
   ui.watchAd.disabled = rewardedAdViewing;
   ui.sponsoredReward.className = 'sponsored-reward hidden';
   ui.sponsoredReward.textContent = '';
+  if (!PLATFORM.capabilities.rewardedAds && !localPreview) return;
   if (!offer || offer.reason === 'RUN_NOT_ELIGIBLE') return;
 
   ui.sponsoredReward.classList.remove('hidden');
@@ -2512,7 +2523,7 @@ const closeRewardedAdOverlay = () => {
 };
 
 const showRewardedCrate = async () => {
-  if (serverEconomy) return;
+  if (serverEconomy || (!PLATFORM.capabilities.rewardedAds && !localPreview)) return;
   const offer = shardWallet.getPendingSponsoredOffer();
   if (rewardedAdViewing || !offer?.eligible || !rewardedAd.isReady()) return;
   const origin = !ui.vaultOverlay.classList.contains('hidden') ? 'vault' : 'gameover';
@@ -2661,13 +2672,22 @@ const game = new Game($('game'), input, {
       const shardResult = shardWallet.awardRun(economyRunId, summary);
       renderShardReward(shardResult);
       renderSponsoredOffer(shardWallet.getPendingSponsoredOffer());
-    } else {
+    } else if (serverEconomy) {
       renderShardVerification('VERIFYING...');
       renderSponsoredOffer(null);
       void settleServerReward(summary);
+    } else {
+      ui.shardReward.replaceChildren();
+      ui.shardReward.className = 'shard-reward';
+      renderSponsoredOffer(null);
     }
     renderShardBalance();
-    prepareScoreEntry(score, summary);
+    if (PLATFORM.capabilities.crownServices || localPreview) prepareScoreEntry(score, summary);
+    else {
+      pendingScore = null;
+      ui.scoreEntry.classList.add('hidden');
+      ui.submitScore.classList.add('hidden');
+    }
     selectResultChoice(0);
     ui.gameover.classList.remove('hidden');
     ui.perkOverlay.classList.add('hidden');
@@ -3261,7 +3281,7 @@ const start = async () => {
   ui.play.disabled = true;
   ui.retry.disabled = true;
   const generation = ++runGeneration;
-  currentRunPromise = (async () => {
+  currentRunPromise = PLATFORM.capabilities.crownServices ? (async () => {
     let accessToken = '';
     if (serverEconomy) {
       if (!serverEconomyReady) await playerReadyPromise.catch(() => null);
@@ -3269,7 +3289,7 @@ const start = async () => {
     }
     const run = await leaderboard.beginRun(selectedDifficulty, `${CONFIG.version.release}-${CONFIG.version.build}`, accessToken);
     return generation === runGeneration ? { ...run, walletBound: Boolean(accessToken) } : null;
-  })().catch(() => null);
+  })().catch(() => null) : Promise.resolve(null);
   rewardedAd.cancel();
   rewardedAdViewing = false;
   lastSponsoredClaimedRunId = '';
@@ -4124,7 +4144,7 @@ addEventListener('keydown', event => {
   }
 });
 
-pwaManager = new PwaManager({
+pwaManager = PLATFORM.capabilities.pwa ? new PwaManager({
   preview: pwaPreviewMode,
   onInstallChange: renderSettings,
   onUpdateReady: ({ releaseInfo } = {}) => {
@@ -4133,10 +4153,10 @@ pwaManager = new PwaManager({
     renderSettings();
     if (!requestedPilotProfileId && !requestedDuelCode && !duelPreviewMode && !game.active && !ui.menu.classList.contains('hidden') && ui.settingsOverlay.classList.contains('hidden') && ui.duelOverlay.classList.contains('hidden')) presentPwaUpdate('menu');
   },
-});
-pwaManager.register();
+}) : null;
+if (pwaManager) pwaManager.register();
 renderSettings();
-if (pwaPreviewMode && debugParams.has('update')) {
+if (pwaManager && pwaPreviewMode && debugParams.has('update')) {
   pwaUpdateReady = true;
   pwaManager.getReleaseInfo().then(releaseInfo => {
     pwaReleaseInfo = releaseInfo;
@@ -4144,8 +4164,10 @@ if (pwaPreviewMode && debugParams.has('update')) {
     presentPwaUpdate('menu');
   });
 }
-loadLeaderboard(selectedDifficulty, true);
-void (serverEconomy ? playerReadyPromise : Promise.resolve()).then(() => loadBossEvent(), () => loadBossEvent());
+if (PLATFORM.capabilities.crownServices) {
+  loadLeaderboard(selectedDifficulty, true);
+  void (serverEconomy ? playerReadyPromise : Promise.resolve()).then(() => loadBossEvent(), () => loadBossEvent());
+}
 if (requestedPilotProfileId) {
   void (serverEconomy ? playerReadyPromise : Promise.resolve()).finally(() => {
     pilotDeepLinkActive = true;

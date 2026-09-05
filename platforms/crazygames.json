@@ -1,0 +1,11 @@
+{
+  "id": "crazygames",
+  "label": "CrazyGames",
+  "capabilities": {
+    "crownServices": false,
+    "accounts": false,
+    "supportPages": false,
+    "pwa": false,
+    "rewardedAds": false
+  }
+}

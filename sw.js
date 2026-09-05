@@ -16,6 +16,8 @@ const APP_SHELL = [
   '/sitemap.xml',
   '/src/bootstrap.js?v=20260905-110-privacy-support',
   '/src/main.js?v=20260905-110-privacy-support',
+  '/src/platform.js?v=20260905-platform-isolation',
+  '/src/platform-config.js?v=20260905-platform-isolation',
   '/src/config.js?v=20260905-110-privacy-support',
   '/src/control-lab.js?v=20260905-110-privacy-support',
   '/src/flight-control.js?v=20260905-110-privacy-support',

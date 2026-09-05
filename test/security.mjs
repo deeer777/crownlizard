@@ -53,7 +53,7 @@ assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
 assert.match(main, /cl:wallet-session-reset:v51/, 'one stale anonymous wallet session is discarded for the clean cutover');
 assert.doesNotMatch(main, /Promise\.race\(\[playerReadyPromise, wait\(1200\)\]\)/, 'run registration no longer outruns the mobile wallet connection');
-assert.match(main, /const serverEconomy = !localPreview/, 'production selects the server wallet while localhost retains its test wallet');
+assert.match(main, /const serverEconomy = PLATFORM\.capabilities\.crownServices && !localPreview/, 'only the Crown platform selects the server wallet while localhost and portal builds stay isolated');
 assert.match(main, /localPreview \? shardWallet\.openCrate\(\) : await playerAccount\.openCrate\(\)/, 'production crate openings cannot call the local wallet');
 assert.match(main, /if \(localPreview\) \{[\s\S]*shardWallet\.awardRun/, 'local shard settlement is isolated to localhost');
 assert.match(headers, /script-src 'self'/, 'production only permits first-party scripts');

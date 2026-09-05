@@ -1,0 +1,11 @@
+{
+  "id": "crownlizard",
+  "label": "Crown Lizard Web",
+  "capabilities": {
+    "crownServices": true,
+    "accounts": true,
+    "supportPages": true,
+    "pwa": true,
+    "rewardedAds": false
+  }
+}

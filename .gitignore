@@ -8,6 +8,7 @@
 # Dependencies and generated output
 node_modules/
 dist/
+dist-crazygames/
 .wrangler/
 
 # Logs and operating-system files

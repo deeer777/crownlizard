@@ -134,10 +134,10 @@
       <div class="menu-choices" aria-label="Main menu">
         <button id="play" class="primary menu-choice menu-selected" data-menu-choice="start"><span class="menu-label"><i>♛</i> START GAME</span></button>
         <button id="menuMode" class="primary menu-choice" data-menu-choice="mode"><span class="menu-label"><i>♛</i> GAME MODE · <b id="menuModeValue">ARCADE</b></span></button>
-        <button id="menuDuel" class="primary menu-choice" data-menu-choice="duel"><span class="menu-label"><i>♛</i> CROWN DUEL</span></button>
-        <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" aria-label="Global Warden event status syncing"><span class="menu-label"><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em></button>
-        <button id="menuVault" class="primary menu-choice" data-menu-choice="vault"><span class="menu-label"><i>♛</i> CROWN VAULT</span></button>
-        <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard"><span class="menu-label"><i>♛</i> HIGH SCORES</span></button>
+        <button id="menuDuel" class="primary menu-choice" data-menu-choice="duel" data-platform-capability="crownServices"><span class="menu-label"><i>♛</i> CROWN DUEL</span></button>
+        <button id="menuWarden" class="primary menu-choice menu-event event-sync" data-menu-choice="warden" data-platform-capability="crownServices" aria-label="Global Warden event status syncing"><span class="menu-label"><i>♛</i> GLOBAL WARDEN</span><em id="menuWardenState">SYNC</em></button>
+        <button id="menuVault" class="primary menu-choice" data-menu-choice="vault" data-platform-capability="crownServices"><span class="menu-label"><i>♛</i> CROWN VAULT</span></button>
+        <button id="menuLeaderboard" class="primary menu-choice" data-menu-choice="leaderboard" data-platform-capability="crownServices"><span class="menu-label"><i>♛</i> HIGH SCORES</span></button>
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><span class="menu-label"><i>♛</i> SETTINGS</span></button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
@@ -242,21 +242,21 @@
       <div class="eyebrow">SYSTEM</div>
       <h2>SETTINGS</h2>
       <div class="setting-list">
-        <button id="openAccount" type="button"><span>PLAYER ACCOUNT</span><b id="accountBadge">GUEST</b></button>
-        <button id="openOwnProfile" class="hidden" type="button"><span>MY PILOT FILE</span><b>VIEW</b></button>
-        <button id="profileVisibility" class="hidden" type="button" aria-pressed="true"><span>PUBLIC PILOT PROFILE</span><b>ON</b></button>
-        <button id="openRedeem" class="hidden" type="button"><span>REDEEM CODE</span><b>ACCOUNT</b></button>
-        <button id="openAdmin" class="hidden owner-setting" type="button"><span>CROWN CONTROL</span><b>OWNER</b></button>
-        <a href="/how-to-play/" target="_blank" rel="noopener"><span>GAME GUIDE &amp; INFO</span><b>OPEN</b></a>
-        <a href="/privacy/" target="_blank" rel="noopener"><span>PRIVACY &amp; COOKIES</span><b>VIEW</b></a>
-        <a href="/contact/" target="_blank" rel="noopener"><span>CONTACT &amp; SUPPORT</span><b>OPEN</b></a>
+        <button id="openAccount" type="button" data-platform-capability="accounts"><span>PLAYER ACCOUNT</span><b id="accountBadge">GUEST</b></button>
+        <button id="openOwnProfile" class="hidden" type="button" data-platform-capability="accounts"><span>MY PILOT FILE</span><b>VIEW</b></button>
+        <button id="profileVisibility" class="hidden" type="button" data-platform-capability="accounts" aria-pressed="true"><span>PUBLIC PILOT PROFILE</span><b>ON</b></button>
+        <button id="openRedeem" class="hidden" type="button" data-platform-capability="accounts"><span>REDEEM CODE</span><b>ACCOUNT</b></button>
+        <button id="openAdmin" class="hidden owner-setting" type="button" data-platform-capability="accounts"><span>CROWN CONTROL</span><b>OWNER</b></button>
+        <a href="/how-to-play/" target="_blank" rel="noopener" data-platform-capability="supportPages"><span>GAME GUIDE &amp; INFO</span><b>OPEN</b></a>
+        <a href="/privacy/" target="_blank" rel="noopener" data-platform-capability="supportPages"><span>PRIVACY &amp; COOKIES</span><b>VIEW</b></a>
+        <a href="/contact/" target="_blank" rel="noopener" data-platform-capability="supportPages"><span>CONTACT &amp; SUPPORT</span><b>OPEN</b></a>
         <button data-setting="music"><span>MUSIC</span><b>ON</b></button>
         <button data-setting="sfx"><span>SOUND FX</span><b>ON</b></button>
         <button data-setting="haptics"><span>VIBRATION</span><b>ON</b></button>
         <button data-setting="dashSide"><span>DASH SIDE</span><b>RIGHT</b></button>
         <button data-setting="reduced"><span>REDUCED EFFECTS</span><b>OFF</b></button>
-        <button id="installApp" class="hidden" type="button"><span>INSTALL APP</span><b>READY</b></button>
-        <button id="updateApp" class="hidden" type="button"><span>UPDATE APP</span><b>READY</b></button>
+        <button id="installApp" class="hidden" type="button" data-platform-capability="pwa"><span>INSTALL APP</span><b>READY</b></button>
+        <button id="updateApp" class="hidden" type="button" data-platform-capability="pwa"><span>UPDATE APP</span><b>READY</b></button>
       </div>
       <button id="resetTutorial" class="system-link">SHOW TUTORIAL AGAIN</button>
       <button id="closeSettings" class="system-action"><i>♛</i> BACK</button>
