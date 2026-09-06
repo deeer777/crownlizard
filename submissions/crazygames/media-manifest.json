@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "campaign": "Crown Lizard — Global Warden",
+  "generatedWith": "OpenAI built-in image generation",
+  "referenceAssets": [
+    "assets/icons/crown-lizard-app-master-v1.png",
+    "assets/sprites/global-warden-v1.png",
+    "assets/sprites/ship-crown-sovereign-v1.png"
+  ],
+  "sharedPrompt": "Premium crisp handcrafted pixel-art arcade cover. Global Warden above, Crown Lizard player ship below, deep black-blue space, emerald energy ring, royal-gold stars, exact two-line CROWN LIZARD title, no border, no platform logo, no UI and no watermark.",
+  "covers": [
+    {
+      "slot": "landscape",
+      "file": "media/crown-lizard-cover-landscape-1920x1080.png",
+      "dimensions": "1920x1080"
+    },
+    {
+      "slot": "portrait",
+      "file": "media/crown-lizard-cover-portrait-800x1200.png",
+      "dimensions": "800x1200"
+    },
+    {
+      "slot": "square",
+      "file": "media/crown-lizard-cover-square-800x800.png",
+      "dimensions": "800x800"
+    }
+  ]
+}

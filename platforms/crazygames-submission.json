@@ -21,9 +21,9 @@
   },
   "shortDescription": "Dash through endless pixel-art swarms, master ten weapon paths and chase a new personal best.",
   "submissionAssets": {
-    "landscapeCover": "1920x1080",
-    "portraitCover": "800x1200",
-    "squareCover": "800x800",
+    "landscapeCover": "submissions/crazygames/media/crown-lizard-cover-landscape-1920x1080.png",
+    "portraitCover": "submissions/crazygames/media/crown-lizard-cover-portrait-800x1200.png",
+    "squareCover": "submissions/crazygames/media/crown-lizard-cover-square-800x800.png",
     "landscapePreview": "1080p 16:9, 15-20 seconds, silent",
     "portraitPreview": "1080p 2:3, 15-20 seconds, silent"
   }

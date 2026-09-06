@@ -30,13 +30,18 @@ Before uploading a new revision:
 
 Portal copy and technical facts live in `platforms/crazygames-submission.json` so they can be versioned separately from the Crown website.
 
-Still required in the Developer Portal:
+Prepared in `submissions/crazygames/media/`:
 
 - landscape cover, 1920x1080;
 - portrait cover, 800x1200;
 - square cover, 800x800;
+
+Still required in the Developer Portal:
+
 - silent landscape preview, 1080p 16:9 and 15–20 seconds;
 - silent portrait preview, 1080p 2:3 and 15–20 seconds.
+
+Use `submissions/crazygames/preview-shot-list.md` for the honest gameplay capture and run `npm run qa:crazygames:submission` before upload.
 
 Use a consistent Crown Lizard visual across all three covers. Only the game title may appear as promotional copy. Do not use borders, store logos, blurry art or a plain gameplay screenshot.
 
