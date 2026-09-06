@@ -9,6 +9,8 @@
 node_modules/
 dist/
 dist-crazygames/
+artifacts/
+.tmp/
 .wrangler/
 
 # Logs and operating-system files

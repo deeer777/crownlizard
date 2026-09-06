@@ -33,12 +33,15 @@ if (requestedPlatform === 'crazygames') {
     .replace(/\s*<link rel="manifest"[^>]*>/, '')
     .replace(/\s*<link rel="apple-touch-icon"[^>]*>/, '')
     .replace(/\s*<meta name="apple-mobile-web-app-[^>]*>/g, '')
+    .replace(/\s*<meta property="og:[^>]*>/g, '')
+    .replace(/\s*<meta name="twitter:[^>]*>/g, '')
+    .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
     .replace('</head>', '  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>\n</head>');
   await writeFile(indexPath, crazyGamesIndex);
 }
 
 const release = JSON.parse(await readFile(resolve(root, 'release.json'), 'utf8'));
-await writeFile(resolve(output, 'build-meta.json'), JSON.stringify({ build: release.build, release: release.release, platform: profile.id, generatedAt: new Date().toISOString() }, null, 2));
+await writeFile(resolve(output, 'build-meta.json'), JSON.stringify({ build: release.build, release: release.release, platform: profile.id }, null, 2));
 
 const measure = async directory => {
   let files = 0;

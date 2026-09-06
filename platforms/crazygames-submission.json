@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "platform": "crazygames",
+  "launch": "basic",
+  "title": "Crown Lizard",
+  "entryPoint": "index.html",
+  "category": "Action",
+  "tags": ["Arcade", "Shoot 'Em Up", "Pixel", "Survival"],
+  "controls": {
+    "desktop": "Move with WASD or arrow keys. Dash with Space. Pause with P or Escape.",
+    "mobile": "Drag anywhere on the arena to steer. Tap the DASH button to evade."
+  },
+  "orientation": ["landscape", "portrait"],
+  "capabilities": {
+    "keyboard": true,
+    "mouse": true,
+    "touch": true,
+    "adsDuringBasicLaunch": false,
+    "externalAccounts": false,
+    "externalServices": false
+  },
+  "shortDescription": "Dash through endless pixel-art swarms, master ten weapon paths and chase a new personal best.",
+  "submissionAssets": {
+    "landscapeCover": "1920x1080",
+    "portraitCover": "800x1200",
+    "squareCover": "800x800",
+    "landscapePreview": "1080p 16:9, 15-20 seconds, silent",
+    "portraitPreview": "1080p 2:3, 15-20 seconds, silent"
+  }
+}
