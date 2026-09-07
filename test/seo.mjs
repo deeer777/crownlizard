@@ -32,6 +32,9 @@ for (const [path, canonical] of pages) {
 }
 
 const root = read('index.html');
+assert.match(root, /<h1\b[^>]*>[\s\S]*FREE BROWSER ARCADE SHOOTER[\s\S]*<\/h1>/, 'the visible title targets the primary discovery phrase without replacing the arcade logo');
+assert.match(root, /href="\/about\/">ABOUT THE GAME<\/a>/, 'the title screen links directly to the game overview');
+assert.match(root, /href="\/updates\/">LATEST BUILDS<\/a>/, 'the title screen links directly to current releases');
 const jsonLd = root.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
 const structured = JSON.parse(jsonLd);
 assert.deepEqual(structured['@type'], ['VideoGame', 'WebApplication'], 'the game is co-typed for Google software-app eligibility');
@@ -40,6 +43,9 @@ assert.match(root, /href="\/how-to-play\/"[\s\S]*GAME GUIDE &amp; INFO/, 'the ga
 assert.match(root, /href="\/privacy\/"[\s\S]*PRIVACY &amp; COOKIES/, 'the game exposes its privacy policy directly');
 assert.match(root, /href="\/contact\/"[\s\S]*CONTACT &amp; SUPPORT/, 'the game exposes its support route directly');
 assert.match(read('robots.txt'), /Disallow: \/api\/[\s\S]*Sitemap: https:\/\/crownlizard\.com\/sitemap\.xml/, 'robots keeps APIs out and advertises the sitemap');
+const notFound = read('404.html');
+assert.match(notFound, /<meta name="robots" content="noindex,follow"/, 'the custom not-found page cannot enter the search index');
+assert.match(notFound, /SIGNAL NOT FOUND/, 'the custom not-found page preserves the Crown Lizard arcade voice');
 assert.match(read('privacy/index.html'), /does not currently display production advertisements/, 'privacy copy does not claim the planned ad system is already active');
 assert.match(read('terms/index.html'), /Market purchases are final[\s\S]*cannot be sold, withdrawn or converted to money/, 'terms document the cosmetic-only shard market without implying cash value');
 

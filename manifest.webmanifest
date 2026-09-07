@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Crown Lizard: Dash",
+  "name": "Crown Lizard — Arcade Shooter",
   "short_name": "Crown Lizard",
-  "description": "Dash, survive and claim the crown in an endless pixel-art arcade run.",
+  "description": "A free browser arcade shooter with pixel-art space combat and endless survival runs.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

@@ -329,7 +329,16 @@ h1 span { color: transparent; -webkit-text-stroke: 1.5px var(--mint); }
 .hero-panel .logo-crown-word::before { color: #fff1a2; -webkit-text-fill-color: #fff1a2; }
 .hero-panel .logo-lizard-word { margin-top: -.05em; color: #68c7ad; -webkit-text-fill-color: #68c7ad; background: none; text-shadow: 3px 0 #16463e, 0 4px #16463e, 4px 4px #010609, 7px 7px #010609; }
 .hero-panel .logo-lizard-word::before { color: #edfff8; -webkit-text-fill-color: #edfff8; }
-.logo-tail { position: absolute; right: 4%; bottom: -10px; z-index: 1; width: 205px; height: 28px; background: linear-gradient(to bottom, #d9fff2 0 28%, #6fffd2 28% 55%, #24987d 55% 78%, #0b3a32 78% 100%); clip-path: polygon(0 22%,62% 22%,62% 38%,75% 38%,75% 53%,84% 53%,84% 68%,92% 68%,92% 53%,100% 53%,100% 88%,92% 88%,92% 82%,82% 82%,82% 70%,72% 70%,72% 57%,60% 57%,60% 48%,0 48%); filter: drop-shadow(3px 4px 0 #010609); }
+.hero-panel .logo-lockup h1 .logo-descriptor {
+  width: auto;
+  margin-top: 11px;
+  color: #789e96;
+  -webkit-text-fill-color: currentColor;
+  font: 800 8px/1.4 ui-monospace, monospace;
+  letter-spacing: .14em;
+  text-shadow: 2px 2px #020706;
+}
+.logo-tail { position: absolute; right: 4%; bottom: 28px; z-index: 1; width: 205px; height: 28px; background: linear-gradient(to bottom, #d9fff2 0 28%, #6fffd2 28% 55%, #24987d 55% 78%, #0b3a32 78% 100%); clip-path: polygon(0 22%,62% 22%,62% 38%,75% 38%,75% 53%,84% 53%,84% 68%,92% 68%,92% 53%,100% 53%,100% 88%,92% 88%,92% 82%,82% 82%,82% 70%,72% 70%,72% 57%,60% 57%,60% 48%,0 48%); filter: drop-shadow(3px 4px 0 #010609); }
 .logo-scar { position: absolute; z-index: 4; width: 13px; height: 5px; background: #071014; box-shadow: 2px 2px 0 rgba(255,211,107,.32); transform: rotate(-18deg); }
 .scar-one { left: 57%; top: 23%; }
 .scar-two { left: 41%; top: 66%; width: 10px; transform: rotate(16deg); box-shadow: 2px 2px 0 rgba(111,255,210,.28); }
@@ -395,6 +404,10 @@ kbd { padding: 7px 4px; color: var(--ink); background: transparent; border: 0; b
 .hero-panel .game-version { color: #405a55; }
 .hero-panel .game-version::before { content: '·'; margin-right: 12px; color: #29443f; }
 .hero-panel .best strong { display: none; }
+.arcade-site-links { display: flex; justify-content: center; gap: 6px 15px; margin: 7px auto 0; }
+.arcade-site-links a { min-height: 24px; display: grid; place-items: center; color: #526f69; font: 700 7px/1.4 var(--font-pixel-ui); letter-spacing: .08em; text-decoration: none; }
+.arcade-site-links a:hover,
+.arcade-site-links a:focus-visible { color: var(--gold); outline: none; }
 .menu-choices { display: grid; justify-items: center; gap: 0; margin: 0 auto; }
 .hero-panel .menu-choice { display: flex; align-items: center; justify-content: center; width: min(332px,calc(100vw - 28px)); min-width: 0; min-height: 44px; padding-block: 7px; color: #6d8580; white-space: nowrap; }
 .hero-panel .menu-choice b { color: var(--gold); font: inherit; }
@@ -1481,11 +1494,12 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .hero-panel h1 { font-size: clamp(39px, 12.5vw, 49px); }
   .logo-lockup { width: min(350px,100%); margin-top: 16px; }
   .logo-crest { top: -15px; width: 40px; height: 26px; }
-  .logo-tail { right: 2%; bottom: -9px; width: 150px; height: 20px; }
+  .logo-tail { right: 2%; bottom: 24px; width: 150px; height: 20px; }
   .logo-scar { transform: scale(.8) rotate(-18deg); }
   .menu-scene { height: 56px; }
   .scene-player { width: 54px; height: 54px; }
   .hero-panel .tagline { margin: 7px auto 10px; font-size: 7px; }
+  .hero-panel .logo-lockup h1 .logo-descriptor { margin-top: 8px; font-size: 7px; letter-spacing: .09em; }
   .arcade-status { gap: 6px; font-size: 7px; }
   .arcade-status small { font-size: 6px; }
   .arcade-status b { font-size: 8px; }
@@ -1493,6 +1507,8 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .menu-nav-hint { display: none; }
   .hero-panel .best { margin-top: 10px; }
   .hero-panel .best { gap: 7px; font-size: 7px; letter-spacing: .08em; }
+  .arcade-site-links { gap: 4px 10px; margin-top: 5px; }
+  .arcade-site-links a { min-height: 22px; font-size: 7px; letter-spacing: .04em; }
   .hero-panel .game-version::before { margin-right: 7px; }
   .hud { padding-inline: 12px; }
   .brand { font-size: 9px; }

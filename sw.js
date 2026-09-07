@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'crown-lizard-shell-v110-privacy-support';
+const CACHE_VERSION = 'crown-lizard-shell-v110-seo-signal';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/release.json',
-  '/styles.css?v=20260902-108-bootstrap-hotfix',
+  '/styles.css?v=20260908-seo-signal',
   '/site.css?v=20260905-110-privacy-support',
   '/about/',
   '/contact/',

@@ -10,7 +10,7 @@ if (profile.id !== requestedPlatform) throw new Error(`Platform profile mismatch
 
 const output = resolve(root, requestedPlatform === 'crownlizard' ? 'dist' : 'dist-crazygames');
 const crownPaths = [
-  'about', 'assets', 'audio', 'contact', 'how-to-play', 'privacy', 'src', 'terms', 'updates',
+  '404.html', 'about', 'assets', 'audio', 'contact', 'how-to-play', 'privacy', 'src', 'terms', 'updates',
   '_headers', '_routes.json', 'ads.txt', 'index.html', 'manifest.webmanifest', 'release.json',
   'robots.txt', 'sitemap.xml', 'site.css', 'styles.css', 'sw.js',
 ];
@@ -28,6 +28,16 @@ if (requestedPlatform === 'crazygames') {
   const indexPath = resolve(output, 'index.html');
   const crownIndex = await readFile(indexPath, 'utf8');
   const crazyGamesIndex = crownIndex
+    .replace(
+      '<meta name="description" content="Play Crown Lizard, a free browser arcade shooter with pixel-art space combat, endless survival runs, weapon upgrades and global high scores.">',
+      '<meta name="description" content="Play Crown Lizard, a free endless pixel-art arcade shooter. Dash through enemy swarms, master ten weapon paths and chase the global high score.">',
+    )
+    .replace('<title>Crown Lizard — Free Browser Arcade Shooter</title>', '<title>Crown Lizard — Free Endless Pixel-Art Arcade Shooter</title>')
+    .replace(
+      '<h1 aria-label="Crown Lizard — Free Browser Arcade Shooter"><span class="logo-crown-word" data-text="CROWN" aria-hidden="true">CROWN</span><span class="logo-lizard-word" data-text="LIZARD" aria-hidden="true">LIZARD</span><span class="logo-descriptor" aria-hidden="true">FREE BROWSER ARCADE SHOOTER</span></h1>',
+      '<h1 aria-label="Crown Lizard"><span class="logo-crown-word" data-text="CROWN" aria-hidden="true">CROWN</span><span class="logo-lizard-word" data-text="LIZARD" aria-hidden="true">LIZARD</span></h1>',
+    )
+    .replace(/\s*<nav class="arcade-site-links"[\s\S]*?<\/nav>/, '')
     .replace(/\s*<meta name="google-adsense-account"[^>]*>/, '')
     .replace(/\s*<link rel="canonical"[^>]*>/, '')
     .replace(/\s*<link rel="manifest"[^>]*>/, '')
@@ -38,6 +48,9 @@ if (requestedPlatform === 'crazygames') {
     .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
     .replace('</head>', '  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>\n</head>');
   await writeFile(indexPath, crazyGamesIndex);
+  const stylesPath = resolve(output, 'styles.css');
+  const crazyGamesStyles = `${await readFile(stylesPath, 'utf8')}\n/* CrazyGames keeps the pre-SEO portal logo geometry. */\n.logo-tail { bottom: -10px; }\n@media (max-width: 760px) { .logo-tail { bottom: -9px; } }\n`;
+  await writeFile(stylesPath, crazyGamesStyles);
   const { optimizeCrazyGamesAssets } = await import('./optimize-crazygames-assets.mjs');
   await optimizeCrazyGamesAssets(output);
 }
