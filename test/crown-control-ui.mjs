@@ -37,6 +37,8 @@ assert.match(styles, /@media \(max-width: 600px\)[\s\S]*\.admin-campaign-actions
 
 assert.equal(release.release, '0.44.4');
 assert.equal(release.build, 111);
-assert.match(serviceWorker, /crown-lizard-shell-v111-seo-signal/);
+assert.match(html, /id="gameVersion"[^>]*>VER 0\.44\.4 · BUILD 111<\/span>/);
+assert.match(main, /config\.js\?v=20260908-111-version-fix/);
+assert.match(serviceWorker, /crown-lizard-shell-v111-version-fix/);
 
 console.log('Crown Control admin and reward-code UX security tests passed');

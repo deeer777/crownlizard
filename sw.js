@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'crown-lizard-shell-v111-seo-signal';
+const CACHE_VERSION = 'crown-lizard-shell-v111-version-fix';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -14,12 +14,12 @@ const APP_SHELL = [
   '/terms/',
   '/robots.txt',
   '/sitemap.xml',
-  '/src/bootstrap.js?v=20260905-110-privacy-support',
-  '/src/main.js?v=20260905-110-privacy-support',
+  '/src/bootstrap.js?v=20260908-111-version-fix',
+  '/src/main.js?v=20260908-111-version-fix',
   '/src/platform.js?v=20260905-platform-isolation',
   '/src/platform-config.js?v=20260905-platform-isolation',
   '/src/platform-runtime.js?v=20260905-crazygames-sdk',
-  '/src/config.js?v=20260905-110-privacy-support',
+  '/src/config.js?v=20260908-111-version-fix',
   '/src/control-lab.js?v=20260905-110-privacy-support',
   '/src/flight-control.js?v=20260905-110-privacy-support',
   '/src/input.js?v=20260905-110-privacy-support',

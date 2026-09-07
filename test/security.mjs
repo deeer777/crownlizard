@@ -15,9 +15,9 @@ const buildSite = readFileSync(new URL('../tools/build-site.mjs', import.meta.ur
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260907-crazygames-data-pass2"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
+assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260908-111-version-fix"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
 assert.doesNotMatch(index, /<script\s+type="module">/, 'production cannot rely on executable inline modules blocked by its CSP');
-assert.match(bootstrap, /main\.js\?v=20260907-crazygames-data-pass2/, 'the current frontend ships behind the bootstrap cache boundary');
+assert.match(bootstrap, /main\.js\?v=20260908-111-version-fix/, 'the current frontend ships behind the bootstrap cache boundary');
 assert.match(index, /<meta name="google-adsense-account" content="ca-pub-8438094910600730">/, 'the AdSense ownership tag remains present during publisher review');
 assert.match(index, /href="\/privacy\/"[\s\S]*PRIVACY &amp; COOKIES/, 'privacy information is directly reachable from the game settings');
 assert.match(index, /href="\/contact\/"[\s\S]*CONTACT &amp; SUPPORT/, 'player support is directly reachable from the game settings');

@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260905-110-privacy-support';
+import { CONFIG } from './config.js?v=20260908-111-version-fix';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
