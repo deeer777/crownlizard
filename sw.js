@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'crown-lizard-shell-v110-seo-signal';
+const CACHE_VERSION = 'crown-lizard-shell-v111-seo-signal';
 const APP_SHELL = [
   '/',
   '/index.html',

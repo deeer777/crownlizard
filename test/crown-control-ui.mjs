@@ -35,8 +35,8 @@ assert.match(styles, /\.redeem-form input[\s\S]*min-height: 58px/);
 assert.match(styles, /\.admin-campaign-actions button[\s\S]*min-height: 44px/);
 assert.match(styles, /@media \(max-width: 600px\)[\s\S]*\.admin-campaign-actions button \{ min-height: 48px/);
 
-assert.equal(release.release, '0.44.3');
-assert.equal(release.build, 110);
-assert.match(serviceWorker, /crown-lizard-shell-v110-seo-signal/);
+assert.equal(release.release, '0.44.4');
+assert.equal(release.build, 111);
+assert.match(serviceWorker, /crown-lizard-shell-v111-seo-signal/);
 
 console.log('Crown Control admin and reward-code UX security tests passed');
