@@ -38,6 +38,8 @@ if (requestedPlatform === 'crazygames') {
     .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
     .replace('</head>', '  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>\n</head>');
   await writeFile(indexPath, crazyGamesIndex);
+  const { optimizeCrazyGamesAssets } = await import('./optimize-crazygames-assets.mjs');
+  await optimizeCrazyGamesAssets(output);
 }
 
 const release = JSON.parse(await readFile(resolve(root, 'release.json'), 'utf8'));

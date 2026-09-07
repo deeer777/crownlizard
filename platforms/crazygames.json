@@ -7,6 +7,11 @@
     "supportPages": false,
     "pwa": false,
     "portalSdk": true,
-    "rewardedAds": false
+    "rewardedAds": false,
+    "progressSave": true,
+    "localProgression": true,
+    "vault": true,
+    "store": true,
+    "market": false
   }
 }

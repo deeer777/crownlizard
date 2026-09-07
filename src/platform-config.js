@@ -10,5 +10,10 @@ export const PLATFORM_BUILD = Object.freeze({
     pwa: true,
     portalSdk: false,
     rewardedAds: false,
+    progressSave: false,
+    localProgression: true,
+    vault: true,
+    store: true,
+    market: true,
   }),
 });

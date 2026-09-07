@@ -3,7 +3,7 @@ import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
 import { Game } from './game.js?v=20260905-110-privacy-support';
-import { ShardWallet } from './economy.js?v=20260830-95-score-fix';
+import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260830-95-score-fix';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
@@ -15,8 +15,8 @@ import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-
 import { BossNetwork } from './boss-network.js?v=20260831-99-security';
 import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-weapon-skins4';
 import { DUEL_BLUEPRINT_BY_ID, duelTimeLabel } from './duel-match.js?v=20260901-102-duel-verified-final';
-import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260905-platform-isolation';
-import { PlatformRuntime } from './platform-runtime.js?v=20260905-crazygames-sdk';
+import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260907-crazygames-data-pass2';
+import { PlatformRuntime } from './platform-runtime.js?v=20260907-crazygames-data-pass2';
 
 const $ = id => document.getElementById(id);
 const cosmeticSpriteUrl = cosmetic => cosmetic.slot?.startsWith('weapon_')
@@ -42,6 +42,7 @@ const pwaPreviewMode = localPreview && debugParams.has('debug') && debugParams.h
 const campaignPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('admin');
 const duelPreviewMode = localPreview && debugParams.has('debug') && debugParams.has('duel');
 const serverEconomy = PLATFORM.capabilities.crownServices && !localPreview;
+const localEconomy = localPreview || (PLATFORM.capabilities.localProgression && !serverEconomy);
 const ui = {
   menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
@@ -94,13 +95,14 @@ ui.menuModeValue.textContent = CONFIG.difficulties[selectedDifficulty].name;
 const music = new Music();
 const sfx = new SoundFx();
 const platformRuntime = new PlatformRuntime();
-void platformRuntime.initialize({
+await platformRuntime.initialize({
   onMuteChange: muted => {
     music.setPlatformMuted(muted);
     sfx.setPlatformMuted(muted);
     queueMicrotask(() => renderSettings());
   },
 });
+const economyStorage = platformRuntime.progressStorage(localStorage, [SHARD_STORAGE_KEY]);
 music.playMenu();
 const unlockMenuMusic = () => music.playMenu();
 addEventListener('pointerdown', unlockMenuMusic, { once: true, capture: true });
@@ -173,7 +175,7 @@ const focusGameInput = () => {
   setTimeout(focus, 120);
 };
 gameCanvas.addEventListener('pointerenter', focusGameInput);
-const shardWallet = new ShardWallet();
+const shardWallet = new ShardWallet(economyStorage);
 const cosmeticPreferences = new CosmeticPreferences();
 try {
   const walletResetKey = 'cl:wallet-session-reset:v51';
@@ -242,7 +244,7 @@ const serverWalletView = wallet => ({
   vault: { opens: Number(wallet?.opens) || 0, sinceSovereign: Number(wallet?.sinceSovereign) || 0, freeCrateCredits: Math.max(0, Number(wallet?.freeCrateCredits) || 0), pendingReward: null },
   sponsored: { pendingRunId: '' },
 });
-const walletState = () => localPreview ? shardWallet.getState() : serverWallet || emptyWalletView();
+const walletState = () => localEconomy ? shardWallet.getState() : serverWallet || emptyWalletView();
 const acceptServerWallet = payload => {
   serverWallet = serverWalletView(payload?.wallet);
   serverEconomyReady = true;
@@ -319,8 +321,9 @@ let crateOpening = false;
 let vaultOddsExpanded = false;
 let vaultMode = 'crates';
 let vaultCategory = 'ship';
-let storeCatalog = localPreview ? [...STORE_PRODUCTS] : [];
-let storeCatalogLoaded = localPreview;
+const localStoreProducts = STORE_PRODUCTS.filter(product => product.type === 'cosmetic');
+let storeCatalog = localEconomy ? [...localStoreProducts] : [];
+let storeCatalogLoaded = localEconomy;
 let storeCatalogLoading = false;
 let storeBusySku = '';
 let storeMessage = '';
@@ -928,7 +931,7 @@ const openStoreRename = () => {
 
 const renderStore = () => {
   const state = walletState();
-  if (!storeCatalogLoaded && !localPreview) {
+  if (!storeCatalogLoaded && !localEconomy) {
     ui.storeCatalog.replaceChildren();
     ui.storeStatus.textContent = storeCatalogLoading ? 'STORE LINK CONNECTING...' : 'STORE CATALOG UNAVAILABLE';
     return;
@@ -978,7 +981,7 @@ const renderStore = () => {
 };
 
 const loadCrownStore = async () => {
-  if (localPreview || storeCatalogLoading || storeCatalogLoaded) return;
+  if (localEconomy || storeCatalogLoading || storeCatalogLoaded) return;
   storeCatalogLoading = true;
   renderStore();
   try {
@@ -1173,7 +1176,13 @@ const renderVault = () => {
   const owned = collectibleCosmetics.filter(cosmetic => Boolean(state.inventory.cosmetics[cosmetic.id]));
   ui.vaultBalance.textContent = `◆ ${state.balance.toLocaleString('en-US')}`;
   ui.vaultSyncStatus.dataset.state = account.state;
-  ui.vaultSyncStatus.textContent = serverEconomy && !serverEconomyReady ? 'CLOUD VAULT · CONNECTING' : account.vaultStatus;
+  ui.vaultSyncStatus.textContent = serverEconomy && !serverEconomyReady
+    ? 'CLOUD VAULT · CONNECTING'
+    : PLATFORM.id === 'crazygames'
+      ? platformRuntime.progressStorageMode === 'crazygames'
+        ? 'CRAZYGAMES SAVE · SYNCED'
+        : 'DEVICE VAULT · LOCAL FALLBACK'
+      : account.vaultStatus;
   ui.vaultCollectionTitle.textContent = vaultCategory === 'weapon' ? 'WEAPON SKINS' : 'SHIP COLLECTION';
   ui.vaultOwned.textContent = `${owned.length} / ${collectibleCosmetics.length}`;
   ui.cosmeticCategoryTabs.forEach(tab => {
@@ -1293,7 +1302,7 @@ const renderVault = () => {
 const acknowledgeNewCosmetic = cosmeticId => {
   const acquisition = walletState().inventory.cosmetics[cosmeticId];
   if (!['shop', 'market'].includes(acquisition?.source) || acquisition.seenAt) return;
-  if (localPreview) {
+  if (localEconomy) {
     shardWallet.markCosmeticSeen(cosmeticId);
     renderVault();
     return;
@@ -1440,7 +1449,7 @@ const showCrateReveal = outcome => {
 };
 
 const closeCrateReveal = () => {
-  if (localPreview) shardWallet.salvagePending();
+  if (localEconomy) shardWallet.salvagePending();
   ui.crateReveal.classList.add('hidden');
   renderVault();
   if (crateRevealReturn === 'gameover') {
@@ -1477,7 +1486,7 @@ const openVault = () => {
 
 const closeVault = () => {
   if (crateOpening) return;
-  if (localPreview) shardWallet.salvagePending();
+  if (localEconomy) shardWallet.salvagePending();
   ui.crateReveal.classList.add('hidden');
   ui.cosmeticDetail.classList.add('hidden');
   ui.vaultOverlay.classList.add('hidden');
@@ -2688,10 +2697,10 @@ const game = new Game($('game'), input, {
     ui.recordMessage.textContent = `PERSONAL BEST · ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
-    if (localPreview) {
+    if (localEconomy) {
       const shardResult = shardWallet.awardRun(economyRunId, summary);
       renderShardReward(shardResult);
-      renderSponsoredOffer(shardWallet.getPendingSponsoredOffer());
+      renderSponsoredOffer(localPreview ? shardWallet.getPendingSponsoredOffer() : null);
     } else if (serverEconomy) {
       renderShardVerification('VERIFYING...');
       renderSponsoredOffer(null);
@@ -3939,14 +3948,14 @@ ui.equipCosmetic.addEventListener('click', async () => {
       storeBusySku = storeProduct.sku;
       storeMessage = 'AUTHORIZING STORE PURCHASE...';
       ui.storeStatus.textContent = storeMessage;
-      if (localPreview) shardWallet.purchaseStoreItem(storeProduct.sku);
+      if (localEconomy) shardWallet.purchaseStoreItem(storeProduct.sku);
       else acceptServerWallet(await playerAccount.purchaseStoreItem(storeProduct.sku));
       purchased = true;
       storeMessage = `${storeProduct.name} ACQUIRED · READY TO EQUIP`;
       ui.storeStatus.textContent = storeMessage;
       sfx.play('vault-royal');
       triggerHaptic([35, 30, 70]);
-    } else if (localPreview) shardWallet.equipCosmetic(selectedCosmeticDetailId);
+    } else if (localEconomy) shardWallet.equipCosmetic(selectedCosmeticDetailId);
     else acceptServerWallet(await playerAccount.equipCosmetic(selectedCosmeticDetailId));
     applyEquippedCosmetics();
     renderVault();
@@ -3972,7 +3981,7 @@ ui.openCrate.addEventListener('click', async () => {
   if (crateOpening) return;
   try {
     crateOpening = true;
-    const result = localPreview ? shardWallet.openCrate() : await playerAccount.openCrate();
+    const result = localEconomy ? shardWallet.openCrate() : await playerAccount.openCrate();
     if (serverEconomy) await refreshServerWallet();
     renderVault();
     sfx.play('confirm');

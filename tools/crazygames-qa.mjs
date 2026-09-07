@@ -35,12 +35,18 @@ const searchable = (await Promise.all(textFiles.map(async path => `\n/* ${relati
 relativeFiles.includes('index.html') ? pass('Root entry point', 'index.html is at the package root') : fail('Root entry point', 'index.html is missing from the package root');
 relativeFiles.length <= limits.files ? pass('File count', `${relativeFiles.length} / ${limits.files}`) : fail('File count', `${relativeFiles.length} exceeds ${limits.files}`);
 totalBytes <= limits.totalBytes ? pass('Total size', `${(totalBytes / 1048576).toFixed(2)} MiB / 250 MiB`) : fail('Total size', `${(totalBytes / 1048576).toFixed(2)} MiB exceeds 250 MiB`);
+totalBytes <= limits.initialBytes
+  ? pass('SDK fallback size', `${(totalBytes / 1048576).toFixed(2)} MiB / 50 MiB if portal detection fails`)
+  : warnings.push(`Total bundle is ${(totalBytes / 1048576).toFixed(2)} MiB, so correct SDK detection is required to pass the 50 MiB initial-load gate.`);
 
 const forbiddenFiles = ['ads.txt', 'manifest.webmanifest', 'sw.js', '_headers', '_routes.json', 'sitemap.xml', 'robots.txt'];
 const leakedFiles = forbiddenFiles.filter(path => relativeFiles.includes(path));
 leakedFiles.length === 0 ? pass('Portal-only package', 'No Crown hosting, PWA or AdSense files') : fail('Portal-only package', `Unexpected files: ${leakedFiles.join(', ')}`);
 
 index.includes('https://sdk.crazygames.com/crazygames-sdk-v3.js') ? pass('CrazyGames SDK', 'Official HTML5 v3 SDK is present') : fail('CrazyGames SDK', 'Official HTML5 v3 SDK script is missing');
+index.indexOf('https://sdk.crazygames.com/crazygames-sdk-v3.js') < index.indexOf('src="./src/bootstrap.js')
+  ? pass('SDK load order', 'Portal SDK loads before the game bootstrap module')
+  : fail('SDK load order', 'Game bootstrap can run before the portal SDK');
 index.includes('src="./src/bootstrap.js') ? pass('Relative entry assets', 'Game entry module uses a relative path') : fail('Relative entry assets', 'Game entry module is not relative');
 
 const forbiddenTokens = [
@@ -57,8 +63,14 @@ for (const [name, pattern] of forbiddenTokens) {
 }
 
 const platformConfig = await readFile(resolve(bundleRoot, 'src/platform-config.js'), 'utf8');
-if (/"id": "crazygames"/.test(platformConfig) && /"crownServices": false/.test(platformConfig) && /"rewardedAds": false/.test(platformConfig)) {
-  pass('Capability isolation', 'Crown services and rewarded ads are disabled');
+if (/"id": "crazygames"/.test(platformConfig)
+  && /"crownServices": false/.test(platformConfig)
+  && /"rewardedAds": false/.test(platformConfig)
+  && /"progressSave": true/.test(platformConfig)
+  && /"vault": true/.test(platformConfig)
+  && /"store": true/.test(platformConfig)
+  && /"market": false/.test(platformConfig)) {
+  pass('Capability isolation', 'Data save, Vault and Store enabled; Crown services, Market and rewarded ads disabled');
 } else fail('Capability isolation', 'Generated platform capabilities are unsafe for Basic Launch');
 
 const remoteUrls = [...new Set(searchable.match(/https?:\/\/[^\s"'<>)}]+/g) || [])];
@@ -77,6 +89,22 @@ const startupCandidates = [
   'assets/runtime/sprites/iron-scarab-v1.png',
   'assets/runtime/sprites/weapon-crate-closed-v1.png',
   'assets/runtime/sprites/weapon-crate-open-v1.png',
+  'assets/runtime/hazards/poison-puddle-v1.png',
+  'assets/runtime/hazards/poison-warning-v1.png',
+  'assets/runtime/hazards/poison-hit-v1.png',
+  'assets/hazards/meteor-warning-v1.png',
+  'assets/hazards/meteor-core-v1.png',
+  'assets/hazards/meteor-impact-v1.png',
+  'assets/sprites/global-warden-v1.png',
+  'assets/sprites/crown-relay-v1.png',
+  'assets/sprites/shield-pylon-v1.png',
+  'assets/weapons/projectile-laser-v1.png',
+  'assets/weapons/projectile-tesla-v1.png',
+  'assets/weapons/projectile-pulse-v1.png',
+  'assets/weapons/blaster-mount-v1.png',
+  'assets/runtime/sprites/crown-crate-closed-v1.png',
+  'assets/ui/perk-card-frame-v1.png',
+  'assets/icons/icon-192.png',
 ].filter((value, index, all) => all.indexOf(value) === index);
 const initialBytes = startupCandidates.reduce((sum, path) => {
   const index = relativeFiles.indexOf(path);

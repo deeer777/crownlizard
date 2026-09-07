@@ -1,7 +1,19 @@
-import { PLATFORM_BUILD } from './platform-config.js?v=20260905-platform-isolation';
+import { PLATFORM_BUILD } from './platform-config.js?v=20260907-crazygames-data-pass2';
 
 const PLATFORM_IDS = new Set(['crownlizard', 'crazygames']);
-const CAPABILITY_KEYS = ['crownServices', 'accounts', 'supportPages', 'pwa', 'portalSdk', 'rewardedAds'];
+const CAPABILITY_KEYS = [
+  'crownServices',
+  'accounts',
+  'supportPages',
+  'pwa',
+  'portalSdk',
+  'rewardedAds',
+  'progressSave',
+  'localProgression',
+  'vault',
+  'store',
+  'market',
+];
 
 const normalizePlatform = value => {
   if (!value || !PLATFORM_IDS.has(value.id)) throw new Error('INVALID_PLATFORM_BUILD');
