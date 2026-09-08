@@ -39,6 +39,12 @@ const COSMETIC_IDS = new Set([
   'ship_gilded_viper', 'ship_neon_basilisk',
   'weapon_tesla_verdant_chain', 'weapon_tesla_storm_crown', 'weapon_laser_void_lance',
   'weapon_pulse_sovereign_eclipse', 'weapon_laser_royal_prism', 'weapon_pulse_solar_core',
+  'trail_ember_comet', 'trail_rift_wake', 'trail_royal_wake', 'trail_verdant_echo',
+  'dash_spectral_wings', 'dash_phase_slice', 'dash_solar_crown',
+]);
+const DEFAULT_COSMETIC_IDS = new Set([
+  'ship_default', 'weapon_laser_default', 'weapon_tesla_default', 'weapon_pulse_default',
+  'trail_default', 'dash_default',
 ]);
 const AUTH_BOOTSTRAP_LIMIT = 60;
 const REFRESH_COOKIE = '__Secure-cl_refresh';
@@ -1573,8 +1579,7 @@ const equipPlayerCosmetic = async (request, config) => {
   let body;
   try { body = await readJson(request); } catch { return json({ error: 'Invalid equip request.' }, 400); }
   const cosmeticId = String(body.cosmeticId || '');
-  const defaultIds = new Set(['ship_default', 'weapon_laser_default', 'weapon_tesla_default', 'weapon_pulse_default']);
-  if (!defaultIds.has(cosmeticId) && !COSMETIC_IDS.has(cosmeticId)) return json({ error: 'Invalid cosmetic.' }, 400);
+  if (!DEFAULT_COSMETIC_IDS.has(cosmeticId) && !COSMETIC_IDS.has(cosmeticId)) return json({ error: 'Invalid cosmetic.' }, 400);
   const equipped = await supabaseFetch(config, 'rpc/equip_player_cosmetic', {
     method: 'POST',
     body: JSON.stringify({ p_user_id: user.id, p_cosmetic_id: cosmeticId }),

@@ -242,6 +242,7 @@ globalThis.fetch = async (url, options = {}) => {
     });
   }
   if (String(url).endsWith('/rest/v1/rpc/equip_player_cosmetic')) return Response.json(equipOwned);
+  if (String(url).endsWith('/rest/v1/rpc/mark_inventory_seen')) return Response.json(true);
   throw new Error(`Unexpected test request: ${url}`);
 };
 
@@ -511,6 +512,44 @@ const equipResponse = await onRequest({
   params: { path: ['vault', 'equip'] },
 });
 assert.equal(equipResponse.status, 200, 'an owned server cosmetic can be equipped');
+
+const effectCosmeticIds = [
+  'trail_ember_comet', 'trail_rift_wake', 'trail_royal_wake', 'trail_verdant_echo',
+  'dash_spectral_wings', 'dash_phase_slice', 'dash_solar_crown',
+];
+const effectDefaultIds = ['trail_default', 'dash_default'];
+for (const cosmeticId of [...effectCosmeticIds, ...effectDefaultIds]) {
+  const effectEquipResponse = await onRequest({
+    request: new Request('https://crownlizard.com/api/vault/equip', {
+      method: 'POST', headers: { Authorization: 'Bearer header.payload.signature-access', 'Content-Type': 'application/json' }, body: JSON.stringify({ cosmeticId }),
+    }),
+    env,
+    params: { path: ['vault', 'equip'] },
+  });
+  assert.equal(effectEquipResponse.status, 200, `${cosmeticId} passes the Build 112 server equip boundary`);
+}
+const effectEquipIds = calls
+  .filter(call => call.url.endsWith('/rest/v1/rpc/equip_player_cosmetic'))
+  .map(call => JSON.parse(call.options.body).p_cosmetic_id);
+for (const cosmeticId of [...effectCosmeticIds, ...effectDefaultIds]) {
+  assert.ok(effectEquipIds.includes(cosmeticId), `${cosmeticId} reaches the authoritative equip RPC`);
+}
+
+for (const cosmeticId of effectCosmeticIds) {
+  const seenResponse = await onRequest({
+    request: new Request('https://crownlizard.com/api/vault/inventory/seen', {
+      method: 'POST', headers: { Authorization: 'Bearer header.payload.signature-access', 'Content-Type': 'application/json' }, body: JSON.stringify({ cosmeticId }),
+    }),
+    env,
+    params: { path: ['vault', 'inventory', 'seen'] },
+  });
+  assert.equal(seenResponse.status, 200, `${cosmeticId} can clear NEW through the Build 112 server boundary`);
+}
+const seenEffectIds = calls
+  .filter(call => call.url.endsWith('/rest/v1/rpc/mark_inventory_seen'))
+  .map(call => JSON.parse(call.options.body).p_cosmetic_id);
+assert.deepEqual(seenEffectIds.slice(-effectCosmeticIds.length), effectCosmeticIds, 'effect acknowledgement stays scoped to the requested Build 112 cosmetics');
+
 equipOwned = false;
 const lockedEquipResponse = await onRequest({
   request: new Request('https://crownlizard.com/api/vault/equip', {
