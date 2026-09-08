@@ -10,6 +10,20 @@ const DEFAULT_FLIGHT_FX = Object.freeze({ style: 'crown', primary: '#6fffd2', se
 const DEFAULT_TRAIL_FX = Object.freeze({ style: 'ion', primary: '#6fffd2', secondary: '#dffff5' });
 const DEFAULT_DASH_FX = Object.freeze({ style: 'ring', primary: '#63c8ff', secondary: '#dffff5' });
 const circlesTouch = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < a.radius + b.radius;
+const retainRecent = (items, predicate, maximum = Infinity) => {
+  let writeIndex = 0;
+  for (let readIndex = 0; readIndex < items.length; readIndex += 1) {
+    const item = items[readIndex];
+    if (predicate(item)) items[writeIndex++] = item;
+  }
+  if (writeIndex > maximum) {
+    const start = writeIndex - maximum;
+    for (let index = 0; index < maximum; index += 1) items[index] = items[start + index];
+    writeIndex = maximum;
+  }
+  items.length = writeIndex;
+  return items;
+};
 const ENVIRONMENT_FILES = [
   ['verdant-decal-v1.png', 'verdant-relic-v1.png'],
   ['ember-decal-v1.png', 'ember-meteor-v1.png'],
@@ -71,6 +85,8 @@ export class Game {
     this.width = 0;
     this.height = 0;
     this.dpr = 1;
+    this.backgroundGradient = null;
+    this.backgroundGradientKey = '';
     this.active = false;
     this.paused = false;
     this.reducedEffects = false;
@@ -90,6 +106,14 @@ export class Game {
     this.canvas.height = Math.round(this.height * this.dpr);
     this.canvas.style.width = `${this.width}px`;
     this.canvas.style.height = `${this.height}px`;
+    this.backgroundGradient = null;
+    this.backgroundGradientKey = '';
+  }
+
+  countActiveEnemies(predicate = () => true) {
+    let count = 0;
+    for (const enemy of this.enemies) if (!enemy.dead && predicate(enemy)) count += 1;
+    return count;
   }
 
   loadSprites() {
@@ -672,9 +696,9 @@ export class Game {
     const assault = this.assault;
     if (!assault || assault.transition > 0) return;
     assault.spawnTimer -= dt;
-    const adds = this.enemies.filter(enemy => !enemy.dead && !enemy.assaultBoss && !['assaultRelay', 'assaultPylon'].includes(enemy.type));
+    const addCount = this.countActiveEnemies(enemy => !enemy.assaultBoss && !['assaultRelay', 'assaultPylon'].includes(enemy.type));
     const cap = assault.phase === 2 ? 9 : assault.phase === 3 ? 5 : 0;
-    if (cap && adds.length < cap && assault.spawnTimer <= 0) {
+    if (cap && addCount < cap && assault.spawnTimer <= 0) {
       const type = assault.phase === 2
         ? ['chaser', 'shooter', 'chaser', 'tank'][assault.spawnIndex % 4]
         : ['shooter', 'chaser'][assault.spawnIndex % 2];
@@ -939,7 +963,7 @@ export class Game {
     const threat = this.threatProfile();
     const pressure = Math.min(threat.pressureCap, (.68 + this.stageIndex * .15 + stageProgress * .48) * difficulty.pressure * this.modifiers.enemyPressure);
     const bossAlive = this.enemies.some(enemy => enemy.type === 'boss' && !enemy.dead);
-    const activeEnemyCount = this.enemies.filter(enemy => enemy.type !== 'boss' && !enemy.dead).length;
+    const activeEnemyCount = this.countActiveEnemies(enemy => enemy.type !== 'boss');
     const weaverUnlocked = this.stageIndex >= 4 || (this.stageIndex >= 1 && (this.stageIndex !== 1 || stageProgress >= .48));
     const skimmerUnlocked = this.stageIndex >= 4 || (this.stageIndex >= 2 && (this.stageIndex !== 2 || stageProgress >= .22));
 
@@ -949,7 +973,7 @@ export class Game {
       this.events.toast?.('NEW THREAT · CROWN WEAVER', 'threat');
       this.events.haptic?.([18, 30, 18]);
     }
-    const enemyCountAfterIntroductions = () => this.enemies.filter(enemy => enemy.type !== 'boss' && !enemy.dead).length;
+    const enemyCountAfterIntroductions = () => this.countActiveEnemies(enemy => enemy.type !== 'boss');
     if (!bossAlive && enemyCountAfterIntroductions() <= threat.enemyCap - 2 && skimmerUnlocked && !this.introducedThreats.has('skimmer')) {
       this.introducedThreats.add('skimmer');
       this.spawnFormation('skimmerCross');
@@ -973,8 +997,8 @@ export class Game {
     if (!bossAlive && activeEnemyCount < threat.enemyCap && stageProgress < .85 && this.spawnTimer <= 0) {
       this.spawnTimer = random(.72, 1.16) / pressure;
       const roll = Math.random();
-      const weaverCount = this.enemies.filter(enemy => enemy.type === 'weaver' && !enemy.dead).length;
-      const skimmerCount = this.enemies.filter(enemy => enemy.type === 'skimmer' && !enemy.dead).length;
+      const weaverCount = this.countActiveEnemies(enemy => enemy.type === 'weaver');
+      const skimmerCount = this.countActiveEnemies(enemy => enemy.type === 'skimmer');
       const specialChance = .145 + Math.min(.08, threat.completedCycles * .02);
       const weaverChance = specialChance * .52;
       let spawnedSpecial = false;
@@ -1895,11 +1919,11 @@ export class Game {
       death.life -= dt;
     }
     this.player.poisonSplash = Math.max(0, this.player.poisonSplash - dt);
-    this.particles = this.particles.filter(particle => particle.life > 0).slice(-600);
-    this.trails = this.trails.filter(trail => trail.life > 0);
-    this.teslaArcs = this.teslaArcs.filter(arc => arc.life > 0).slice(-40);
-    this.impactFlashes = this.impactFlashes.filter(impact => impact.life > 0);
-    this.deathAnimations = this.deathAnimations.filter(death => death.life > 0);
+    retainRecent(this.particles, particle => particle.life > 0, 600);
+    retainRecent(this.trails, trail => trail.life > 0);
+    retainRecent(this.teslaArcs, arc => arc.life > 0, 40);
+    retainRecent(this.impactFlashes, impact => impact.life > 0);
+    retainRecent(this.deathAnimations, death => death.life > 0);
   }
 
   render() {
@@ -1941,11 +1965,15 @@ export class Game {
   drawBackground(ctx) {
     const stage = this.stageInfo();
     const palette = stage.palette;
-    const gradient = ctx.createRadialGradient(this.width * .5, this.height * .75, 0, this.width * .5, this.height * .55, Math.max(this.width, this.height));
-    gradient.addColorStop(0, palette.center);
-    gradient.addColorStop(.48, palette.mid);
-    gradient.addColorStop(1, palette.edge);
-    ctx.fillStyle = gradient;
+    const gradientKey = `${this.width}:${this.height}:${this.stageIndex % CONFIG.stages.length}`;
+    if (!this.backgroundGradient || this.backgroundGradientKey !== gradientKey) {
+      this.backgroundGradient = ctx.createRadialGradient(this.width * .5, this.height * .75, 0, this.width * .5, this.height * .55, Math.max(this.width, this.height));
+      this.backgroundGradient.addColorStop(0, palette.center);
+      this.backgroundGradient.addColorStop(.48, palette.mid);
+      this.backgroundGradient.addColorStop(1, palette.edge);
+      this.backgroundGradientKey = gradientKey;
+    }
+    ctx.fillStyle = this.backgroundGradient;
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Flera lager rör sig olika fort och ger banan djup utan tunga bakgrundsbilder.
