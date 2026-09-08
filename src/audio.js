@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260828-91-weapon-skins4';
+import { CONFIG } from './config.js?v=20260908-112-flight-signatures';
 
 export class Music {
   constructor() {

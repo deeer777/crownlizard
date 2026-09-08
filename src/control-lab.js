@@ -1,4 +1,4 @@
-import { Input } from './input.js?v=20260902-106-control-lab4';
+import { Input } from './input.js?v=20260905-110-privacy-support';
 import { FLIGHT_PROFILES, FLIGHT_PROFILE_ORDER, stepFlightMotion } from './flight-control.js?v=20260905-110-privacy-support';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
