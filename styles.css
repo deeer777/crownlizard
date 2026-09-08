@@ -2064,4 +2064,520 @@ body:has(.crate-opening-cinematic:not(.hidden)) .vault-crate-column .crown-crate
   .mastery-card::before { font-size: 10px; }
 }
 
+/* Desktop command deck
+   The mobile pass intentionally protects pixel text from becoming microscopic,
+   but the old desktop rules still used the original 6-9 px scale and narrow
+   phone-sized shells. Keep the competitive arena width stable and spend the
+   extra desktop space on readable information, wider collections and stronger
+   hierarchy instead. These rules are shared by Crown and CrazyGames builds. */
+@media (min-width: 900px) {
+  .overlay { padding: 28px 40px; }
+  .panel { width: min(760px,100%); padding: 32px 40px; }
+
+  .hero-panel { width: min(820px,100%); padding: 18px 54px 28px; }
+  .arcade-status { gap: 24px; max-width: 680px; margin-bottom: 10px; font-size: 10px; letter-spacing: .08em; transform: translateY(-14px); }
+  .arcade-status small { font-size: 9px; }
+  .arcade-status b { margin-top: 5px; font-size: 12px; }
+  .network-status { margin-bottom: 10px; padding: 7px 11px 6px; font-size: 9px; }
+  .logo-lockup { width: min(570px,100%); margin-top: 18px; }
+  .hero-panel h1 { font-size: 76px; }
+  .logo-crest { top: -21px; width: 52px; height: 34px; }
+  .hero-panel .logo-lockup h1 .logo-descriptor { margin-top: 13px; font-size: 10px; letter-spacing: .13em; }
+  .menu-scene { height: 76px; margin-top: 7px; }
+  .scene-player { width: 72px; height: 72px; }
+  .hero-panel .tagline { margin: 10px auto 14px; max-width: none; font-size: 11px; letter-spacing: .11em; }
+  .hero-panel .menu-choice,
+  .hero-panel .menu-event { width: min(430px,calc(100vw - 80px)); min-height: 50px; padding-block: 8px; font-size: 15px; }
+  .hero-panel .menu-choice i { flex-basis: 15px; width: 15px; margin-right: 10px; }
+  .hero-panel .menu-event em { min-width: 56px; padding: 4px 6px 3px; font-size: 10px; }
+  .menu-nav-hint { margin-top: 7px; font-size: 9px; letter-spacing: .08em; }
+  .hero-panel .best { gap: 18px; margin-top: 13px; font-size: 9px; }
+  .arcade-site-links { gap: 8px 22px; margin-top: 9px; }
+  .arcade-site-links a { min-height: 28px; font-size: 9px; }
+  .hero-panel .icon-button { right: 36px; top: 34px; width: 44px; height: 44px; font-size: 16px; }
+
+  .hud { padding: max(22px,env(safe-area-inset-top)) 32px 0; }
+  .brand { font-size: 14px; }
+  .weapon-hud { gap: 10px; margin-top: 34px; padding: 8px 10px 8px 0; }
+  .weapon-hud > i { width: 48px; height: 48px; }
+  .weapon-hud > span { gap: 3px; }
+  .weapon-hud small { font-size: 9px; }
+  .weapon-hud b { font-size: 15px; }
+  .weapon-hud em { font-size: 10px; }
+  .weapon-rank { min-width: 57px; padding-left: 11px; }
+  .weapon-rank > span,
+  .weapon-rank > i { font-size: 9px; }
+  .weapon-rank > b { font-size: 22px; }
+  .weapon-pips { grid-template-columns: repeat(5,8px); gap: 3px; margin-top: 5px; }
+  .weapon-pips i { width: 8px; height: 5px; }
+  .score-block span,
+  .dash-meter span { font-size: 10px; }
+  .score-block strong { font-size: 36px; }
+  .combo { margin-top: 57px; font-size: 15px; }
+  .combo::before { font-size: 8px; }
+  .stage-hud { width: 230px; gap: 7px; margin-top: 87px; }
+  .stage-hud span { font-size: 11px; }
+  .stage-hud i { height: 7px; }
+  .status { gap: 12px; min-width: 150px; }
+  .hearts { font-size: 22px; }
+  .dash-meter { gap: 9px; }
+  .dash-meter i { width: 100px; height: 9px; }
+  .pause-button { right: 22px; top: 78px; width: 54px; height: 54px; font-size: 12px; }
+  .assault-hud { top: max(74px,calc(env(safe-area-inset-top) + 66px)); width: min(700px,calc(100vw - 440px)); padding: 8px 12px 7px; }
+  .assault-hud span,
+  .assault-phase b { font-size: 9px; }
+  .assault-hud strong { font-size: 15px; }
+  .assault-global strong { font-size: 10px; }
+  .duel-live-hud { width: min(760px,calc(100vw - 440px)); padding: 8px 12px; }
+  .duel-live-hud span,
+  .duel-live-clock b { font-size: 9px; }
+  .duel-live-score strong { font-size: 16px; }
+  .duel-live-clock strong { font-size: 21px; }
+
+  .system-panel { width: min(820px,100%); padding: 32px 40px; }
+  .system-panel .eyebrow { font-size: 10px; }
+  .system-panel h2 { margin: 17px 0 26px; font-size: clamp(34px,3vw,46px); }
+  .system-action,
+  .system-link { min-width: 300px; font-size: 13px; }
+  .setting-list { width: min(610px,100%); margin-bottom: 20px; }
+  .setting-list button,
+  .setting-list a { min-height: 49px; padding-inline: 9px; font-size: 12px; }
+
+  .leaderboard-panel { width: min(920px,100%); }
+  .leaderboard-tabs { width: min(760px,100%); margin-bottom: 20px; }
+  .leaderboard-tabs button { min-height: 52px; font-size: 12px; }
+  .leaderboard-head,
+  .leaderboard-list,
+  .leaderboard-player-result { width: min(780px,100%); }
+  .leaderboard-head,
+  .leaderboard-list li { grid-template-columns: 70px 1fr minmax(170px,1.25fr) 70px; column-gap: 12px; }
+  .leaderboard-head { font-size: 11px; }
+  .leaderboard-list { grid-auto-rows: 48px; }
+  .leaderboard-list li { min-height: 48px; padding-inline: 13px; font-size: 13px; }
+  .leaderboard-list li span small { font-size: 9px; }
+  .leaderboard-player-result { min-height: 54px; }
+  .leaderboard-player-result b,
+  .leaderboard-player-result strong,
+  .leaderboard-player-result em { font-size: 12px; }
+  .leaderboard-player-result span,
+  .leaderboard-status { font-size: 10px; }
+
+  .duel-panel { width: min(1180px,100%); padding: 22px 32px 28px; }
+  .duel-briefing { width: min(760px,100%); padding: 15px 14px; }
+  .duel-briefing strong { font-size: 17px; }
+  .duel-briefing p { font-size: 11px; }
+  .duel-briefing span { font-size: 10px; }
+  .duel-open-heading,
+  .duel-challenge-list { width: min(1080px,100%); }
+  .duel-open-heading,
+  .duel-open-heading button { font-size: 11px; }
+  .duel-challenge { grid-template-rows: 102px auto auto; min-height: 196px; }
+  .duel-challenge img { width: 96px; height: 96px; }
+  .duel-challenge strong { font-size: 14px; }
+  .duel-challenge small,
+  .duel-challenge b,
+  .duel-challenge-empty,
+  .duel-status { font-size: 10px; }
+  .duel-room-signal,
+  .duel-blueprint-picker,
+  .duel-room-body { width: min(1080px,100%); }
+  .duel-room-signal,
+  .duel-room-note { font-size: 10px; }
+  .duel-room-signal strong { font-size: 16px; }
+  .duel-blueprint-picker > span { font-size: 10px; }
+  .duel-blueprint { grid-template-columns: 52px minmax(0,1fr); min-height: 64px; }
+  .duel-blueprint img { width: 48px; height: 48px; }
+  .duel-blueprint strong { font-size: 11px; }
+  .duel-blueprint small { font-size: 9px; }
+  .duel-pilot-card > small,
+  .duel-pilot-card > b { font-size: 10px; }
+
+  .vault-panel { width: min(1180px,100%); padding: 22px 28px 28px; }
+  .vault-wallet { font-size: 11px; }
+  .vault-sync-status,
+  .vault-guarantee,
+  .vault-animation-toggle,
+  .vault-fineprint,
+  .vault-status { font-size: 10px; }
+  .vault-mode-tabs { width: min(1080px,100%); }
+  .vault-mode-tabs button { min-height: 56px; font-size: 12px; }
+  .vault-body { grid-template-columns: minmax(320px,.75fr) minmax(600px,1.55fr); gap: 32px; width: min(1080px,100%); }
+  .vault-crate-column > p { font-size: 10px; }
+  .vault-sponsored-signal > span,
+  .vault-sponsored-signal .system-action { font-size: 11px; }
+  .vault-section-title { font-size: 12px; }
+  .vault-section-title b { font-size: 10px; }
+  .vault-categories button { min-height: 50px; font-size: 11px; }
+  .vault-categories small { font-size: 9px; }
+  .vault-collection { grid-template-columns: repeat(5,minmax(0,1fr)); }
+  .vault-cosmetic b { font-size: 11px; }
+  .vault-cosmetic small { font-size: 9px; }
+  .store-header,
+  .market-header,
+  .store-catalog,
+  .market-actions,
+  .market-filters,
+  .market-catalog,
+  .market-activity,
+  .store-status,
+  .market-status { width: min(1080px,100%); }
+  .store-catalog,
+  .market-catalog { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .store-header span,
+  .market-header span,
+  .market-filters label,
+  .market-card small,
+  .market-card em,
+  .market-activity-row small,
+  .market-activity-row span { font-size: 10px; }
+  .store-header strong,
+  .market-header strong,
+  .market-card strong,
+  .market-activity-row strong { font-size: 12px; }
+  .store-header p,
+  .market-header p,
+  .store-product small,
+  .store-product em { font-size: 10px; line-height: 1.55; }
+  .store-product strong,
+  .store-product > span b:last-child,
+  .market-card b,
+  .market-actions button,
+  .market-filters select,
+  .market-filters button { font-size: 11px; }
+
+  .warden-panel { width: min(1180px,100%); padding: 22px 24px 30px; }
+  .warden-header,
+  .warden-briefing,
+  .warden-schedule,
+  .armory-shell,
+  .warden-assault-entry,
+  .boss-ranking,
+  .boss-rewards { width: min(1080px,100%); }
+  .warden-briefing { grid-template-columns: 150px 1fr; gap: 22px; padding: 16px 20px; }
+  .warden-briefing small,
+  .warden-signal,
+  .warden-signal b,
+  .warden-schedule small,
+  .warden-assault-entry > span,
+  .warden-assault-entry > small,
+  .boss-ranking header > b,
+  .boss-ranking > p,
+  .boss-rewards header > b,
+  .boss-reward-copy span,
+  .boss-reward-copy b,
+  .boss-rewards > p,
+  .armory-heading span,
+  .arsenal-rank span,
+  .arsenal-rank b,
+  .armory-selected small,
+  .armory-selected b,
+  .armory-card b,
+  .armory-card small { font-size: 10px; }
+  .warden-briefing h3,
+  .armory-heading h3,
+  .boss-ranking h3,
+  .boss-rewards h3 { font-size: 13px; }
+  .warden-briefing p,
+  .armory-selected p { max-width: 620px; font-size: 11px; }
+  .warden-assault-cta { min-height: 62px; font-size: 14px; }
+  .boss-ranking li { min-height: 39px; font-size: 11px; }
+  .boss-ranking li .attempts { font-size: 9px; }
+  .boss-reward-copy strong,
+  .boss-reward button,
+  .armory-progress > div,
+  .armory-list-head { font-size: 11px; }
+  .armory-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+  .armory-card strong { font-size: 12px; }
+  .armory-status { font-size: 11px; }
+
+  .result-panel { width: min(700px,100%); }
+  .result-panel .eyebrow,
+  .result-panel p,
+  .run-meta { font-size: 11px; }
+  .run-summary,
+  .shard-reward,
+  .sponsored-reward { width: min(620px,100%); }
+  .summary-stat span,
+  .summary-loadout,
+  .shard-reward-head,
+  .shard-breakdown span,
+  .shard-breakdown b,
+  .shard-balance,
+  .shard-unqualified p,
+  .sponsored-reward b,
+  .sponsored-reward span { font-size: 10px; }
+  .summary-stat b { font-size: 14px; }
+  .result-panel .result-choice { min-width: 330px; min-height: 50px; font-size: 15px; }
+  .assault-result-panel { width: min(720px,100%); }
+  .assault-result-grid small,
+  .assault-milestone > div,
+  .assault-result-panel > p { font-size: 10px; }
+  .assault-result-grid b { font-size: 14px; }
+
+  .perk-panel { width: min(1120px,100%); }
+  .perk-panel > p { font-size: 14px; }
+  .perk-card p { max-width: 220px; font-size: 12px; }
+  .perk-card b { font-size: 15px; }
+  .perk-card small,
+  .perk-swipe-hint { font-size: 10px; }
+  .mastery-mode .perk-panel { width: min(900px,100%); }
+
+  .rewarded-ad-panel { width: min(520px,100%); }
+  .rewarded-ad-panel .eyebrow,
+  .rewarded-ad-screen span,
+  .rewarded-ad-panel > strong,
+  .rewarded-ad-panel p,
+  .rewarded-ad-panel .system-action { font-size: 10px; }
+  .toast { font-size: 11px; }
+
+  /* Desktop readability floor. Pixel fonts need a slightly larger optical
+     size than ordinary UI fonts; these rules cover every supporting surface
+     that remained at the legacy 5-10 px scale. */
+  .system-panel.system-panel :where(p,small,label) { font-size: 11px; line-height: 1.55; }
+  .system-panel .eyebrow { font-size: 12px; line-height: 1.4; }
+  .hero-panel .best,
+  .hero-panel .game-version,
+  .arcade-site-links a { font-size: 11px; }
+  .arcade-status small { font-size: 11px; }
+  .arcade-status b { font-size: 14px; }
+  .network-status,
+  .menu-nav-hint,
+  .hero-panel .logo-lockup h1 .logo-descriptor { font-size: 11px; }
+  .hero-panel .menu-event em,
+  .market-tab-signal { font-size: 11px; }
+  .weapon-hud small,
+  .weapon-hud em,
+  .weapon-rank > span,
+  .weapon-rank > i,
+  .score-block span,
+  .dash-meter span,
+  .stage-hud span { font-size: 11px; }
+  .assault-hud span,
+  .assault-phase b,
+  .assault-global strong,
+  .duel-live-hud span,
+  .duel-live-clock b { font-size: 11px; }
+  .score-entry label,
+  .score-entry label small,
+  .score-identity small,
+  .score-identity span { font-size: 11px; }
+  .final-score span,
+  .duel-countdown small,
+  .duel-countdown span { font-size: 11px; }
+  .assault-result-grid small,
+  .assault-milestone > div,
+  .assault-result-panel > p,
+  .assault-result-damage span { font-size: 11px; }
+  .assault-result-grid b { font-size: 14px; }
+  .tutorial-steps b,
+  .tutorial-steps span { font-size: 11px; }
+  .pwa-panel { width: min(680px,100%); }
+  .pwa-panel > .eyebrow { font-size: 13px; }
+  .pwa-release-notes { width: min(560px,100%); padding: 18px 18px 16px; }
+  .pwa-release-notes > strong { font-size: 13px; }
+  .pwa-release-notes li,
+  .pwa-update-copy { font-size: 11px; line-height: 1.6; }
+  .account-tabs button,
+  .account-form label,
+  .callsign-form label,
+  .admin-tabs button,
+  .admin-code-form label,
+  .redeem-form label { font-size: 11px; }
+  .account-form input,
+  .callsign-form input,
+  .admin-code-form input,
+  .admin-code-form select,
+  .redeem-form input { font-size: 13px; }
+  .pilot-profile-identity small,
+  .pilot-profile-identity span,
+  .pilot-profile-identity b,
+  .pilot-profile-bests span,
+  .pilot-profile-stats span,
+  .pilot-duel-history-head,
+  .pilot-duel-history-list { font-size: 11px; }
+  .pilot-profile-stats strong { font-size: 14px; }
+  .pilot-profile-loading,
+  .admin-campaign-heading,
+  .admin-campaign-heading b { font-size: 11px; }
+
+  .vault-overlay { align-items: start; }
+  .vault-panel { min-height: calc(100vh - 56px); }
+  .vault-sync-status,
+  .vault-guarantee,
+  .vault-animation-toggle,
+  .vault-fineprint,
+  .vault-status,
+  .vault-crate-column > p,
+  .vault-sponsored-signal > span,
+  .vault-section-title b,
+  .vault-categories small { font-size: 11px; }
+  .vault-section-title { font-size: 13px; }
+  .vault-collection { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+  .vault-cosmetic { grid-template-rows: 98px auto; min-height: 154px; padding: 9px 7px 10px; }
+  .vault-cosmetic img { width: 94px; height: 94px; }
+  .vault-cosmetic img.effect-sprite { width: 96px; height: 96px; }
+  .vault-cosmetic b { font-size: 12px; }
+  .vault-cosmetic small,
+  .vault-cosmetic.locked::before,
+  .vault-cosmetic.new::before { font-size: 10px; }
+  .store-header span,
+  .market-header span,
+  .market-filters label,
+  .market-card small,
+  .market-card em,
+  .market-activity-row small,
+  .market-activity-row span,
+  .store-header p,
+  .market-header p,
+  .store-product small,
+  .store-product em { font-size: 11px; }
+  .store-header strong,
+  .market-header strong,
+  .market-card strong,
+  .market-activity-row strong,
+  .store-product strong { font-size: 13px; }
+  .store-product > span b:last-child,
+  .market-card b,
+  .market-actions button,
+  .market-filters select,
+  .market-filters button { font-size: 12px; }
+  .random-favorite-toggle,
+  .market-sale-signal > div span,
+  .market-sale-signal > div p,
+  .market-sale-signal > button,
+  .store-current-name span,
+  .store-rename-panel label,
+  .store-rename-panel > p,
+  .store-purchase-tier,
+  .store-purchase-panel p { font-size: 11px; }
+  .market-sale-signal > div strong { font-size: 13px; }
+
+  .warden-briefing small,
+  .warden-signal,
+  .warden-signal b,
+  .warden-schedule small,
+  .warden-assault-entry > span,
+  .warden-assault-entry > small,
+  .boss-ranking header > b,
+  .boss-ranking > p,
+  .boss-rewards header > b,
+  .boss-reward-copy span,
+  .boss-reward-copy b,
+  .boss-rewards > p,
+  .armory-heading span,
+  .arsenal-rank span,
+  .arsenal-rank b,
+  .armory-selected small,
+  .armory-selected b,
+  .armory-card b,
+  .armory-card small { font-size: 11px; }
+  .warden-briefing p,
+  .armory-selected p,
+  .boss-ranking li,
+  .boss-reward-copy strong,
+  .boss-reward button,
+  .armory-progress > div,
+  .armory-list-head,
+  .armory-status { font-size: 12px; }
+  .armory-grid { max-height: 340px; gap: 9px; margin-bottom: 2px; }
+  .armory-card { grid-template-rows: 82px auto; min-height: 158px; }
+  .armory-card img { width: 80px; height: 80px; }
+  .armory-card strong { font-size: 13px; }
+  .armory-status { margin-bottom: 10px; }
+  .boss-ranking header span,
+  .boss-rewards header span,
+  .boss-ranking li .attempts,
+  .warden-schedule strong { font-size: 11px; }
+
+  .duel-briefing p,
+  .duel-briefing span,
+  .duel-open-heading,
+  .duel-open-heading button,
+  .duel-challenge small,
+  .duel-challenge b,
+  .duel-challenge-empty,
+  .duel-status,
+  .duel-room-signal,
+  .duel-room-note,
+  .duel-blueprint-picker > span,
+  .duel-blueprint small,
+  .duel-pilot-card > small,
+  .duel-pilot-card > b { font-size: 11px; }
+  .duel-blueprint strong,
+  .duel-challenge strong { font-size: 13px; }
+  .duel-blueprint-picker.needs-selection { padding: 8px; outline: 2px solid var(--danger); outline-offset: 2px; background: rgba(255,88,123,.08); }
+  .duel-blueprint-picker.needs-selection > span { color: #ff9caf; }
+  .duel-result-panel p,
+  .duel-result-scores small,
+  .duel-result-gap { font-size: 11px; }
+
+  .rewarded-ad-panel .eyebrow,
+  .rewarded-ad-screen span,
+  .rewarded-ad-panel > strong,
+  .rewarded-ad-panel p,
+  .rewarded-ad-panel .system-action,
+  .cosmetic-detail-panel p,
+  .cosmetic-detail-panel strong,
+  .cosmetic-detail-panel .system-action,
+  .reveal-panel p,
+  .crate-opening-cinematic > p { font-size: 11px; }
+  .reveal-tier,
+  .cosmetic-detail-tier,
+  .reveal-panel .system-action,
+  .perk-swipe-hint { font-size: 11px; }
+  .dash-button span { font-size: 11px; }
+  .toast { font-size: 12px; }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .vault-body { grid-template-columns: minmax(0,1fr); }
+  .vault-crate-column { width: min(640px,100%); margin-inline: auto; }
+  .store-catalog,
+  .market-catalog { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+
+@media (min-width: 1100px) {
+  .armory-loadout-layout { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(310px,.8fr); gap: 14px; align-items: stretch; margin-bottom: 14px; }
+  .armory-browser { min-width: 0; }
+  .armory-selection-column { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
+  .armory-selection-column .armory-selected { grid-template-columns: 1fr; align-content: center; min-height: 0; height: 100%; margin-bottom: 8px; text-align: center; }
+  .armory-selection-column .armory-selected-mount { height: 112px; }
+  .armory-selection-column .armory-selected-mount img { width: 108px; height: 108px; }
+  .armory-selection-column .warden-assault-entry { margin-bottom: 0; }
+  .armory-browser .armory-grid { grid-template-columns: repeat(3,minmax(0,1fr)); max-height: 356px; }
+}
+
+/* CrazyGames and laptop windows are often wide but only 540-720 px tall.
+   Preserve the readable desktop type scale while compressing decoration and
+   vertical rhythm so the complete command menu stays available. */
+@media (min-width: 900px) and (max-height: 720px) {
+  #menu { overflow-y: auto; }
+  .overlay { padding-block: 4px; }
+  .hero-panel { width: min(760px,100%); padding: 5px 44px 7px; }
+  .arcade-status { max-width: 620px; margin-bottom: 0; transform: none; }
+  .network-status { margin-bottom: 3px; padding-block: 4px; }
+  .logo-lockup { width: min(430px,100%); margin-top: 3px; }
+  .hero-panel h1 { font-size: 57px; }
+  .logo-crest { top: -16px; width: 42px; height: 28px; }
+  .hero-panel .logo-lockup h1 .logo-descriptor { margin-top: 7px; font-size: 11px; }
+  .menu-scene { height: 48px; margin-top: 0; }
+  .scene-player { width: 48px; height: 48px; }
+  .hero-panel .tagline { margin: 3px auto 5px; font-size: 10px; }
+  .hero-panel .menu-choice,
+  .hero-panel .menu-event { width: min(400px,calc(100vw - 80px)); min-height: 34px; padding-block: 2px; font-size: 13px; }
+  .hero-panel .menu-event em { padding-block: 3px 2px; }
+  .menu-nav-hint { display: none; }
+  .hero-panel .best { margin-top: 4px; }
+  .arcade-site-links { margin-top: 2px; }
+  .arcade-site-links a { min-height: 24px; }
+  .hero-panel .icon-button { top: 18px; }
+}
+
+@media (min-width: 1200px) and (min-height: 760px) {
+  .hero-panel { width: min(900px,100%); }
+  .hero-panel h1 { font-size: 82px; }
+  .hero-panel .menu-choice,
+  .hero-panel .menu-event { width: 460px; min-height: 52px; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

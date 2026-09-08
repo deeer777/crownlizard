@@ -61,7 +61,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260908-112-flight-signatures-boxless">
+  <link rel="stylesheet" href="./styles.css?v=20260909-113-desktop-final">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -141,7 +141,7 @@
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><span class="menu-label"><i>♛</i> SETTINGS</span></button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
-      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.45.0 · BUILD 112</span><strong id="best">0</strong></div>
+      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.45.1 · BUILD 113</span><strong id="best">0</strong></div>
       <nav class="arcade-site-links" aria-label="Crown Lizard game information">
         <a href="/about/">ABOUT THE GAME</a><a href="/how-to-play/">HOW TO PLAY</a><a href="/updates/">LATEST BUILDS</a>
       </nav>
@@ -646,14 +646,23 @@
           <div class="arsenal-rank"><span>ARSENAL RANK</span><strong id="armoryRank">00</strong><b id="armoryBonus">+0% BOSS DMG</b></div>
         </div>
         <div class="armory-progress" aria-label="Arsenal Rank progress"><div><span id="armoryXpLabel">0 / 100 XP</span><b id="armoryXpRemaining">100 TO RANK 1</b></div><i><em id="armoryXpFill"></em></i></div>
-        <div id="armorySelected" class="armory-selected" aria-live="polite">
-          <div class="armory-selected-mount"><span></span><img id="armorySelectedImage" src="./assets/weapons/blaster-mount-v1.png" alt=""></div>
-          <div><small>ACTIVE BOSS BLUEPRINT</small><strong id="armorySelectedName">STANDARD BLASTER</strong><b id="armorySelectedRole">RELIABLE ALL-ROUNDER</b><p id="armorySelectedDescription">ROYAL ISSUE ARMAMENT.</p></div>
-        </div>
-        <div class="warden-assault-entry">
-          <span>SELECTED LOADOUT READY</span>
-          <button id="wardenAssault" class="system-action warden-assault-cta" type="button" disabled aria-describedby="wardenAssaultHint"><i>♛</i> CONNECTING ARMORY</button>
-          <small id="wardenAssaultHint">90 SECOND STRIKE · TEST YOUR LOADOUT BEFORE THE LIVE EVENT</small>
+        <div class="armory-loadout-layout">
+          <div class="armory-browser">
+            <div class="armory-list-head"><span>BLUEPRINT ARCHIVE</span><b id="armoryOwned">1 / 11 AVAILABLE</b></div>
+            <div id="armoryGrid" class="armory-grid" aria-live="polite"></div>
+            <p id="armoryStatus" class="armory-status" role="status">CONNECTING TO CROWN ARMORY...</p>
+          </div>
+          <div class="armory-selection-column">
+            <div id="armorySelected" class="armory-selected" aria-live="polite">
+              <div class="armory-selected-mount"><span></span><img id="armorySelectedImage" src="./assets/weapons/blaster-mount-v1.png" alt=""></div>
+              <div><small>ACTIVE BOSS BLUEPRINT</small><strong id="armorySelectedName">STANDARD BLASTER</strong><b id="armorySelectedRole">RELIABLE ALL-ROUNDER</b><p id="armorySelectedDescription">ROYAL ISSUE ARMAMENT.</p></div>
+            </div>
+            <div class="warden-assault-entry">
+              <span>SELECTED LOADOUT READY</span>
+              <button id="wardenAssault" class="system-action warden-assault-cta" type="button" disabled aria-describedby="wardenAssaultHint"><i>♛</i> CONNECTING ARMORY</button>
+              <small id="wardenAssaultHint">90 SECOND STRIKE · TEST YOUR LOADOUT BEFORE THE LIVE EVENT</small>
+            </div>
+          </div>
         </div>
         <section class="boss-ranking" aria-labelledby="bossRankingTitle">
           <header><div><span>GLOBAL DAMAGE</span><h3 id="bossRankingTitle">TOP PILOTS</h3></div><b id="bossEventHp">CONNECTING...</b></header>
@@ -665,9 +674,6 @@
           <div id="bossRewardGrid" class="boss-reward-grid" aria-live="polite"></div>
           <p id="bossRewardStatus">REWARDS ARE COSMETIC OR SHARDS · NEVER GAMEPLAY POWER</p>
         </section>
-        <div class="armory-list-head"><span>BLUEPRINT ARCHIVE</span><b id="armoryOwned">1 / 11 AVAILABLE</b></div>
-        <div id="armoryGrid" class="armory-grid" aria-live="polite"></div>
-        <p id="armoryStatus" class="armory-status" role="status">CONNECTING TO CROWN ARMORY...</p>
       </section>
       <button id="closeWarden" class="system-action" type="button"><i>♛</i> BACK TO MENU</button>
     </div>
@@ -717,6 +723,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/bootstrap.js?v=20260908-112-flight-signatures"></script>
+  <script type="module" src="./src/bootstrap.js?v=20260908-113-desktop-sweep"></script>
 </body>
 </html>

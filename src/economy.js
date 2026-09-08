@@ -8,7 +8,7 @@ import {
   chooseCosmetic,
   rollTier,
   secureRandom,
-} from './cosmetics.js?v=20260908-112-flight-signatures';
+} from './cosmetics.js?v=20260908-113-desktop-sweep';
 
 export const SHARD_RULES = Object.freeze({
   version: 1,

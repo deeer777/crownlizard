@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260908-112-flight-signatures';
+import { CONFIG } from './config.js?v=20260908-113-desktop-sweep';
 
 export class Music {
   constructor() {

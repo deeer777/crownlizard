@@ -40,6 +40,8 @@ assert.deepEqual(pagesConfig.durable_objects.bindings[0], {
 }, 'Pages binds to the separate Durable Object Worker');
 assert.match(playerClient, /selectPvpBlueprint[\s\S]*submitPvpProgress/, 'the account client exposes authenticated match loadout and progress signals');
 assert.match(mainClient, /beginDuelGameplay[\s\S]*startDuel[\s\S]*transmitDuelProgress/, 'the lobby launches the seeded 90-second gameplay and its discreet rival signal');
+assert.match(mainClient, /CHOOSE A MATCH BLUEPRINT BEFORE READYING UP/, 'Ready gives a visible validation error when the player skipped blueprint selection');
+assert.match(mainClient, /A RIVAL MUST JOIN BEFORE THE DUEL CAN START/, 'a host cannot mistake a waiting challenge for a solo run');
 assert.match(pagesApi, /const participant = viewerRole === 'host' \|\| viewerRole === 'guest'[\s\S]*match: participant && room\.matchStartAt/, 'the Pages API keeps seed and live score details participant-only');
 assert.match(markup, /id="menuDuel"[\s\S]*id="duelOverlay"[\s\S]*id="duelHostCard"[\s\S]*id="duelGuestCard"/, 'the arcade menu and visual two-pilot lobby are present');
 assert.match(styles, /\.duel-pilot-grid[\s\S]*grid-template-columns: minmax\(0,1fr\) 28px minmax\(0,1fr\)/, 'the mobile lobby keeps both pilot ships visible side by side');

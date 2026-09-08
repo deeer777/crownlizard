@@ -13,7 +13,7 @@ const env = {
 const runId = '123e4567-e89b-42d3-a456-426614174000';
 
 assert.equal(ACTIVE_LEADERBOARD_SEASON, 'season-1', 'the active competitive board has one explicit server-owned season');
-assert.deepEqual([...SUPPORTED_GAME_VERSIONS], ['0.44.4-111', '0.45.0-112'], 'only the current and immediately previous build may start verified runs');
+assert.deepEqual([...SUPPORTED_GAME_VERSIONS], ['0.45.0-112', '0.45.1-113'], 'only the current and immediately previous build may start verified runs');
 assert.match(migration, /add column if not exists season_id text not null default 'preseason'/, 'historical runs and scores are preserved in preseason');
 assert.match(migration, /p_season_id text default 'preseason'/, 'an older Worker falls back to the archived preseason during rolling deployment');
 assert.match(migration, /drop function if exists public\.start_verified_run\(uuid,text,text,text,text,text\)/, 'the season migration can safely replace its own six-argument run starter');
@@ -38,7 +38,7 @@ globalThis.fetch = async (url, options = {}) => {
   calls.push({ href, options });
   if (href.includes('/rest/v1/leaderboard_runs?')) {
     if (archivedScoreRequest) return Response.json([{
-      id: runId, user_id: null, difficulty: 'arcade', game_version: '0.44.4-111', season_id: 'preseason',
+      id: runId, user_id: null, difficulty: 'arcade', game_version: '0.45.0-112', season_id: 'preseason',
       created_at: new Date(Date.now() - 60_000).toISOString(), used_at: null, status: 'active', approved_summary: null,
     }]);
     return Response.json([]);
@@ -53,7 +53,7 @@ globalThis.fetch = async (url, options = {}) => {
 try {
   const started = await onRequest({
     request: new Request('https://crownlizard.com/api/runs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.8' }, body: JSON.stringify({ difficulty: 'arcade', gameVersion: '0.45.0-112' }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.8' }, body: JSON.stringify({ difficulty: 'arcade', gameVersion: '0.45.1-113' }),
     }),
     env,
     params: { path: ['runs'] },

@@ -1,10 +1,10 @@
-import { CONFIG } from './config.js?v=20260908-112-flight-signatures';
+import { CONFIG } from './config.js?v=20260908-113-desktop-sweep';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
-import { Game } from './game.js?v=20260908-112-flight-signatures';
-import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260908-112-flight-signatures';
-import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-112-flight-signatures';
+import { Game } from './game.js?v=20260908-113-desktop-sweep';
+import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260908-113-desktop-sweep';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-113-desktop-sweep';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
@@ -1912,11 +1912,12 @@ const renderDuelRoom = () => {
   const ownPilot = challenge.viewerRole === 'guest' ? challenge.guest : challenge.host;
   ui.duelReady.setAttribute('aria-pressed', String(Boolean(ownPilot?.ready)));
   ui.duelReady.innerHTML = ownPilot?.ready ? '<i>♛</i> READY · STAND BY' : '<i>♛</i> READY UP';
-  ui.duelReady.disabled = duelBusy || !challenge.selectedBlueprint || Boolean(challenge.match) || !['waiting', 'matched'].includes(challenge.status);
+  ui.duelReady.disabled = duelBusy || Boolean(challenge.match) || !['waiting', 'matched'].includes(challenge.status);
+  ui.duelBlueprintPicker.classList.toggle('needs-selection', false);
   ui.duelRoomNote.textContent = challenge.match?.phase === 'countdown' ? 'MIRRORED WAVE SIGNAL LOCKED · PREPARE TO LAUNCH'
     : challenge.match?.phase === 'active' ? '90-SECOND SCORE RACE IN PROGRESS'
       : challenge.match?.phase === 'finished' ? 'PROVISIONAL SIGNAL COMPLETE · PASS 4 WILL VERIFY THE WINNER'
-        : challenge.guest ? 'CHOOSE A BLUEPRINT · BOTH PILOTS READY TO LAUNCH' : 'SHARE THE LINK OR WAIT FOR AN OPEN CHALLENGER';
+        : challenge.guest ? 'CHOOSE A BLUEPRINT · BOTH PILOTS READY TO LAUNCH' : 'WAITING FOR A RIVAL · SOLO START IS DISABLED';
   ui.duelLeave.innerHTML = challenge.match ? '<i>♛</i> BACK TO MENU'
     : challenge.viewerRole === 'host' ? '<i>♛</i> CLOSE CHALLENGE' : '<i>♛</i> LEAVE LOBBY';
   updateDuelClock();
@@ -2248,6 +2249,20 @@ async function selectDuelBlueprint(blueprintId) {
 }
 const toggleDuelReady = async () => {
   if (!duelChallenge || duelBusy) return;
+  if (!duelChallenge.selectedBlueprint) {
+    setDuelStatus('CHOOSE A MATCH BLUEPRINT BEFORE READYING UP', true);
+    ui.duelBlueprintPicker.classList.add('needs-selection');
+    ui.duelBlueprintList.querySelector('button')?.focus({ preventScroll: true });
+    triggerHaptic([12, 25, 12]);
+    return;
+  }
+  if (!duelChallenge.guest) {
+    setDuelStatus('A RIVAL MUST JOIN BEFORE THE DUEL CAN START', true);
+    ui.duelRoomNote.textContent = 'WAITING FOR A RIVAL · SOLO START IS DISABLED';
+    triggerHaptic([12, 25, 12]);
+    return;
+  }
+  ui.duelBlueprintPicker.classList.remove('needs-selection');
   const ownPilot = duelChallenge.viewerRole === 'guest' ? duelChallenge.guest : duelChallenge.host;
   const ready = !ownPilot?.ready;
   setDuelBusy(true);
