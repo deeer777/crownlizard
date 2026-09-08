@@ -61,7 +61,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260908-seo-signal">
+  <link rel="stylesheet" href="./styles.css?v=20260908-112-flight-signatures-boxless">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -141,7 +141,7 @@
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><span class="menu-label"><i>♛</i> SETTINGS</span></button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
-      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.44.4 · BUILD 111</span><strong id="best">0</strong></div>
+      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.45.0 · BUILD 112</span><strong id="best">0</strong></div>
       <nav class="arcade-site-links" aria-label="Crown Lizard game information">
         <a href="/about/">ABOUT THE GAME</a><a href="/how-to-play/">HOW TO PLAY</a><a href="/updates/">LATEST BUILDS</a>
       </nav>
@@ -207,7 +207,7 @@
 
   <section id="rewardedAdOverlay" class="rewarded-ad-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="rewardedAdTitle">
     <div class="rewarded-ad-panel">
-      <div class="eyebrow">OPTIONAL REWARD · DEMO AD</div>
+      <div id="rewardedAdEyebrow" class="eyebrow">OPTIONAL REWARD · DEMO AD</div>
       <h2 id="rewardedAdTitle">CROWN SIGNAL</h2>
       <div class="rewarded-ad-screen" aria-hidden="true"><i>♛</i><span>TRANSMISSION</span><b></b></div>
       <p id="rewardedAdMessage">KEEP THIS SIGNAL OPEN TO RECEIVE ONE COSMETIC CRATE.</p>
@@ -514,7 +514,7 @@
         <div class="vault-crate-column">
           <div class="crown-crate" aria-hidden="true"><span></span><img id="crownCrateSprite" alt=""></div>
           <h3>CROWN CRATE</h3>
-          <p>ONE RANDOM COSMETIC · SHIPS &amp; WEAPONS</p>
+              <p>ONE RANDOM COSMETIC · SHIPS · WEAPONS · TRAILS · DASH FX</p>
           <div class="crate-open-options">
             <button id="openCrate" class="system-action vault-open" type="button"><i>♛</i> OPEN WITH ◆ 150</button>
             <div id="vaultSponsoredSignal" class="vault-sponsored-signal hidden" data-platform-capability="rewardedAds">
@@ -533,8 +533,8 @@
           <button id="randomFavoriteToggle" class="random-favorite-toggle" type="button" role="switch" aria-checked="false"><span>RANDOM FAVORITE EACH RUN</span><b>OFF</b></button>
           <div class="vault-categories" role="tablist" aria-label="Cosmetic category">
             <button class="selected" type="button" role="tab" aria-selected="true" data-cosmetic-category="ship" data-category-label="SHIPS"><span>SHIPS</span><small data-category-status class="hidden"></small></button>
-            <button type="button" role="tab" aria-selected="false" disabled>TRAILS <small>SOON</small></button>
-            <button type="button" role="tab" aria-selected="false" disabled>DASH FX <small>SOON</small></button>
+            <button type="button" role="tab" aria-selected="false" data-cosmetic-category="trail" data-category-label="TRAILS" data-category-meta="5 FX"><span>TRAILS</span><small data-category-status>5 FX</small></button>
+            <button type="button" role="tab" aria-selected="false" data-cosmetic-category="dash" data-category-label="DASH FX" data-category-meta="4 FX"><span>DASH FX</span><small data-category-status>4 FX</small></button>
             <button type="button" role="tab" aria-selected="false" data-cosmetic-category="weapon" data-category-label="WEAPONS" data-category-meta="6 SKINS"><span>WEAPONS</span><small data-category-status>6 SKINS</small></button>
           </div>
           <div id="vaultCollection" class="vault-collection"></div>
@@ -566,7 +566,7 @@
           <button id="marketActivityTab" type="button" role="tab" aria-selected="false"><i>♛</i> ACTIVITY</button>
         </div>
         <div id="marketFilters" class="market-filters" aria-label="Market filters">
-          <label><span>ITEMS</span><select id="marketCategoryFilter"><option value="all">ALL ITEMS</option><option value="ship">SHIPS</option><option value="weapon">WEAPONS</option></select></label>
+          <label><span>ITEMS</span><select id="marketCategoryFilter"><option value="all">ALL ITEMS</option><option value="ship">SHIPS</option><option value="weapon">WEAPONS</option><option value="trail">TRAILS</option><option value="dash">DASH FX</option></select></label>
           <label><span>RARITY</span><select id="marketRarityFilter"><option value="all">ALL RARITIES</option><option value="uncommon">UNCOMMON</option><option value="rare">RARE</option><option value="royal">ROYAL</option><option value="mythic">MYTHIC</option><option value="sovereign">SOVEREIGN</option></select></label>
           <label><span>SORT</span><select id="marketSortFilter"><option value="newest">NEWEST</option><option value="price-low">PRICE LOW</option><option value="price-high">PRICE HIGH</option></select></label>
           <button id="marketHideOwned" type="button" role="switch" aria-checked="false"><span>HIDE OWNED</span><b>OFF</b></button>
@@ -717,6 +717,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/bootstrap.js?v=20260908-111-version-fix"></script>
+  <script type="module" src="./src/bootstrap.js?v=20260908-112-flight-signatures"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 - Global leaderboard runs and score submissions pass through the Cloudflare Pages Function and Supabase. The Supabase secret is never shipped to the browser.
 - Crown Vault uses the authenticated server wallet outside localhost. `localStorage` contains the Supabase session, retry IDs and the untouched legacy backup, but cannot mutate the live wallet.
 - Cosmetics do not affect hitboxes, damage, lives, score multipliers, or leaderboard rank.
-- The rewarded-ad adapter is simulated and must not be connected to paid inventory without server-side provider verification.
+- The Crown preview uses a simulated rewarded-ad adapter. The CrazyGames adapter grants only on the provider's `adFinished` callback and remains disabled until Full Launch approval.
 - Player callsigns are owned by the authenticated Supabase user. The browser cannot choose a user ID, write a profile directly or read the moderation list.
 
 ## Fixed in Build 45

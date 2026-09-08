@@ -54,7 +54,7 @@ Servera mappen med valfri statisk webbserver och öppna `index.html` via HTTP.
 - Crown-only accounts, network events, public leaderboards, support links and PWA controls are capability-gated in the CrazyGames bundle.
 - AdSense metadata, `ads.txt`, the service worker and Cloudflare routing files are never copied to `dist-crazygames/`.
 - The CrazyGames bundle alone loads the official HTML5 v3 SDK. Its adapter reports real gameplay start/stop transitions, suppresses duplicate signals and honors the portal's `muteAudio` setting.
-- Basic Launch does not request ads. The `rewardedAds` capability remains disabled until CrazyGames approves a Full Launch integration.
+- Basic Launch does not request ads. A real CrazyGames rewarded adapter is prepared, but the `rewardedAds` capability remains disabled until CrazyGames approves a Full Launch integration.
 - `npm run deploy:production` refuses to run from a `codex/crazygames-*` branch. A reviewed change must reach `main` before crownlizard.com can be deployed.
 
 Never copy files manually between the two output folders. Both folders are generated and ignored by Git.
@@ -200,7 +200,9 @@ Version 0.12 lägger till Crown Vault med en Crown Crate för 150 shards. Craten
 
 Duplicates omvandlas direkt till den shard-mängd som visas i revealen. En väntande duplicate sparas lokalt innan den visas och återställs efter omladdning, så belöningen kan inte förloras genom att sidan stängs. Inventory-poster sparar kosmetiskt ID, tidpunkt och källa som grund för en framtida Supabase-baserad marknad. Build 43 använder tillfälliga färgvarianter av spelarskeppet; riktiga skins och equip-system hör till nästa pass.
 
-Samlingen visas i en skalbar grid med två kolumner på mobil och fyra på desktop. Kategorigrunden för skepp, trails, dash-effekter och vapenskins finns redan, och varje cosmetic har en egen detaljvy som Pass 3 kan komplettera med preview och equip utan en ny layoutombyggnad.
+Samlingen visas i en skalbar grid med två kolumner på mobil och fyra på desktop. Build 112 aktiverar egna kategorier för trails och dash-effekter med separata standardval, sju crate-föremål, pixelart-preview och varsin beständig equip-slot.
+
+Skepp, Trails, Dash FX och vapen använder samma delade pixel-assets på Crown-webben och CrazyGames. Trails styr den kontinuerliga flygsvansen, Dash FX styr dash-utbrottet och vapenskins ändrar både färg och projektilform. Detta är endast kosmetiskt och påverkar aldrig skada, kollisionsyta, score eller ranking.
 
 ## Ship cosmetics och equip
 

@@ -55,7 +55,8 @@ Frontend cutover Pass 4 is implemented: production bootstraps Auth and legacy im
 - Pass 2 Crown Vault: 150-shard Crown Crates, eight ship cosmetics across five visible rarity tiers, first-opening new-item guarantee and a Sovereign guarantee on opening 200.
 - Duplicate cosmetics are held as a durable pending reward and salvaged for their displayed shard value, including safely after a page reload.
 - The inventory records cosmetic ID, acquisition time and source so the same collection can later move to Supabase and support a direct-purchase market.
-- The Vault collection uses a scalable two-column mobile/four-column desktop grid, category scaffolding for ships/trails/dash effects/weapon skins, and a focused cosmetic detail view ready for Pass 3 equip actions.
+- Build 112 activates Trails and Dash FX as independent Vault categories. Four collectible trails and three collectible dash effects join their standard defaults, use one shared eight-icon pixel sprite sheet, persist as separate equip slots and drop from Crown Crates.
+- Build 112 also gives every premium weapon skin a distinct projectile silhouette. Crown and CrazyGames use one source catalog and one asset set; platform builds differ only through capabilities and delivery optimization. Every effect is cosmetic-only.
 - Pass 3 includes eight distinct transparent pixel-art ship sprites plus the original Crown Lizard, a persistent equip system, active-skin markers, locked/owned detail states and actual in-run rendering of the selected chassis.
 - Generated ship sources were mechanically reduced with nearest-neighbor scaling for mobile delivery; the eight production assets total under 800 KB instead of roughly 11 MB raw.
 
@@ -88,11 +89,15 @@ Frontend cutover Pass 4 is implemented: production bootstraps Auth and legacy im
 
 ## Likely next priorities
 
-1. Let the user playtest Build 45 locally, especially the optional ad placement, cancellation and post-ad crate reveal on mobile.
-2. Tune the daily cap or qualification threshold only if the experience calls for it.
-3. Replace the simulated adapter with a production rewarded-ad provider only after UX approval.
+1. The real CrazyGames rewarded-ad adapter is implemented behind `platforms/crazygames.json` → `rewardedAds: false`. Keep it disabled throughout Basic Launch/review; enable it only for the approved Full Launch integration.
+2. Let the user test the provider flow in the CrazyGames QA environment after Full Launch access is granted, especially unfilled/error recovery and post-ad crate reveal.
+3. Tune the daily cap or qualification threshold only if the experience calls for it.
 4. Move wallet, inventory and purchases to Supabase before any real-money market launches.
 5. Do final real-device QA on iOS Safari and Android Chrome.
+
+## Saved future idea
+
+- `docs/crown-foundry.md` contains the locked Crown Foundry direction for crownlizard.com only. It must remain separate from the CrazyGames lane until revisited.
 
 ## Important files
 

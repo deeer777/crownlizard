@@ -6,6 +6,9 @@ import { FLIGHT_PROFILES, stepFlightMotion } from './flight-control.js?v=2026090
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const random = (min, max) => min + Math.random() * (max - min);
+const DEFAULT_FLIGHT_FX = Object.freeze({ style: 'crown', primary: '#6fffd2', secondary: '#ffd36b' });
+const DEFAULT_TRAIL_FX = Object.freeze({ style: 'ion', primary: '#6fffd2', secondary: '#dffff5' });
+const DEFAULT_DASH_FX = Object.freeze({ style: 'ring', primary: '#63c8ff', secondary: '#dffff5' });
 const circlesTouch = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < a.radius + b.radius;
 const ENVIRONMENT_FILES = [
   ['verdant-decal-v1.png', 'verdant-relic-v1.png'],
@@ -60,6 +63,10 @@ export class Game {
     this.environmentSprites = new Map();
     this.weaponFxSprites = new Map();
     this.weaponSkins = {};
+    this.flightFx = DEFAULT_FLIGHT_FX;
+    this.trailFx = DEFAULT_TRAIL_FX;
+    this.dashFx = DEFAULT_DASH_FX;
+    this.trailEmitTimer = 0;
     this.enemyDeathSprites = new Map();
     this.width = 0;
     this.height = 0;
@@ -115,13 +122,19 @@ export class Game {
     }));
   }
 
-  setPlayerSkin(filename = 'crown-lizard-player-v1.png') {
+  setPlayerSkin(filename = 'crown-lizard-player-v1.png', flightFx = DEFAULT_FLIGHT_FX) {
+    this.flightFx = flightFx || DEFAULT_FLIGHT_FX;
     if (typeof Image === 'undefined') return;
     const image = new Image();
     image.decoding = 'async';
     const directory = filename === 'crown-lizard-player-v1.png' ? 'runtime/sprites' : 'sprites';
     image.src = new URL(`../assets/${directory}/${filename}`, import.meta.url).href;
     this.sprites.player = image;
+  }
+
+  setCosmeticEffects(trailFx = DEFAULT_TRAIL_FX, dashFx = DEFAULT_DASH_FX) {
+    this.trailFx = trailFx || DEFAULT_TRAIL_FX;
+    this.dashFx = dashFx || DEFAULT_DASH_FX;
   }
 
   setWeaponSkins(skins = {}) {
@@ -381,7 +394,7 @@ export class Game {
       weapon: weapon.name,
       weaponKey: this.weapon,
       weaponIcon: weapon.icon,
-      weaponColor: weapon.color,
+      weaponColor: this.weaponPalette(this.weapon).primary,
       weaponLevel,
       weaponUpgrade: weaponMastery?.name || weapon.upgrades[weaponLevel - 1],
       weaponMastery: weaponMastery?.name || '',
@@ -873,7 +886,12 @@ export class Game {
       player.dashCooldown = CONFIG.dash.cooldown * this.modifiers.dashCooldown;
       player.invulnerable = CONFIG.dash.duration + .06;
       this.shake = 4;
-      this.burst(player.x, player.y, '#6fffd2', 16, 250);
+      this.burst(player.x, player.y, this.dashFx.primary, 20, 280);
+      this.trails.push({
+        kind: 'dash-burst', x: player.x, y: player.y, life: .34, maxLife: .34, radius: player.radius,
+        style: this.dashFx.style, primary: this.dashFx.primary, secondary: this.dashFx.secondary,
+        phase: Math.floor(this.time * 30),
+      });
       this.events.haptic?.(18);
       this.events.sfx?.('dash');
     }
@@ -882,7 +900,11 @@ export class Game {
       player.dashTime -= dt;
       player.vx = player.dashX * CONFIG.dash.speed;
       player.vy = player.dashY * CONFIG.dash.speed;
-      this.trails.push({ x: player.x, y: player.y, life: .22, radius: player.radius });
+      this.trails.push({
+        x: player.x, y: player.y, life: .3, maxLife: .3, radius: player.radius,
+        style: this.dashFx.style, primary: this.dashFx.primary, secondary: this.dashFx.secondary,
+        phase: Math.floor(this.time * 30),
+      });
     } else {
       if (Math.hypot(movement.x, movement.y) > .1) {
         player.facingX = movement.x;
@@ -894,6 +916,16 @@ export class Game {
       const velocity = stepFlightMotion(player, movement, FLIGHT_PROFILES.arcade, dt, maxSpeed, responseScale);
       player.vx = velocity.vx;
       player.vy = velocity.vy;
+      this.trailEmitTimer -= dt;
+      if (Math.hypot(player.vx, player.vy) > 55 && this.trailEmitTimer <= 0) {
+        this.trailEmitTimer = this.reducedEffects ? .1 : .055;
+        this.trails.push({
+          kind: 'flight', x: player.x - player.facingX * 17, y: player.y - player.facingY * 17,
+          life: .38, maxLife: .38, radius: player.radius * .65,
+          style: this.trailFx.style, primary: this.trailFx.primary, secondary: this.trailFx.secondary,
+          phase: Math.floor(this.time * 30),
+        });
+      }
     }
 
     player.x = clamp(player.x + player.vx * dt, this.arenaLeft + player.radius + 8, this.arenaRight - player.radius - 8);
@@ -2357,6 +2389,7 @@ export class Game {
   drawProjectiles(ctx) {
     for (const bullet of this.bullets) {
       const palette = this.weaponPalette(bullet.weapon);
+      const projectileStyle = this.weaponSkin(bullet.weapon)?.projectileStyle || 'issue';
       const angle = Math.atan2(bullet.vy, bullet.vx);
       ctx.save(); ctx.translate(bullet.x, bullet.y); ctx.rotate(angle); ctx.fillStyle = palette.primary; ctx.shadowBlur = bullet.weapon === 'pulse' ? 22 : 12; ctx.shadowColor = palette.glow;
       if (bullet.weapon === 'pulse') {
@@ -2377,6 +2410,21 @@ export class Game {
         ctx.globalAlpha = 1;
         ctx.fillStyle = palette.core;
         ctx.fillRect(-2, -2, 4, 4);
+        if (projectileStyle === 'solar') {
+          ctx.rotate(-this.time * 2.4);
+          ctx.fillStyle = palette.glow;
+          ctx.fillRect(-size * .62, -2, size * 1.24, 4);
+          ctx.fillRect(-2, -size * .62, 4, size * 1.24);
+          ctx.fillStyle = palette.core;
+          ctx.fillRect(-5, -5, 10, 10);
+        } else if (projectileStyle === 'eclipse') {
+          ctx.rotate(-this.time * 2.4);
+          ctx.fillStyle = '#071014';
+          ctx.fillRect(-6, -6, 12, 12);
+          ctx.fillStyle = palette.glow;
+          ctx.fillRect(-size * .46, -3, 5, 5);
+          ctx.fillRect(size * .46 - 5, -3, 5, 5);
+        }
       } else if (bullet.weapon === 'laser') {
         const length = bullet.beamLength || 34;
         const sprite = this.sprites.projectileLaser;
@@ -2394,6 +2442,21 @@ export class Game {
         ctx.fillRect(-length + 14, 3, 6, 2);
         ctx.fillStyle = palette.core;
         ctx.fillRect(5, -1, 8, 2);
+        if (projectileStyle === 'prism') {
+          ctx.globalAlpha = .88;
+          ctx.fillStyle = palette.glow;
+          ctx.fillRect(-length + 2, -7, length + 6, 2);
+          ctx.fillStyle = '#d99cff';
+          ctx.fillRect(-length + 8, 5, length - 2, 2);
+        } else if (projectileStyle === 'void-lance') {
+          ctx.fillStyle = '#17051f';
+          ctx.fillRect(-length - 7, -2, length + 14, 4);
+          ctx.fillStyle = palette.core;
+          ctx.fillRect(-length + 4, -1, length + 5, 2);
+          ctx.fillStyle = palette.primary;
+          ctx.fillRect(8, -3, 7, 6);
+          ctx.fillRect(15, -1, 5, 2);
+        }
       } else if (bullet.weapon === 'tesla') {
         const sprite = this.sprites.projectileTesla;
         if (sprite?.complete && sprite.naturalWidth) {
@@ -2408,6 +2471,20 @@ export class Game {
         ctx.fillRect(8, 6, 3, 3);
         ctx.fillStyle = palette.core;
         ctx.fillRect(-2, -2, 4, 4);
+        if (projectileStyle === 'verdant') {
+          ctx.fillStyle = palette.glow;
+          ctx.fillRect(-15, -10, 5, 5);
+          ctx.fillRect(11, 7, 5, 5);
+          ctx.fillStyle = palette.core;
+          ctx.fillRect(-12, 8, 3, 3);
+        } else if (projectileStyle === 'storm') {
+          ctx.strokeStyle = palette.core;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-15, -7); ctx.lineTo(-5, 1); ctx.lineTo(3, -8); ctx.lineTo(15, 4);
+          ctx.moveTo(-14, 7); ctx.lineTo(-3, -1); ctx.lineTo(6, 8); ctx.lineTo(16, -3);
+          ctx.stroke();
+        }
       } else if (bullet.weapon === 'spread') {
         ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5, -4); ctx.lineTo(-3, 0); ctx.lineTo(-5, 4); ctx.closePath(); ctx.fill();
       } else {
@@ -2904,7 +2981,55 @@ export class Game {
   }
 
   drawTrails(ctx) {
-    for (const trail of this.trails) { ctx.globalAlpha = trail.life / .22 * .24; ctx.fillStyle = '#6fffd2'; ctx.beginPath(); ctx.arc(trail.x, trail.y, trail.radius, 0, TAU); ctx.fill(); }
+    for (const trail of this.trails) {
+      const fade = clamp(trail.life / (trail.maxLife || .24), 0, 1);
+      const size = Math.max(4, Math.round(trail.radius * (.35 + fade * .45)));
+      ctx.save();
+      ctx.translate(Math.round(trail.x), Math.round(trail.y));
+      ctx.globalAlpha = fade * (this.reducedEffects ? .3 : .58);
+      ctx.fillStyle = trail.primary || DEFAULT_FLIGHT_FX.primary;
+      if (trail.kind === 'dash-burst') {
+        const growth = 1 - fade;
+        const radius = Math.max(8, Math.round(trail.radius * (1 + growth * 2.8)));
+        ctx.globalAlpha = fade * (this.reducedEffects ? .38 : .86);
+        ctx.strokeStyle = trail.primary;
+        ctx.lineWidth = trail.style === 'slice' ? 5 : 3;
+        if (trail.style === 'wings') {
+          ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(-radius, -radius * .65); ctx.lineTo(-radius * .72, radius * .45); ctx.moveTo(4, 0); ctx.lineTo(radius, -radius * .65); ctx.lineTo(radius * .72, radius * .45); ctx.stroke();
+        } else if (trail.style === 'slice') {
+          ctx.beginPath(); ctx.arc(0, 0, radius, -2.65, -.35); ctx.stroke();
+          ctx.strokeStyle = trail.secondary; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, radius + 7, -2.55, -.45); ctx.stroke();
+        } else if (trail.style === 'solar') {
+          ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
+          ctx.fillStyle = trail.secondary; ctx.fillRect(-3, -radius - 8, 6, radius * 2 + 16); ctx.fillRect(-radius - 8, -3, radius * 2 + 16, 6);
+        } else {
+          ctx.beginPath(); ctx.arc(0, 0, radius, 0, TAU); ctx.stroke();
+          ctx.strokeStyle = trail.secondary; ctx.strokeRect(-radius * .55, -radius * .55, radius * 1.1, radius * 1.1);
+        }
+      } else if (trail.style === 'sparks') {
+        ctx.fillRect(-size - 4, -2, size + 2, 4);
+        ctx.fillStyle = trail.secondary; ctx.fillRect(3, 3, 5, 3);
+      } else if (trail.style === 'spores') {
+        ctx.fillRect(-size, -size, size, size);
+        ctx.fillStyle = trail.secondary; ctx.fillRect(size * .5, size * .25, Math.max(3, size * .45), Math.max(3, size * .45));
+      } else if (trail.style === 'prism') {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-size / 2, -size / 2, size, size);
+        ctx.fillStyle = trail.secondary; ctx.fillRect(size * .45, size * .45, Math.max(3, size * .4), Math.max(3, size * .4));
+      } else if (trail.style === 'rift') {
+        ctx.fillRect(-size - 4, -6, size * 2 + 8, 3);
+        ctx.fillStyle = trail.secondary; ctx.fillRect(-size, 2, size * 2, 4);
+      } else if (trail.style === 'ion') {
+        ctx.fillRect(-size / 3, -size, Math.max(3, size / 1.5), size * 2);
+        ctx.fillStyle = trail.secondary; ctx.fillRect(-2, -size * .55, 4, size * 1.1);
+      } else {
+        ctx.fillRect(-size / 2, -size, size, size * 2);
+        ctx.fillStyle = trail.secondary;
+        ctx.fillRect(-size, -2, size * 2, 4);
+        if (trail.phase % 2) ctx.fillRect(-2, -size - 4, 4, 4);
+      }
+      ctx.restore();
+    }
     ctx.globalAlpha = 1;
   }
 

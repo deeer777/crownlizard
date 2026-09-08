@@ -34,7 +34,7 @@ assert.equal(purchase.wallet.inventory.cosmetics[product.cosmeticId].seenAt, nul
 assert.ok(wallet.markCosmeticSeen(product.cosmeticId).inventory.cosmetics[product.cosmeticId].seenAt, 'opening the Collection item clears NEW durably');
 assert.throws(() => wallet.purchaseStoreItem(product.sku), error => error.code === 'ALREADY_OWNED', 'an owned product cannot be purchased twice');
 
-const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+const schema = readFileSync(new URL('../supabase/canonical-schema.sql', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const game = readFileSync(new URL('../src/game.js', import.meta.url), 'utf8');
@@ -48,10 +48,10 @@ assert.match(main, /name\.textContent = cosmetic\.name/, 'locked collection card
 assert.match(styles, /\.vault-cosmetic\.locked img \{ opacity: \.72; filter: brightness\(\.72\) saturate\(\.72\)/, 'locked cosmetics remain visible while visibly subdued');
 assert.match(styles, /\.vault-cosmetic\.locked::before \{ content: 'LOCKED'/, 'a dedicated badge communicates ownership instead of hiding the art');
 assert.match(styles, /\.cosmetic-detail-preview img \{[^}]*filter: saturate\(1\.08\)[^}]*drop-shadow\(0 0 7px var\(--tier-color\)\)/, 'locked detail previews show the full-color cosmetic art');
-assert.match(index, /ONE RANDOM COSMETIC · SHIPS &amp; WEAPONS/, 'the crate explains that its pool contains both cosmetic categories');
-assert.match(main, /weaponSkin \? 'NEW WEAPON SKIN ACQUIRED' : 'NEW CHASSIS ACQUIRED'/, 'crate reveal identifies the unlocked cosmetic type');
+assert.match(index, /ONE RANDOM COSMETIC · SHIPS · WEAPONS · TRAILS · DASH FX/, 'the crate explains its complete cosmetic pool');
+assert.match(main, /NEW FLIGHT TRAIL ACQUIRED[\s\S]*NEW DASH EFFECT ACQUIRED/, 'crate reveal identifies independent effect cosmetic types');
 assert.match(schema, /equipped_weapon_skins jsonb not null default '\{\}'::jsonb/, 'equipped weapon skins persist independently in the server wallet');
-assert.match(schema, /slot in \('ship', 'weapon_laser', 'weapon_tesla', 'weapon_pulse'\)/, 'the server catalog constrains every supported cosmetic slot');
+assert.match(schema, /cosmetic_catalog_slot_check[\s\S]*slot in \('ship', 'weapon_laser', 'weapon_tesla', 'weapon_pulse', 'trail', 'dash'\)/, 'the server catalog constrains every supported cosmetic slot');
 assert.match(schema, /create table if not exists public\.store_catalog[\s\S]*price integer not null/, 'the database owns the store catalog and price');
 assert.match(schema, /create or replace function public\.purchase_store_cosmetic[\s\S]*for update;/, 'store purchase locks the authoritative wallet');
 assert.match(schema, /wallet\.balance < product\.price[\s\S]*balance = balance - product\.price/, 'the database resolves and deducts its own price');

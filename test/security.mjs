@@ -15,9 +15,9 @@ const buildSite = readFileSync(new URL('../tools/build-site.mjs', import.meta.ur
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260908-111-version-fix"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
+assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260908-112-flight-signatures"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
 assert.doesNotMatch(index, /<script\s+type="module">/, 'production cannot rely on executable inline modules blocked by its CSP');
-assert.match(bootstrap, /main\.js\?v=20260908-111-version-fix/, 'the current frontend ships behind the bootstrap cache boundary');
+assert.match(bootstrap, /main\.js\?v=20260908-112-flight-signatures/, 'the current frontend ships behind the bootstrap cache boundary');
 assert.match(index, /<meta name="google-adsense-account" content="ca-pub-8438094910600730">/, 'the AdSense ownership tag remains present during publisher review');
 assert.match(index, /href="\/privacy\/"[\s\S]*PRIVACY &amp; COOKIES/, 'privacy information is directly reachable from the game settings');
 assert.match(index, /href="\/contact\/"[\s\S]*CONTACT &amp; SUPPORT/, 'player support is directly reachable from the game settings');
@@ -56,7 +56,7 @@ assert.doesNotMatch(main, /Promise\.race\(\[playerReadyPromise, wait\(1200\)\]\)
 assert.match(main, /const serverEconomy = PLATFORM\.capabilities\.crownServices && !localPreview/, 'only the Crown platform selects the server wallet while localhost and portal builds stay isolated');
 assert.match(main, /localEconomy \? shardWallet\.openCrate\(\) : await playerAccount\.openCrate\(\)/, 'platform-selected local crates stay separate from the Crown server wallet');
 assert.match(main, /if \(localEconomy\) \{[\s\S]*shardWallet\.awardRun/, 'local shard settlement requires the explicit local progression capability');
-assert.match(main, /renderSponsoredOffer\(localPreview \? shardWallet\.getPendingSponsoredOffer\(\) : null\)/, 'portal-local progression cannot expose the simulated rewarded ad flow');
+assert.match(main, /const sponsoredOffersEnabled = localEconomy && \(localPreview \|\| PLATFORM\.capabilities\.rewardedAds\)/, 'portal rewards stay absent until the explicit platform capability is enabled');
 assert.match(headers, /script-src 'self'/, 'production only permits first-party scripts');
 assert.match(headers, /frame-ancestors 'none'/, 'the game cannot be framed for clickjacking');
 assert.match(headers, /object-src 'none'/, 'legacy plugin content is disabled');

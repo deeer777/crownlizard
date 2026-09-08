@@ -53,8 +53,13 @@ assert.equal(reloadedWallet.awardRun('run-standard', standardSummary).balance, 5
 assert.equal(rollTier(() => 0).key, 'uncommon', 'the odds table begins with uncommon');
 assert.equal(rollTier(() => .58).key, 'rare', 'rare begins at its published boundary');
 assert.equal(rollTier(() => .995).key, 'sovereign', 'sovereign occupies the final half percent');
-assert.equal(new Set(COLLECTION_COSMETICS.map(cosmetic => cosmetic.sprite)).size, COLLECTION_COSMETICS.length, 'every ship cosmetic uses a distinct sprite asset');
+const renderedSprites = COLLECTION_COSMETICS.filter(cosmetic => cosmetic.sprite);
+assert.equal(new Set(renderedSprites.map(cosmetic => cosmetic.sprite)).size, renderedSprites.length, 'every ship and weapon cosmetic uses a distinct sprite asset');
 COLLECTION_COSMETICS.forEach(cosmetic => {
+  if (cosmetic.effectSprite) {
+    assert.equal(existsSync(new URL(`../assets/sprites/${cosmetic.effectSprite.sheet}`, import.meta.url)), true, `${cosmetic.name} has a production effect sprite`);
+    return;
+  }
   const folder = cosmetic.slot.startsWith('weapon_') ? 'weapons' : 'sprites';
   assert.equal(existsSync(new URL(`../assets/${folder}/${cosmetic.sprite}`, import.meta.url)), true, `${cosmetic.name} has a production sprite`);
 });
@@ -82,6 +87,12 @@ weaponState.inventory.cosmetics.weapon_tesla_verdant_chain = { acquiredAt: new D
 vaultWallet.write(weaponState);
 assert.equal(vaultWallet.equipCosmetic('weapon_tesla_verdant_chain').inventory.equipped.weapons.tesla, 'weapon_tesla_verdant_chain', 'an owned weapon skin can be equipped independently');
 assert.equal(vaultWallet.equipCosmetic('weapon_tesla_default').inventory.equipped.weapons.tesla, 'weapon_tesla_default', 'standard weapon visuals can always be restored');
+const effectState = vaultWallet.getState();
+effectState.inventory.cosmetics.trail_ember_comet = { acquiredAt: new Date().toISOString(), source: 'crate' };
+effectState.inventory.cosmetics.dash_phase_slice = { acquiredAt: new Date().toISOString(), source: 'crate' };
+vaultWallet.write(effectState);
+assert.equal(vaultWallet.equipCosmetic('trail_ember_comet').inventory.equipped.trail, 'trail_ember_comet', 'an owned trail equips independently');
+assert.equal(vaultWallet.equipCosmetic('dash_phase_slice').inventory.equipped.dash, 'dash_phase_slice', 'an owned dash effect equips independently');
 
 const duplicateOpen = vaultWallet.openCrate(() => 0);
 assert.equal(duplicateOpen.outcome.duplicate, true, 'a repeated cosmetic becomes a duplicate');

@@ -4,5 +4,5 @@ const localPreview = location.hostname === '127.0.0.1' || location.hostname === 
 if (localPreview && params.has('controls')) {
   import('./control-lab.js?v=20260905-110-privacy-support');
 } else {
-  import('./main.js?v=20260908-111-version-fix');
+  import('./main.js?v=20260908-112-flight-signatures');
 }

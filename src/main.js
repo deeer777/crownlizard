@@ -1,14 +1,14 @@
-import { CONFIG } from './config.js?v=20260908-111-version-fix';
+import { CONFIG } from './config.js?v=20260908-112-flight-signatures';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
 import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
-import { Game } from './game.js?v=20260905-110-privacy-support';
+import { Game } from './game.js?v=20260908-112-flight-signatures';
 import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260830-95-score-fix';
-import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260828-91-weapon-skins4';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-112-flight-signatures';
 import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
-import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from './rewarded-ad.js?v=20260824-45';
+import { REWARDED_AD_STATUS, createRewardedAdAdapter } from './rewarded-ad.js?v=20260907-crazygames-rewarded-adapter';
 import { PwaManager } from './pwa.js?v=20260827-79-crown-store-final6';
 import { armoryAccessLabel, armoryRankProgress, previewArmory, weaponMountUrl } from './armory.js?v=20260828-91-weapon-skins4';
 import { ASSAULT_DURATION, BOSS_BLUEPRINTS } from './boss-assault.js?v=20260828-91-weapon-skins4';
@@ -19,11 +19,27 @@ import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260907-cr
 import { PlatformRuntime } from './platform-runtime.js?v=20260907-crazygames-data-pass2';
 
 const $ = id => document.getElementById(id);
-const cosmeticSpriteUrl = cosmetic => cosmetic.slot?.startsWith('weapon_')
+const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const cosmeticSpriteUrl = cosmetic => cosmetic.effectSprite
+  ? transparentPixel
+  : cosmetic.slot?.startsWith('weapon_')
   ? `./assets/weapons/${cosmetic.sprite}`
   : cosmetic.id === 'ship_default'
     ? './assets/runtime/sprites/crown-lizard-player-v1.png'
     : `./assets/sprites/${cosmetic.sprite}`;
+const applyCosmeticImage = (image, cosmetic) => {
+  const effect = cosmetic?.effectSprite;
+  image.classList.toggle('effect-sprite', Boolean(effect));
+  if (effect) {
+    image.src = transparentPixel;
+    image.style.backgroundImage = `url('./assets/sprites/${effect.sheet}')`;
+    image.style.backgroundPosition = `${effect.column * 100 / 3}% ${effect.row * 100}%`;
+  } else {
+    image.src = cosmeticSpriteUrl(cosmetic);
+    image.style.backgroundImage = '';
+    image.style.backgroundPosition = '';
+  }
+};
 const crateSpriteUrl = state => `./assets/runtime/sprites/crown-crate-${state}-v1.png`;
 const debugParams = new URLSearchParams(location.search);
 const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -77,7 +93,7 @@ const ui = {
   stageName: $('stageName'), stageFill: $('stageFill'), runMeta: $('runMeta'),
   recordMessage: $('recordMessage'), personalBestChase: $('personalBestChase'), resultTitle: $('resultTitle'), runSummary: $('runSummary'), shardReward: $('shardReward'),
   scoreEntry: $('scoreEntry'), scoreIdentity: $('scoreIdentity'), scoreCallsign: $('scoreCallsign'), guestInitials: $('guestInitials'), playerInitials: $('playerInitials'), initialsSlots: [...$('initialsSlots').children], submitScore: $('submitScore'), scoreSubmitStatus: $('scoreSubmitStatus'),
-  rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
+  rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdEyebrow: $('rewardedAdEyebrow'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
   networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), pwaUpdateVersion: $('pwaUpdateVersion'), pwaReleaseTitle: $('pwaReleaseTitle'), pwaReleaseNotes: $('pwaReleaseNotes'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
 };
 applyPlatformCapabilities();
@@ -211,7 +227,8 @@ const renderMenuIdentity = () => {
   ui.menuStatus.dataset.accountState = account.state;
 };
 renderMenuIdentity();
-const rewardedAd = new SimulatedRewardedAdAdapter();
+const rewardedAd = createRewardedAdAdapter({ platform: PLATFORM, runtime: platformRuntime, localPreview });
+const sponsoredOffersEnabled = localEconomy && (localPreview || PLATFORM.capabilities.rewardedAds);
 let serverWallet = null;
 let serverEconomyReady = false;
 let serverEconomyConnecting = false;
@@ -223,7 +240,7 @@ const createEconomyRunId = () => {
 const emptyWalletView = () => ({
   balance: 0,
   transactions: [],
-  inventory: { cosmetics: {}, equipped: { ship: 'ship_default', weapons: { laser: 'weapon_laser_default', tesla: 'weapon_tesla_default', pulse: 'weapon_pulse_default' } } },
+  inventory: { cosmetics: {}, equipped: { ship: 'ship_default', trail: 'trail_default', dash: 'dash_default', weapons: { laser: 'weapon_laser_default', tesla: 'weapon_tesla_default', pulse: 'weapon_pulse_default' } } },
   vault: { opens: 0, sinceSovereign: 0, freeCrateCredits: 0, pendingReward: null },
   sponsored: { pendingRunId: '' },
 });
@@ -234,6 +251,8 @@ const serverWalletView = wallet => ({
     cosmetics: Object.fromEntries((wallet?.inventory || []).map(item => [item.cosmeticId, { acquiredAt: item.acquiredAt, source: item.source, seenAt: item.seenAt || null }])),
     equipped: {
       ship: wallet?.equippedShip || 'ship_default',
+      trail: wallet?.equippedWeapons?.trail || 'trail_default',
+      dash: wallet?.equippedWeapons?.dash || 'dash_default',
       weapons: {
         laser: wallet?.equippedWeapons?.laser || 'weapon_laser_default',
         tesla: wallet?.equippedWeapons?.tesla || 'weapon_tesla_default',
@@ -887,8 +906,9 @@ const storeProductForCosmetic = cosmeticId => storeCatalog.find(product => produ
 const isDefaultCosmetic = cosmetic => Boolean(cosmetic?.source?.includes('default'));
 const equippedCosmeticId = (state, cosmetic) => cosmetic?.slot === 'ship'
   ? state.inventory.equipped.ship
+  : cosmetic?.slot === 'trail' || cosmetic?.slot === 'dash' ? state.inventory.equipped[cosmetic.slot]
   : cosmetic?.weaponKey ? state.inventory.equipped.weapons?.[cosmetic.weaponKey] : '';
-const cosmeticCategory = cosmetic => cosmetic?.slot === 'ship' ? 'ship' : cosmetic?.slot?.startsWith('weapon_') ? 'weapon' : '';
+const cosmeticCategory = cosmetic => cosmetic?.slot === 'ship' ? 'ship' : cosmetic?.slot === 'trail' || cosmetic?.slot === 'dash' ? cosmetic.slot : cosmetic?.slot?.startsWith('weapon_') ? 'weapon' : '';
 
 const renderVaultMode = () => {
   const storeSelected = vaultMode === 'store';
@@ -948,7 +968,7 @@ const renderStore = () => {
     card.style.setProperty('--tier-color', tier.color);
     const visual = cosmetic ? document.createElement('img') : document.createElement('span');
     if (cosmetic) {
-      visual.src = cosmeticSpriteUrl(cosmetic);
+      applyCosmeticImage(visual, cosmetic);
       visual.alt = '';
     } else {
       visual.className = 'store-service-mark';
@@ -1044,7 +1064,7 @@ const renderMarketSignal = () => {
   const cosmetic = COSMETIC_BY_ID[latest.cosmeticId];
   const payout = signals.reduce((sum, signal) => sum + Math.max(0, Number(signal.sellerPayout) || 0), 0);
   ui.marketSaleSignal.style.setProperty('--tier-color', RARITY_BY_KEY[cosmetic?.rarity]?.color || '#ffd36b');
-  ui.marketSaleSignalImage.src = cosmetic ? cosmeticSpriteUrl(cosmetic) : '';
+  if (cosmetic) applyCosmeticImage(ui.marketSaleSignalImage, cosmetic);
   ui.marketSaleSignalImage.alt = cosmetic?.name || 'Sold cosmetic';
   ui.marketSaleSignalTitle.textContent = signals.length === 1 ? `${cosmetic?.name || 'ITEM'} SOLD` : `${signals.length} ITEMS SOLD`;
   ui.marketSaleSignalCopy.textContent = signals.length === 1
@@ -1061,7 +1081,7 @@ const renderMarketActivity = () => {
     const cosmetic = COSMETIC_BY_ID[item.cosmeticId]; if (!cosmetic) return null;
     const row = document.createElement('article'); row.className = `market-activity-row ${item.kind}`;
     row.style.setProperty('--tier-color', RARITY_BY_KEY[cosmetic.rarity]?.color || '#9dfbe0');
-    const image = document.createElement('img'); image.src = cosmeticSpriteUrl(cosmetic); image.alt = '';
+    const image = document.createElement('img'); applyCosmeticImage(image, cosmetic); image.alt = '';
     const copy = document.createElement('div');
     const label = document.createElement('small'); label.textContent = labels[item.kind] || 'MARKET';
     const name = document.createElement('strong'); name.textContent = cosmetic.name;
@@ -1083,7 +1103,7 @@ const openMarketOrder = (type, item) => {
   if (!cosmetic) return;
   marketOrder = { type, item };
   const tier = RARITY_BY_KEY[cosmetic.rarity];
-  ui.marketConfirmImage.src = cosmeticSpriteUrl(cosmetic);
+  applyCosmeticImage(ui.marketConfirmImage, cosmetic);
   ui.marketConfirmImage.alt = cosmetic.name;
   ui.marketConfirmTitle.textContent = type === 'list' ? `LIST ${cosmetic.name}` : type === 'cancel' ? `CANCEL ${cosmetic.name}` : `BUY ${cosmetic.name}`;
   ui.marketConfirmCopy.textContent = type === 'list' ? 'SET A SHARD PRICE. THE ITEM IS RESERVED FOR 7 DAYS OR UNTIL SOLD OR CANCELLED.' : type === 'cancel' ? 'RETURN THIS ITEM TO YOUR COLLECTION?' : `BUY FROM ${item.sellerName} FOR ◆ ${item.price.toLocaleString('en-US')}?`;
@@ -1116,7 +1136,7 @@ const renderMarket = () => {
     items = items.filter(item => {
       const cosmetic = COSMETIC_BY_ID[item.cosmeticId];
       if (!cosmetic) return false;
-      const category = cosmetic.slot === 'ship' ? 'ship' : 'weapon';
+      const category = cosmeticCategory(cosmetic);
       return (marketCategoryFilter === 'all' || category === marketCategoryFilter)
         && (marketRarityFilter === 'all' || cosmetic.rarity === marketRarityFilter)
         && (!marketHideOwned || !state.inventory.cosmetics[cosmetic.id]);
@@ -1138,9 +1158,10 @@ const renderMarket = () => {
     const owned = Boolean(state.inventory.cosmetics[cosmetic.id]);
     card.className = `market-card${active ? '' : ' market-final'}${marketMode === 'browse' && owned ? ' owned' : ''}`; card.style.setProperty('--tier-color', tier.color); card.dataset.cosmeticId = cosmetic.id;
     const mine = marketMode === 'mine'; const equipped = equippedCosmeticId(state, cosmetic) === cosmetic.id;
-    const descriptor = item.sellerName ? `PILOT ${item.sellerName}` : cosmetic.slot === 'ship' ? 'SHIP CHASSIS' : `${cosmetic.weaponKey.toUpperCase()} SKIN`;
+    const descriptor = item.sellerName ? `PILOT ${item.sellerName}` : cosmetic.slot === 'ship' ? 'SHIP CHASSIS' : cosmetic.slot === 'trail' ? 'FLIGHT TRAIL' : cosmetic.slot === 'dash' ? 'DASH EFFECT' : `${cosmetic.weaponKey.toUpperCase()} SKIN`;
     const expiry = item.expiresAt ? marketTimeLeft(item.expiresAt) : '';
     card.innerHTML = `<img src="${cosmeticSpriteUrl(cosmetic)}" alt=""><span><small>${tier.name}${item.status ? ` · ${item.status.toUpperCase()}` : ''}</small><strong>${cosmetic.name}</strong><em>${descriptor}${expiry ? ` · ${expiry}` : ''}</em><b>${item.sellable ? equipped ? 'EQUIPPED · UNEQUIP TO SELL' : 'SET YOUR PRICE' : mine ? active ? `CANCEL · ◆ ${item.price.toLocaleString('en-US')}` : `◆ ${item.price.toLocaleString('en-US')}` : owned ? 'OWNED · NOT AVAILABLE' : `BUY · ◆ ${item.price.toLocaleString('en-US')}`}</b></span>`;
+    applyCosmeticImage(card.querySelector('img'), cosmetic);
     card.disabled = marketBusy || (item.sellable && equipped) || (mine && !active) || (marketMode === 'browse' && owned);
     card.addEventListener('click', () => openMarketOrder(item.sellable ? 'list' : mine ? 'cancel' : 'buy', item));
     return card;
@@ -1183,7 +1204,7 @@ const renderVault = () => {
         ? 'CRAZYGAMES SAVE · SYNCED'
         : 'DEVICE VAULT · LOCAL FALLBACK'
       : account.vaultStatus;
-  ui.vaultCollectionTitle.textContent = vaultCategory === 'weapon' ? 'WEAPON SKINS' : 'SHIP COLLECTION';
+  ui.vaultCollectionTitle.textContent = ({ weapon: 'WEAPON SKINS', trail: 'FLIGHT TRAILS', dash: 'DASH EFFECTS' })[vaultCategory] || 'SHIP COLLECTION';
   ui.vaultOwned.textContent = `${owned.length} / ${collectibleCosmetics.length}`;
   ui.cosmeticCategoryTabs.forEach(tab => {
     const category = tab.dataset.cosmeticCategory;
@@ -1231,7 +1252,7 @@ const renderVault = () => {
     card.setAttribute('aria-label', `${cosmetic.name}, ${tier.name}, ${acquired ? 'owned' : 'locked'}${favorite ? ', favorite' : ''}${isNew ? ', new' : ''}`);
     card.style.setProperty('--tier-color', tier.color);
     const image = document.createElement('img');
-    image.src = cosmeticSpriteUrl(cosmetic);
+    applyCosmeticImage(image, cosmetic);
     image.alt = '';
     const copy = document.createElement('span');
     const name = document.createElement('b');
@@ -1274,7 +1295,7 @@ const renderVault = () => {
       : state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1
         ? 'NEXT CRATE GUARANTEED SOVEREIGN'
         : 'DUPLICATES SALVAGE AUTOMATICALLY';
-  const sponsoredOffer = localPreview ? shardWallet.getPendingSponsoredOffer() : null;
+  const sponsoredOffer = sponsoredOffersEnabled ? shardWallet.getPendingSponsoredOffer() : null;
   ui.crownCrate.classList.toggle('signal-ready', Boolean(sponsoredOffer));
   ui.crownCrateSprite.src = crateOpening
     ? crateSpriteUrl('open')
@@ -1323,15 +1344,22 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
   const acquired = isDefaultCosmetic(cosmetic) || Boolean(state.inventory.cosmetics[cosmetic.id]);
   const equipped = equippedCosmeticId(state, cosmetic) === cosmetic.id;
   const weaponSkin = cosmetic.slot.startsWith('weapon_');
+  const effectCosmetic = cosmetic.slot === 'trail' || cosmetic.slot === 'dash';
   const favorite = cosmeticPreferences.getState().favorites.includes(cosmetic.id);
   const storeProduct = storeProductForCosmetic(cosmetic.id);
   const storeExclusive = Boolean(storeProduct);
   selectedCosmeticDetailId = cosmetic.id;
   selectedCosmeticOrigin = origin;
   ui.cosmeticDetail.style.setProperty('--tier-color', tier.color);
-  ui.cosmeticDetailImage.src = cosmeticSpriteUrl(cosmetic);
+  applyCosmeticImage(ui.cosmeticDetailImage, cosmetic);
   ui.cosmeticDetailPreview.classList.toggle('weapon-preview', weaponSkin);
+  ui.cosmeticDetailPreview.classList.toggle('ship-flight-preview', !weaponSkin && !effectCosmetic);
+  ui.cosmeticDetailPreview.classList.toggle('effect-preview', effectCosmetic);
   ui.cosmeticDetailPreview.dataset.weapon = cosmetic.weaponKey || '';
+  ui.cosmeticDetailPreview.dataset.projectileStyle = cosmetic.projectileStyle || 'issue';
+  ui.cosmeticDetailPreview.dataset.flightStyle = cosmetic.flightFx?.style || 'crown';
+  ui.cosmeticDetailPreview.style.setProperty('--flight-primary', cosmetic.flightFx?.primary || '#6fffd2');
+  ui.cosmeticDetailPreview.style.setProperty('--flight-secondary', cosmetic.flightFx?.secondary || '#ffd36b');
   ui.cosmeticDetailPreview.style.setProperty('--weapon-primary', cosmetic.palette?.primary || tier.color);
   ui.cosmeticDetailPreview.style.setProperty('--weapon-core', cosmetic.palette?.core || '#ffffff');
   ui.cosmeticDetailPreview.style.setProperty('--weapon-glow', cosmetic.palette?.glow || tier.color);
@@ -1342,10 +1370,10 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
   ui.cosmeticDetail.classList.toggle('detail-owned', acquired);
   ui.cosmeticDetail.classList.toggle('detail-store', storeExclusive);
   ui.cosmeticDetailHint.textContent = acquired
-    ? (equipped ? (weaponSkin ? `ACTIVE ${cosmetic.weaponKey.toUpperCase()} SKIN` : 'ACTIVE SHIP CHASSIS') : 'READY FOR YOUR NEXT RUN')
+    ? (equipped ? (weaponSkin ? `ACTIVE ${cosmetic.weaponKey.toUpperCase()} SKIN` : cosmetic.slot === 'trail' ? 'ACTIVE FLIGHT TRAIL' : cosmetic.slot === 'dash' ? 'ACTIVE DASH EFFECT' : 'ACTIVE SHIP CHASSIS') : 'READY FOR YOUR NEXT RUN')
     : storeExclusive ? 'STORE EXCLUSIVE · NEVER DROPS FROM CRATES' : 'AVAILABLE IN CROWN CRATES';
   ui.equipCosmetic.classList.toggle('hidden', !acquired && !storeExclusive);
-  ui.favoriteCosmetic.classList.toggle('hidden', !acquired || weaponSkin);
+  ui.favoriteCosmetic.classList.toggle('hidden', !acquired || weaponSkin || effectCosmetic);
   ui.favoriteCosmetic.setAttribute('aria-pressed', String(favorite));
   ui.favoriteCosmetic.innerHTML = favorite ? '<i>★</i> REMOVE FAVORITE' : '<i>☆</i> ADD FAVORITE';
   if (!acquired && storeProduct) {
@@ -1360,7 +1388,7 @@ const showCosmeticDetail = (cosmeticId, origin = vaultMode === 'store' ? 'store'
   }
   ui.closeCosmeticDetail.innerHTML = origin === 'store' ? '<i>♛</i> BACK TO STORE' : '<i>♛</i> BACK TO COLLECTION';
   ui.cosmeticDetail.classList.remove('hidden');
-  (acquired ? (weaponSkin ? ui.equipCosmetic : ui.favoriteCosmetic) : storeExclusive ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
+  (acquired ? (weaponSkin || effectCosmetic ? ui.equipCosmetic : ui.favoriteCosmetic) : storeExclusive ? ui.equipCosmetic : ui.closeCosmeticDetail).focus({ preventScroll: true });
   if (origin === 'collection') acknowledgeNewCosmetic(cosmetic.id);
 };
 
@@ -1376,8 +1404,8 @@ const showStorePurchaseReveal = (cosmeticId, source = 'store') => {
   if (!cosmetic || !tier) return;
   ui.cosmeticDetail.classList.add('hidden');
   ui.storePurchaseReveal.style.setProperty('--tier-color', tier.color);
-  ui.storePurchaseImage.src = cosmeticSpriteUrl(cosmetic);
-  ui.storePurchaseImage.alt = `Purchased ${cosmetic.slot.startsWith('weapon_') ? `${cosmetic.weaponKey} weapon skin` : 'ship chassis'}: ${cosmetic.name}`;
+  applyCosmeticImage(ui.storePurchaseImage, cosmetic);
+  ui.storePurchaseImage.alt = `Purchased ${cosmetic.slot.startsWith('weapon_') ? `${cosmetic.weaponKey} weapon skin` : cosmetic.slot === 'trail' ? 'flight trail' : cosmetic.slot === 'dash' ? 'dash effect' : 'ship chassis'}: ${cosmetic.name}`;
   purchaseRevealReturn = source;
   ui.storePurchaseTier.textContent = `${tier.name} · ${source === 'market' ? 'CROWN MARKET ACQUISITION' : 'STORE EXCLUSIVE'}`;
   ui.storePurchaseName.textContent = cosmetic.name;
@@ -1424,9 +1452,9 @@ const showCrateReveal = outcome => {
   ui.crateReveal.classList.remove(...COSMETIC_TIERS.map(item => `tier-${item.key}`));
   ui.crateReveal.classList.add(`tier-${tier.key}`);
   ui.crateReveal.style.setProperty('--tier-color', tier.color);
-  ui.revealShip.src = cosmeticSpriteUrl(cosmetic);
+  applyCosmeticImage(ui.revealShip, cosmetic);
   const weaponSkin = cosmetic.slot.startsWith('weapon_');
-  ui.revealShip.alt = `Unlocked ${weaponSkin ? `${cosmetic.weaponKey} weapon skin` : 'ship chassis'}: ${cosmetic.name}`;
+  ui.revealShip.alt = `Unlocked ${weaponSkin ? `${cosmetic.weaponKey} weapon skin` : cosmetic.slot === 'trail' ? 'flight trail' : cosmetic.slot === 'dash' ? 'dash effect' : 'ship chassis'}: ${cosmetic.name}`;
   ui.revealEyebrow.textContent = outcome.duplicate
     ? 'DUPLICATE DETECTED'
     : outcome.guaranteedSovereign
@@ -1436,7 +1464,7 @@ const showCrateReveal = outcome => {
   ui.revealName.textContent = cosmetic.name;
   ui.revealMessage.textContent = outcome.duplicate
     ? `SALVAGE VALUE · ◆ ${outcome.salvageValue}`
-    : weaponSkin ? 'NEW WEAPON SKIN ACQUIRED' : 'NEW CHASSIS ACQUIRED';
+    : weaponSkin ? 'NEW WEAPON SKIN ACQUIRED' : cosmetic.slot === 'trail' ? 'NEW FLIGHT TRAIL ACQUIRED' : cosmetic.slot === 'dash' ? 'NEW DASH EFFECT ACQUIRED' : 'NEW CHASSIS ACQUIRED';
   ui.revealContinue.innerHTML = outcome.duplicate ? `<i>♛</i> SALVAGE · +◆ ${outcome.salvageValue}` : '<i>♛</i> CONTINUE';
   ui.crateReveal.classList.remove('hidden');
   void ui.crateReveal.offsetWidth;
@@ -1453,9 +1481,9 @@ const closeCrateReveal = () => {
   ui.crateReveal.classList.add('hidden');
   renderVault();
   if (crateRevealReturn === 'gameover') {
-    const offer = localPreview && lastSponsoredClaimedRunId
+    const offer = sponsoredOffersEnabled && lastSponsoredClaimedRunId
       ? shardWallet.getSponsoredOffer(lastSponsoredClaimedRunId)
-      : localPreview ? shardWallet.getPendingSponsoredOffer() : null;
+      : sponsoredOffersEnabled ? shardWallet.getPendingSponsoredOffer() : null;
     renderSponsoredOffer(offer);
     const balance = ui.shardReward.querySelector('.shard-balance b');
     if (balance) balance.textContent = walletState().balance.toLocaleString('en-US');
@@ -2555,23 +2583,51 @@ const showRewardedCrate = async () => {
   rewardedAdViewing = true;
   if (origin === 'gameover') renderSponsoredOffer(offer);
   renderVault();
-  ui.rewardedAdMessage.textContent = 'KEEP THIS SIGNAL OPEN TO RECEIVE ONE COSMETIC CRATE.';
+  const providerAd = rewardedAd.provider === 'crazygames';
+  ui.rewardedAdEyebrow.textContent = providerAd ? 'OPTIONAL REWARD · CRAZYGAMES' : 'OPTIONAL REWARD · DEMO AD';
+  ui.rewardedAdMessage.textContent = providerAd
+    ? 'CONNECTING TO A REWARDED VIDEO · THE CRATE IS GRANTED ONLY AFTER COMPLETION.'
+    : 'KEEP THIS SIGNAL OPEN TO RECEIVE ONE COSMETIC CRATE.';
+  ui.cancelRewardedAd.classList.toggle('hidden', providerAd);
   renderRewardedAdProgress(0);
+  if (providerAd) ui.rewardedAdCountdown.textContent = 'REQUESTING SIGNAL...';
   ui.rewardedAdOverlay.classList.remove('hidden');
-  ui.cancelRewardedAd.focus({ preventScroll: true });
-  const result = await rewardedAd.show({ onProgress: renderRewardedAdProgress });
+  if (!providerAd) ui.cancelRewardedAd.focus({ preventScroll: true });
+  let providerMuted = false;
+  const restoreProviderAudio = () => {
+    if (!providerMuted) return;
+    providerMuted = false;
+    music.setPlatformMuted(platformRuntime.muteAudio);
+    sfx.setPlatformMuted(platformRuntime.muteAudio);
+  };
+  const result = await rewardedAd.show({
+    onProgress: renderRewardedAdProgress,
+    onStarted: () => {
+      providerMuted = true;
+      music.setPlatformMuted(true);
+      sfx.setPlatformMuted(true);
+      closeRewardedAdOverlay();
+    },
+    onFinished: restoreProviderAudio,
+    onError: restoreProviderAudio,
+  });
+  restoreProviderAudio();
   rewardedAdViewing = false;
   closeRewardedAdOverlay();
   if (result.status !== REWARDED_AD_STATUS.granted) {
     const pendingOffer = shardWallet.getPendingSponsoredOffer();
     renderVault();
     if (origin === 'vault') {
-      ui.vaultSponsoredStatus.textContent = 'SIGNAL CANCELLED · THE FREE CRATE IS STILL WAITING';
+      ui.vaultSponsoredStatus.textContent = result.status === REWARDED_AD_STATUS.dismissed
+        ? 'SIGNAL CANCELLED · THE FREE CRATE IS STILL WAITING'
+        : 'NO VIDEO AVAILABLE · THE FREE CRATE IS STILL WAITING';
       ui.vaultWatchAd.focus({ preventScroll: true });
     } else {
       renderSponsoredOffer(pendingOffer);
       ui.sponsoredReward.classList.remove('hidden');
-      ui.sponsoredReward.innerHTML = '<b>SIGNAL CANCELLED · NO REWARD USED</b><span>THE OPTIONAL CRATE IS STILL AVAILABLE</span>';
+      ui.sponsoredReward.innerHTML = result.status === REWARDED_AD_STATUS.dismissed
+        ? '<b>SIGNAL CANCELLED · NO REWARD USED</b><span>THE OPTIONAL CRATE IS STILL AVAILABLE</span>'
+        : '<b>NO VIDEO AVAILABLE · NO REWARD USED</b><span>TRY THE OPTIONAL CRATE AGAIN LATER</span>';
       const visibleChoices = ui.resultChoices.filter(button => !button.classList.contains('hidden') && !button.disabled);
       selectResultChoice(Math.max(0, visibleChoices.indexOf(ui.watchAd)), true);
     }
@@ -2700,7 +2756,7 @@ const game = new Game($('game'), input, {
     if (localEconomy) {
       const shardResult = shardWallet.awardRun(economyRunId, summary);
       renderShardReward(shardResult);
-      renderSponsoredOffer(localPreview ? shardWallet.getPendingSponsoredOffer() : null);
+      renderSponsoredOffer(sponsoredOffersEnabled ? shardWallet.getPendingSponsoredOffer() : null);
     } else if (serverEconomy) {
       renderShardVerification('VERIFYING...');
       renderSponsoredOffer(null);
@@ -2805,7 +2861,11 @@ const applyEquippedCosmetics = () => {
   const state = walletState();
   const equippedId = state.inventory.equipped.ship;
   const cosmetic = COSMETIC_BY_ID[equippedId] || COSMETIC_BY_ID.ship_default;
-  game.setPlayerSkin(cosmetic.sprite);
+  game.setPlayerSkin(cosmetic.sprite, cosmetic.flightFx);
+  game.setCosmeticEffects(
+    COSMETIC_BY_ID[state.inventory.equipped.trail]?.effectFx || COSMETIC_BY_ID.trail_default.effectFx,
+    COSMETIC_BY_ID[state.inventory.equipped.dash]?.effectFx || COSMETIC_BY_ID.dash_default.effectFx,
+  );
   game.setWeaponSkins(Object.fromEntries(['laser', 'tesla', 'pulse'].map(weaponKey => {
     const skinId = state.inventory.equipped.weapons?.[weaponKey] || `weapon_${weaponKey}_default`;
     return [weaponKey, COSMETIC_BY_ID[skinId] || COSMETIC_BY_ID[`weapon_${weaponKey}_default`]];
@@ -2816,7 +2876,7 @@ const applyRunShip = () => {
   const state = walletState();
   const selectedId = cosmeticPreferences.chooseShip(Object.keys(state.inventory.cosmetics), state.inventory.equipped.ship);
   const cosmetic = COSMETIC_BY_ID[selectedId] || COSMETIC_BY_ID.ship_default;
-  game.setPlayerSkin(cosmetic.sprite);
+  game.setPlayerSkin(cosmetic.sprite, cosmetic.flightFx);
   return cosmetic;
 };
 
