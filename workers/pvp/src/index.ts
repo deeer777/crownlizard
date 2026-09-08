@@ -77,29 +77,52 @@ const seededRandom = (seed: string): (() => number) => {
   };
 };
 
-// Mirrors the browser wave scheduler without trusting any browser-reported wave count.
-const spawnedEnemyCeiling = (seed: string, elapsedMs: number): number => {
+const ENEMY_SCORE_VALUES: Readonly<Record<string, number>> = Object.freeze({
+  chaser: 110, shooter: 190, tank: 280, weaver: 380, skimmer: 330,
+});
+
+// Mirrors every random draw in buildDuelWavePlan. This lets the room validate
+// both the scheduled enemy count and the most valuable possible set of kills.
+const spawnedEnemyValues = (seed: string, elapsedMs: number): number[] => {
   const random = seededRandom(seed);
   const elapsed = elapsedMs / 1000;
   let at = 1.35;
   let index = 0;
-  let count = 0;
+  const values: number[] = [];
   while (at < DUEL_DURATION_MS / 1000 - .35) {
     const progress = at / (DUEL_DURATION_MS / 1000);
+    const pool = progress < .22
+      ? ['chaser', 'chaser', 'shooter']
+      : progress < .5
+        ? ['chaser', 'shooter', 'shooter', 'tank']
+        : progress < .76
+          ? ['chaser', 'shooter', 'tank', 'weaver']
+          : ['shooter', 'tank', 'weaver', 'skimmer'];
     const groupSize = progress < .2 ? 1 : progress < .52 ? 1 + Number(index % 4 === 0) : 2 + Number(index % 5 === 0);
     for (let group = 0; group < groupSize; group += 1) {
-      random(); // enemy type
+      const type = pool[Math.floor(random() * pool.length)];
       random(); // x ratio
+      random(); // y ratio
       random(); // side
       random(); // shoot timing
       random(); // phase
       random(); // hold ratio
-      if (at + group * .16 <= elapsed + .25) count += 1;
+      if (at + group * .16 <= elapsed + .25) values.push(ENEMY_SCORE_VALUES[type] || 0);
     }
     index += 1;
     at += Math.max(.72, 1.48 - progress * .56) + random() * .28;
   }
-  return count;
+  return values;
+};
+
+const duelScoreCeiling = (seed: string, elapsedMs: number, enemies: number): { enemies: number; score: number } => {
+  const scheduledValues = spawnedEnemyValues(seed, elapsedMs);
+  const highestKillValues = scheduledValues.sort((left, right) => right - left).slice(0, enemies);
+  // A kill can score at most value * combo 9 * dash 1.5. Passive score is 18/s.
+  // The fixed allowance absorbs frame rounding without masking another kill.
+  const score = 750 + Math.ceil(elapsedMs / 1000) * 18
+    + Math.ceil(highestKillValues.reduce((total, value) => total + value, 0) * 13.5);
+  return { enemies: scheduledValues.length, score };
 };
 
 const secureHex = (length = 16): string => {
@@ -255,12 +278,8 @@ export class DuelRoom extends DurableObject<Env> {
     if (!room.matchStartAt || !room.matchEndAt) return { ok: false, error: 'MATCH_NOT_STARTED' };
     const serverElapsed = Math.max(0, Math.min(DUEL_DURATION_MS, now - room.matchStartAt));
     if (elapsedMs > serverElapsed + 3_000 || elapsedMs > DUEL_DURATION_MS + 1_000) return { ok: false, error: 'INVALID_PROGRESS' };
-    const enemyCeiling = spawnedEnemyCeiling(String(room.matchSeed || ''), elapsedMs);
-    if (enemies > enemyCeiling) return { ok: false, error: 'PROGRESS_CEILING' };
-    // 18 passive points/second plus a deliberately generous 6,000-point ceiling
-    // per server-scheduled kill (max combo, dash bonus and rounding included).
-    const scoreCeiling = 2_000 + Math.ceil(elapsedMs / 1000) * 20 + enemies * 6_000;
-    if (score > scoreCeiling) return { ok: false, error: 'PROGRESS_CEILING' };
+    const ceiling = duelScoreCeiling(String(room.matchSeed || ''), elapsedMs, enemies);
+    if (enemies > ceiling.enemies || score > ceiling.score) return { ok: false, error: 'PROGRESS_CEILING' };
     if (userId === room.hostUserId) {
       if (score < room.hostScore) return { ok: false, error: 'PROGRESS_REWIND' };
       if (elapsedMs < room.hostElapsedMs || enemies < room.hostEnemies) return { ok: false, error: 'PROGRESS_REWIND' };

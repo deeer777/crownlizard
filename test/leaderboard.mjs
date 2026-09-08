@@ -23,7 +23,7 @@ const valid = {
   wardens: 1,
   enemies: 94,
   crates: 7,
-  bestCombo: 12,
+  bestCombo: 9,
   gameVersion: '0.45.0-112',
 };
 
@@ -31,6 +31,8 @@ assert.ok(validateScorePayload(valid, run, now).value, 'a plausible finished run
 assert.match(validateScorePayload({ ...valid, initials: 'TOOLONG' }, run, now).error, /3 initials/, 'invalid initials are rejected');
 assert.match(validateScorePayload({ ...valid, score: 999_999_999 }, run, now).error, /verified range/, 'implausible score is rejected');
 assert.match(validateScorePayload({ ...valid, zone: 20 }, run, now).error, /statistics/, 'impossible zone progression is rejected');
+assert.match(validateScorePayload({ ...valid, bestCombo: 10 }, run, now).error, /statistics/, 'the server rejects combos above the engine cap');
+assert.match(validateScorePayload({ ...valid, crates: 40 }, run, now).error, /statistics/, 'the server rejects impossible crate collection rates');
 assert.match(validateScorePayload(valid, { ...run, used_at: new Date().toISOString() }, now).error, /already submitted/, 'a run can only be submitted once');
 
 const accountUserId = '123e4567-e89b-42d3-a456-426614174000';

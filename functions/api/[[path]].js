@@ -81,6 +81,33 @@ const BOSS_PHASE_CEILINGS = Object.freeze({
   tesla_storm_web: [520, 1250, 650], tesla_thunder_anchor: [1150, 500, 760],
 });
 
+const MAX_ENDLESS_COMBO = 9;
+const bossTargetCeiling = elapsedMs => {
+  const elapsedSeconds = Math.max(0, Math.min(90, Number(elapsedMs) / 1000 || 0));
+  const relaySeconds = Math.max(0, Math.min(30, elapsedSeconds - 30));
+  const pylonSeconds = Math.max(0, Math.min(30, elapsedSeconds - 60));
+  return (relaySeconds > 0 ? 5 + Math.ceil(relaySeconds / 1.05) : 0)
+    + (pylonSeconds > 0 ? 5 + Math.ceil(pylonSeconds / 1.7) : 0);
+};
+
+export const endlessTelemetryLimits = durationMs => {
+  const elapsedMs = Math.max(0, Math.min(86_400_000, Number(durationMs) || 0));
+  const elapsedSeconds = elapsedMs / 1000;
+  const zone = Math.floor(elapsedMs / 120_000) + 1;
+  const wardens = Math.max(0, Math.floor((elapsedMs + 18_000) / 120_000));
+  const enemies = Math.floor(elapsedMs / 125) + 32;
+  const crates = Math.floor(elapsedMs / 7_000) + 2;
+  return {
+    zone, wardens, enemies, crates, bestCombo: MAX_ENDLESS_COMBO,
+    score: 10_000 + Math.ceil(elapsedSeconds) * 300,
+  };
+};
+
+const endlessScoreCeiling = ({ durationMs, enemies, wardens, zone }) => {
+  const limits = endlessTelemetryLimits(durationMs);
+  return limits.score + enemies * 55_000 + wardens * (350_000 + zone * 40_000);
+};
+
 export const bossAttemptMultiplier = attempt => attempt <= 3 ? 1 : attempt <= 6 ? .75 : .5;
 
 export const validateBossSettlementPayload = body => {
@@ -94,6 +121,9 @@ export const validateBossSettlementPayload = body => {
   if (!UUID_PATTERN.test(assaultId) || !UUID_PATTERN.test(requestId) || elapsedMs === null || targetsDestroyed === null
       || !['timeout', 'destroyed', 'breach'].includes(outcome) || phaseDamage.length !== 3 || phaseDamage.some(value => value === null)) {
     return { error: 'Invalid boss settlement.' };
+  }
+  if (targetsDestroyed > bossTargetCeiling(elapsedMs) || (outcome === 'timeout' && elapsedMs < 87_000)) {
+    return { error: 'Boss telemetry is outside the verified range.' };
   }
   return { value: { assaultId, requestId, elapsedMs, targetsDestroyed, outcome, phaseDamage } };
 };
@@ -931,10 +961,11 @@ export const validateScorePayload = (body, run, now = Date.now(), profile = null
 
   const durationSeconds = durationMs / 1000;
   const elapsedSeconds = Math.max(0, (now - Date.parse(run.created_at)) / 1000);
-  const expectedZone = Math.floor(durationSeconds / 120) + 1;
-  const plausibleScore = 25_000 + durationSeconds * 12_000 + enemies * 20_000 + wardens * 200_000;
+  const limits = endlessTelemetryLimits(durationMs);
+  const plausibleScore = endlessScoreCeiling({ durationMs, enemies, wardens, zone });
   if (durationSeconds > elapsedSeconds + 20) return { error: 'Run timing could not be verified.' };
-  if (zone > expectedZone + 1 || wardens > zone || crates > durationSeconds / 4 + 8 || enemies > durationSeconds * 8 + 80) return { error: 'Run statistics could not be verified.' };
+  if (zone > limits.zone || wardens > Math.min(zone, limits.wardens) || crates > limits.crates
+      || enemies > limits.enemies || bestCombo > limits.bestCombo) return { error: 'Run statistics could not be verified.' };
   if (score > plausibleScore) return { error: 'Score is outside the verified range.' };
 
   return { value: { initials: accountRun ? null : initials, playerName: accountRun ? accountName : initials, userId: accountRun ? run.user_id : null, score, durationMs, zone, wardens, enemies, crates, bestCombo, difficulty, gameVersion } };

@@ -47,12 +47,23 @@ assert.ok(validateBossSettlementPayload({
   assaultId: crypto.randomUUID(), requestId: crypto.randomUUID(), elapsedMs: 90_001,
   phaseDamage: [1, 2, 3], outcome: 'timeout', targetsDestroyed: 0,
 }).error, 'time and telemetry bounds reject an impossible settlement');
+assert.ok(validateBossSettlementPayload({
+  assaultId: crypto.randomUUID(), requestId: crypto.randomUUID(), elapsedMs: 30_000,
+  phaseDamage: [1, 0, 0], outcome: 'timeout', targetsDestroyed: 0,
+}).error, 'a timeout result cannot be submitted before the assault clock expires');
+assert.ok(validateBossSettlementPayload({
+  assaultId: crypto.randomUUID(), requestId: crypto.randomUUID(), elapsedMs: 45_000,
+  phaseDamage: [1, 2, 0], outcome: 'destroyed', targetsDestroyed: 30,
+}).error, 'destroyed targets are bounded by the server-known phase spawn rate');
 
 const schema = await readFile(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 const scheduleMigration = await readFile(new URL('../supabase/warden-schedule-build96.sql', import.meta.url), 'utf8');
 const api = await readFile(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
 const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+const antiCheatMigration = await readFile(new URL('../supabase/anti-cheat-p1c.sql', import.meta.url), 'utf8');
 assert.match(schema, /where id = p_assault_id for update/, 'settlement locks its server-issued assault before mutation');
+assert.match(antiCheatMigration, /phase_cap[\s\S]*\*1\.03/, 'verified Warden damage uses a narrow server-owned phase allowance');
+assert.match(antiCheatMigration, /TARGET_COUNT_INVALID/, 'Warden add kills are bounded by server-known phase spawn rates');
 assert.match(schema, /settlement_request_id uuid unique/, 'settlement request IDs are replay protected');
 assert.match(schema, /where id = event_row\.id\s+returning \* into event_row/, 'global HP and victory state update atomically');
 assert.match(api, /rpc\/boss_event_leaderboard/, 'ranking is aggregated server-side');

@@ -32,6 +32,8 @@ assert.match(worker, /_sql_schema_migrations[\s\S]*host_ready[\s\S]*guest_seen_a
 assert.match(worker, /blueprintOffer\(\)/, 'the room server owns the normalized match offer');
 assert.match(worker, /matchSeed: secureHex\(\)[\s\S]*matchEndAt/, 'the room server owns a cryptographic seed and fixed match window');
 assert.match(worker, /submitProgress[\s\S]*PROGRESS_CEILING/, 'provisional score signals are bounded');
+assert.match(worker, /spawnedEnemyValues[\s\S]*y ratio[\s\S]*duelScoreCeiling/, 'duel verification mirrors every seeded browser wave draw');
+assert.match(worker, /highestKillValues[\s\S]*13\.5/, 'duel score limits use the actual values of server-scheduled enemies');
 assert.match(worker, /score < room\.hostScore[\s\S]*PROGRESS_REWIND/, 'provisional score signals are monotonic');
 assert.deepEqual(pagesConfig.durable_objects.bindings[0], {
   name: 'DUEL_ROOMS', class_name: 'DuelRoom', script_name: 'crownlizard-pvp',

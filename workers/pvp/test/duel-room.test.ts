@@ -89,8 +89,9 @@ describe('DuelRoom', () => {
     const started = await stub.setReady(guest, true, now + 50);
     if (!started.ok || !started.room.matchStartAt) throw new Error('match missing');
     const matchStart = started.room.matchStartAt;
-    expect(await stub.submitProgress(host, 2400, 2_000, matchStart + 2_100, 1)).toMatchObject({ ok: true, room: { hostScore: 2400 } });
-    expect(await stub.submitProgress(host, 2300, 2_500, matchStart + 2_600, 1)).toEqual({ ok: false, error: 'PROGRESS_REWIND' });
+    expect(await stub.submitProgress(host, 500, 2_000, matchStart + 2_100, 1)).toMatchObject({ ok: true, room: { hostScore: 500 } });
+    expect(await stub.submitProgress(host, 400, 2_500, matchStart + 2_600, 1)).toEqual({ ok: false, error: 'PROGRESS_REWIND' });
+    expect(await stub.submitProgress(host, 20_000, 3_000, matchStart + 3_100, 1)).toEqual({ ok: false, error: 'PROGRESS_CEILING' });
     expect(await stub.submitProgress(guest, 3000, 20_000, matchStart + 3_000)).toEqual({ ok: false, error: 'INVALID_PROGRESS' });
     expect(await stub.submitProgress(rival, 100, 2_000, matchStart + 3_000)).toEqual({ ok: false, error: 'NOT_PARTICIPANT' });
     expect(await stub.submitProgress(host, 999_999, 3_000, matchStart + 3_100, 999)).toEqual({ ok: false, error: 'PROGRESS_CEILING' });
