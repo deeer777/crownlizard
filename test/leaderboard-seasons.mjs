@@ -16,6 +16,7 @@ assert.equal(ACTIVE_LEADERBOARD_SEASON, 'season-1', 'the active competitive boar
 assert.deepEqual([...SUPPORTED_GAME_VERSIONS], ['0.44.4-111', '0.45.0-112'], 'only the current and immediately previous build may start verified runs');
 assert.match(migration, /add column if not exists season_id text not null default 'preseason'/, 'historical runs and scores are preserved in preseason');
 assert.match(migration, /p_season_id text default 'preseason'/, 'an older Worker falls back to the archived preseason during rolling deployment');
+assert.match(migration, /drop function if exists public\.start_verified_run\(uuid,text,text,text,text,text\)/, 'the season migration can safely replace its own six-argument run starter');
 assert.match(migration, /insert into public\.leaderboard_scores[\s\S]*game_version,season_id\)[\s\S]*r\.game_version,r\.season_id/, 'score settlement copies the trusted run season');
 assert.match(migration, /leaderboard_scores_season_rank_idx[\s\S]*season_id, difficulty, score desc/, 'active-season ranking has a matching database index');
 assert.match(canonicalBuilder, /supabase\/leaderboard-seasons-p1b\.sql/, 'fresh database bootstraps include the season migration');

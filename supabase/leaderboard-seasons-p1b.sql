@@ -39,6 +39,7 @@ create index if not exists leaderboard_scores_season_rank_idx
 -- Only the new edge API supplies season-1, so an older Worker cannot place an
 -- old build onto the active board between the migration and API deployment.
 drop function if exists public.start_verified_run(uuid,text,text,text,text);
+drop function if exists public.start_verified_run(uuid,text,text,text,text,text);
 create function public.start_verified_run(
   p_user_id uuid,
   p_difficulty text,
