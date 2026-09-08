@@ -42,13 +42,8 @@ assert.match(main, /playerAccount\.logout\(\)[\s\S]*playerProfile = null[\s\S]*s
 assert.match(styles, /\.system-link \{[^}]*min-width: 245px[^}]*font: 400 11px\/1\.7 var\(--font-pixel-display\)/, 'secondary navigation uses the same full-size arcade typography as primary menu actions');
 assert.match(styles, /\.account-tabs button \{ min-height: 48px; font-size: 9px; \}/, 'mobile account tabs keep readable copy and full touch targets');
 assert.match(styles, /\.vault-categories \{ grid-template-columns: repeat\(2,1fr\); gap: 4px; \}/, 'mobile Vault categories remain scalable and readable');
-assert.match(serverApi, /'0\.15\.1-56'/, 'the released frontend version can register server-owned runs');
-assert.match(serverApi, /'0\.17\.4-74'/, 'Build 74 can register server-owned runs');
-assert.match(serverApi, /'0\.18\.0-75'/, 'Build 75 can register server-owned runs');
-assert.match(serverApi, /'0\.19\.0-76'/, 'Build 76 can register server-owned runs');
-assert.match(serverApi, /'0\.20\.0-77'/, 'Build 77 can register server-owned runs');
-assert.match(serverApi, /'0\.21\.0-78'/, 'Build 78 can register server-owned runs');
-assert.match(serverApi, /'0\.33\.0-92'/, 'Build 92 can register server-owned runs');
+assert.match(serverApi, /SUPPORTED_GAME_VERSIONS = new Set\(\['0\.44\.4-111', '0\.45\.0-112'\]\)/, 'only the current and previous production build can register server-owned runs');
+assert.doesNotMatch(serverApi, /'0\.44\.3-110'/, 'the compatibility window excludes older balance builds');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');
 assert.match(main, /cl:wallet-session-reset:v51/, 'one stale anonymous wallet session is discarded for the clean cutover');

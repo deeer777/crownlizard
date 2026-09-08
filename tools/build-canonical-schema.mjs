@@ -15,6 +15,7 @@ const inputs = [
   'supabase/pvp-lobby-build100.sql',
   'supabase/pvp-results-build102.sql',
   'supabase/cosmetic-effects-build112.sql',
+  'supabase/leaderboard-seasons-p1b.sql',
 ];
 const sections = await Promise.all(inputs.map(async path => `\n-- SOURCE: ${path}\n${await readFile(resolve(root, path), 'utf8')}`));
 const header = `-- GENERATED FILE. Do not edit directly.\n-- Rebuild with: node tools/build-canonical-schema.mjs\n-- Safe bootstrap order for a new Crown Lizard Supabase project.\n`;

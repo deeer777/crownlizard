@@ -1,34 +1,7 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
-const SUPPORTED_GAME_VERSIONS = new Set(['0.10.0-38', '0.10.1-39', '0.10.2-40', '0.10.3-41', '0.11.0-42', '0.12.0-43', '0.13.0-44', '0.14.0-45', '0.14.1-46', '0.14.2-47', '0.14.3-48', '0.14.4-49', '0.14.5-50', '0.14.6-51', '0.14.7-52', '0.14.8-53', '0.14.9-54', '0.15.0-55', '0.15.1-56', '0.15.2-57', '0.15.3-58', '0.15.4-59', '0.15.5-60', '0.15.6-61', '0.15.7-62', '0.15.8-63', '0.15.9-64', '0.16.0-65', '0.16.1-66', '0.16.2-67', '0.16.3-68', '0.16.4-69', '0.17.0-70', '0.17.1-71', '0.17.2-72', '0.17.3-73', '0.17.4-74', '0.18.0-75', '0.19.0-76', '0.20.0-77', '0.21.0-78', '0.22.0-79', '0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95', '0.37.0-96', '0.37.1-97']);
-const ARMORY_UNLOCK_VERSIONS = new Set(['0.23.0-80', '0.24.0-81', '0.25.0-82', '0.26.0-83', '0.27.0-84', '0.27.1-85', '0.27.2-86', '0.28.0-87', '0.29.0-88', '0.30.0-89', '0.31.0-90', '0.32.0-91', '0.33.0-92', '0.34.0-93', '0.35.0-94', '0.36.0-95', '0.37.0-96', '0.37.1-97']);
-SUPPORTED_GAME_VERSIONS.add('0.38.0-98');
-ARMORY_UNLOCK_VERSIONS.add('0.38.0-98');
-SUPPORTED_GAME_VERSIONS.add('0.39.0-99');
-ARMORY_UNLOCK_VERSIONS.add('0.39.0-99');
-SUPPORTED_GAME_VERSIONS.add('0.40.0-100');
-ARMORY_UNLOCK_VERSIONS.add('0.40.0-100');
-SUPPORTED_GAME_VERSIONS.add('0.41.0-101');
-ARMORY_UNLOCK_VERSIONS.add('0.41.0-101');
-SUPPORTED_GAME_VERSIONS.add('0.42.0-102');
-ARMORY_UNLOCK_VERSIONS.add('0.42.0-102');
-SUPPORTED_GAME_VERSIONS.add('0.43.0-103');
-ARMORY_UNLOCK_VERSIONS.add('0.43.0-103');
-SUPPORTED_GAME_VERSIONS.add('0.43.0-104');
-ARMORY_UNLOCK_VERSIONS.add('0.43.0-104');
-SUPPORTED_GAME_VERSIONS.add('0.44.0-105');
-ARMORY_UNLOCK_VERSIONS.add('0.44.0-105');
-SUPPORTED_GAME_VERSIONS.add('0.44.0-107');
-ARMORY_UNLOCK_VERSIONS.add('0.44.0-107');
-SUPPORTED_GAME_VERSIONS.add('0.44.1-108');
-ARMORY_UNLOCK_VERSIONS.add('0.44.1-108');
-SUPPORTED_GAME_VERSIONS.add('0.44.2-109');
-ARMORY_UNLOCK_VERSIONS.add('0.44.2-109');
-SUPPORTED_GAME_VERSIONS.add('0.44.3-110');
-ARMORY_UNLOCK_VERSIONS.add('0.44.3-110');
-SUPPORTED_GAME_VERSIONS.add('0.44.4-111');
-ARMORY_UNLOCK_VERSIONS.add('0.44.4-111');
-SUPPORTED_GAME_VERSIONS.add('0.45.0-112');
-ARMORY_UNLOCK_VERSIONS.add('0.45.0-112');
+export const ACTIVE_LEADERBOARD_SEASON = 'season-1';
+export const SUPPORTED_GAME_VERSIONS = new Set(['0.44.4-111', '0.45.0-112']);
+const ARMORY_UNLOCK_VERSIONS = SUPPORTED_GAME_VERSIONS;
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -970,6 +943,7 @@ export const validateScorePayload = (body, run, now = Date.now(), profile = null
 const listScores = async (config, difficulty, limit = 10) => {
   const query = new URLSearchParams({
     select: 'id,initials,player_name,user_id,score,difficulty,zone,wardens,created_at',
+    season_id: `eq.${ACTIVE_LEADERBOARD_SEASON}`,
     difficulty: `eq.${difficulty}`,
     is_hidden: 'eq.false',
     order: 'score.desc,created_at.asc',
@@ -1021,10 +995,12 @@ const beginRun = async (request, config) => {
     method: 'POST',
     body: JSON.stringify({
       p_user_id: user?.id || null, p_difficulty: difficulty, p_game_version: gameVersion,
+      p_season_id: ACTIVE_LEADERBOARD_SEASON,
       p_ip_hash: ipHash, p_checkpoint_token_hash: await sha256Hex(checkpointToken),
     }),
   });
-  return json({ id: started.id, startedAt: started.startedAt, expiresAt: started.expiresAt, checkpointToken }, 201);
+  if (String(started.season || '') !== ACTIVE_LEADERBOARD_SEASON) throw new Error('RUN_SEASON_MISMATCH');
+  return json({ id: started.id, startedAt: started.startedAt, expiresAt: started.expiresAt, season: started.season, checkpointToken }, 201);
 };
 
 export const checkpointTelemetry = body => {
@@ -2058,9 +2034,12 @@ const submitScore = async (request, config) => {
   const runId = String(body.runId || '');
   if (!UUID_PATTERN.test(runId)) return json({ error: 'Invalid run.' }, 400);
 
-  const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,created_at,used_at,status,approved_summary', id: `eq.${runId}`, limit: '1' });
+  const runQuery = new URLSearchParams({ select: 'id,user_id,difficulty,game_version,season_id,created_at,used_at,status,approved_summary', id: `eq.${runId}`, limit: '1' });
   const runs = await supabaseFetch(config, `leaderboard_runs?${runQuery}`);
   if (!runs.length) return json({ error: 'Run not found.' }, 404);
+  if (String(runs[0].season_id || 'preseason') !== ACTIVE_LEADERBOARD_SEASON) {
+    return json({ error: 'This run belongs to an archived leaderboard season.', code: 'SEASON_CLOSED' }, 409);
+  }
   const suppliedToken = bearerToken(request);
   const user = suppliedToken ? await authenticatePlayer(request, config) : null;
   if (suppliedToken && !user) return json({ error: 'Player session expired.' }, 401);
@@ -2095,7 +2074,7 @@ const submitScore = async (request, config) => {
   const scores = await listScores(config, value.difficulty, 100);
   const rank = scores.findIndex(entry => entry.id === inserted.id) + 1;
   const entry = scores.find(score => score.id === inserted.id) || { ...inserted, playerName: value.playerName, initials: value.playerName };
-  return json({ entry, rank: rank || null, scores: scores.slice(0, 10) }, 201);
+  return json({ season: ACTIVE_LEADERBOARD_SEASON, entry, rank: rank || null, scores: scores.slice(0, 10) }, 201);
 };
 
 export const onRequest = async context => {
@@ -2201,7 +2180,7 @@ export const onRequest = async context => {
       const difficulty = url.searchParams.get('difficulty') || 'arcade';
       const limit = Math.min(10, Math.max(1, Number(url.searchParams.get('limit')) || 10));
       if (!DIFFICULTIES.has(difficulty)) return json({ error: 'Invalid difficulty.' }, 400);
-      return json({ difficulty, scores: await listScores(config, difficulty, limit) }, 200, 'public, max-age=10, s-maxage=10');
+      return json({ season: ACTIVE_LEADERBOARD_SEASON, difficulty, scores: await listScores(config, difficulty, limit) }, 200, 'public, max-age=10, s-maxage=10');
     }
     if (path === 'scores' && request.method === 'POST') return await submitScore(request, config);
     return json({ error: 'Not found.' }, 404);

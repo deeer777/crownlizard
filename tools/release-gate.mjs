@@ -18,7 +18,9 @@ assert.match(configSource, new RegExp(`release:\\s*['\"]${release.release.replac
 assert.match(configSource, new RegExp(`build:\\s*${release.build}\\b`), 'client build must match release.json');
 assert.deepEqual({ release: buildMeta.release, build: buildMeta.build }, { release: release.release, build: release.build }, 'built metadata must match release.json');
 assert.deepEqual(builtRelease, release, 'the public release manifest must match the source manifest');
-assert.match(apiSource, new RegExp(`SUPPORTED_GAME_VERSIONS\\.add\\(['\"]${release.release}-${release.build}['\"]\\)`), 'server must accept the current build');
+const supportedVersions = apiSource.match(/SUPPORTED_GAME_VERSIONS = new Set\(\[([^\]]*)\]\)/)?.[1] || '';
+const escapedGameVersion = `${release.release}-${release.build}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+assert.match(supportedVersions, new RegExp(`['\"]${escapedGameVersion}['\"]`), 'server must accept the current build');
 
 assert.equal(wrangler.pages_build_output_dir, './dist', 'Cloudflare Pages must publish only dist/');
 assert.equal(pagesRequirements.project, wrangler.name, 'Pages requirement manifest must target the configured project');
@@ -26,6 +28,8 @@ assert.deepEqual([...(pagesRequirements.secrets || [])].sort(), requiredSecrets,
 for (const name of requiredSecrets) assert.match(envExample, new RegExp(`^${name}=`, 'm'), `${name} must be documented in .env.example`);
 
 assert.match(canonical, /-- SOURCE: supabase\/stability-build99\.sql/, 'canonical schema must include the stabilization migration');
+assert.match(canonical, /-- SOURCE: supabase\/leaderboard-seasons-p1b\.sql/, 'canonical schema must include the competitive season migration');
+assert.match(canonical, /leaderboard_scores_season_rank_idx/, 'canonical schema must index active-season leaderboard reads');
 assert.match(canonical, /declare r public\.leaderboard_runs%rowtype; existing_id uuid; score_id uuid;/, 'score IDs must remain UUID throughout the atomic score RPC');
 assert.match(canonical, /create or replace function public\.expire_stale_verified_runs/, 'canonical schema must control expired run buildup');
 assert.match(canonical, /create or replace function public\.prune_stale_run_checkpoints/, 'canonical schema must bound abandoned checkpoint buildup');
