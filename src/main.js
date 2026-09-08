@@ -17,6 +17,7 @@ import { CosmeticPreferences } from './cosmetic-preferences.js?v=20260828-91-wea
 import { DUEL_BLUEPRINT_BY_ID, duelTimeLabel } from './duel-match.js?v=20260901-102-duel-verified-final';
 import { PLATFORM, applyPlatformCapabilities } from './platform.js?v=20260907-crazygames-data-pass2';
 import { PlatformRuntime } from './platform-runtime.js?v=20260907-crazygames-data-pass2';
+import { AsyncSignalLoop } from './async-signal-loop.js?v=20260908-p2b';
 
 const $ = id => document.getElementById(id);
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
@@ -1813,11 +1814,11 @@ const DUEL_RECONNECT_KEY = 'cl:duel-room:v1';
 let duelChallenge = null;
 let duelChallenges = [];
 let duelBusy = false;
-let duelPollTimer = 0;
-let duelHeartbeatTimer = 0;
 let duelClockTimer = 0;
 let duelCountdownTimer = 0;
-let duelProgressTimer = 0;
+let duelPollLoop = null;
+let duelHeartbeatLoop = null;
+let duelProgressLoop = null;
 let duelGameplayActive = false;
 let duelRunComplete = false;
 let duelFinalScore = 0;
@@ -1853,12 +1854,12 @@ const readDuelReconnect = () => {
   } catch { return null; }
 };
 const stopDuelSignals = () => {
-  clearInterval(duelPollTimer);
-  clearInterval(duelHeartbeatTimer);
+  duelPollLoop?.stop();
+  duelHeartbeatLoop?.stop();
+  duelProgressLoop?.stop();
   clearInterval(duelClockTimer);
   clearInterval(duelCountdownTimer);
-  clearInterval(duelProgressTimer);
-  duelPollTimer = duelHeartbeatTimer = duelClockTimer = duelCountdownTimer = duelProgressTimer = 0;
+  duelClockTimer = duelCountdownTimer = 0;
 };
 const renderDuelPilot = (card, image, name, state, pilot, waiting = false) => {
   const connected = Boolean(pilot?.connected ?? true);
@@ -2017,8 +2018,9 @@ const updateDuelLiveHud = state => {
   ui.duelLiveSignal.textContent = duelPreviewMode || !Number.isFinite(rivalSignalAt) || signalAge < 7_000 ? 'LIVE SIGNAL'
     : signalAge < 20_000 ? 'SIGNAL DELAY' : 'RIVAL OFFLINE';
 };
-const transmitDuelProgress = async final => {
+const transmitDuelProgress = async (final, isCurrent = () => true) => {
   if (!duelChallenge?.match || !game.duel) return;
+  const challengeId = duelChallenge.challengeId;
   const score = Math.max(0, Math.floor(game.score || duelFinalScore || 0));
   const elapsedMs = Math.max(0, Math.min(90_000, Math.round(game.duel.elapsed * 1000)));
   try {
@@ -2027,13 +2029,18 @@ const transmitDuelProgress = async final => {
       const rivalScore = Math.floor(elapsed * 680 + Math.pow(elapsed, 1.32) * 43);
       duelChallenge = { ...duelChallenge, match: { ...duelChallenge.match, yourScore: score, rivalScore, phase: final || elapsedMs >= 90_000 ? 'finished' : 'active' } };
     } else {
-      const payload = await playerAccount.submitPvpProgress(duelChallenge.challengeId, score, elapsedMs, game.runStats?.enemies || 0);
+      const payload = await playerAccount.submitPvpProgress(challengeId, score, elapsedMs, game.runStats?.enemies || 0);
+      if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
       if (payload.challenge) duelChallenge = payload.challenge;
     }
+    if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
     ui.duelLiveRivalScore.textContent = Number(duelChallenge.match?.rivalScore || 0).toLocaleString('en-US');
     updateDuelLiveHud(game.snapshot());
-  } catch { ui.duelLiveSignal.textContent = 'RECONNECTING'; }
+  } catch {
+    if (isCurrent() && duelChallenge?.challengeId === challengeId) ui.duelLiveSignal.textContent = 'RECONNECTING';
+  }
 };
+duelProgressLoop = new AsyncSignalLoop(({ isCurrent }) => transmitDuelProgress(false, isCurrent), 1800);
 const beginDuelGameplay = challenge => {
   if (duelGameplayActive || !challenge?.match?.seed || !challenge.selectedBlueprint) return;
   clearInterval(duelCountdownTimer);
@@ -2059,8 +2066,8 @@ const beginDuelGameplay = challenge => {
   ui.duelLiveRivalScore.textContent = Number(challenge.match.rivalScore || 0).toLocaleString('en-US');
   game.reducedEffects = reducedEffects;
   game.startDuel({ seed: challenge.match.seed, blueprintId: challenge.selectedBlueprint, elapsedSeconds, endAt: Date.parse(challenge.match.endAt) });
-  clearInterval(duelProgressTimer);
-  duelProgressTimer = setInterval(() => { void transmitDuelProgress(false); }, 1800);
+  duelProgressLoop.start();
+  if (document.hidden) duelProgressLoop.pause();
   music.playGame();
   focusGameInput();
 };
@@ -2088,8 +2095,7 @@ function syncDuelMatch(challenge) {
 }
 const completeDuelRun = async summary => {
   duelFinalScore = Math.max(0, Math.floor(summary?.score || game.score || 0));
-  clearInterval(duelProgressTimer);
-  duelProgressTimer = 0;
+  duelProgressLoop.stop();
   duelFinishPending = {
     score: duelFinalScore,
     elapsedMs: Math.max(0, Math.min(90_000, Math.round(Number(summary?.elapsedMs) || game.duel?.elapsed * 1000 || 0))),
@@ -2119,38 +2125,52 @@ const completeDuelRun = async summary => {
   music.playMenu();
   ui.duelResultBack.focus({ preventScroll: true });
 };
+const pollDuelSignal = async ({ isCurrent }) => {
+  if (!duelChallenge || duelBusy || (duelGameplayActive && !duelFinishPending)) return;
+  const challengeId = duelChallenge.challengeId;
+  try {
+    if (duelFinishPending) {
+      const pending = duelFinishPending;
+      const finished = await playerAccount.finishPvpRun(challengeId, pending);
+      if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
+      if (finished.challenge) setDuelChallenge(finished.challenge);
+      if (duelFinishPending === pending) duelFinishPending = null;
+    }
+    const payload = await playerAccount.getPvpChallenge(challengeId);
+    if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
+    if (!payload.challenge || !['waiting', 'matched'].includes(payload.challenge.status)) throw new Error('Lobby closed');
+    setDuelChallenge(payload.challenge);
+  } catch (error) {
+    if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
+    if ([404, 410].includes(error?.status)) {
+      stopDuelSignals();
+      setDuelChallenge(null);
+      setDuelStatus('THIS DUEL SIGNAL HAS EXPIRED', true);
+      void refreshDuelChallenges(true);
+    } else setDuelStatus('LOBBY SIGNAL INTERRUPTED · RECONNECTING', true);
+  }
+};
+const heartbeatDuelSignal = async ({ isCurrent }) => {
+  if (!duelChallenge || duelBusy) return;
+  const challengeId = duelChallenge.challengeId;
+  try {
+    await playerAccount.heartbeatPvpChallenge(challengeId);
+    if (!isCurrent() || duelChallenge?.challengeId !== challengeId) return;
+  } catch {}
+};
+duelPollLoop = new AsyncSignalLoop(pollDuelSignal, 3000);
+duelHeartbeatLoop = new AsyncSignalLoop(heartbeatDuelSignal, 9000);
 const scheduleDuelSignals = () => {
   stopDuelSignals();
   if (!duelChallenge) return;
   duelClockTimer = setInterval(updateDuelClock, 1000);
   if (duelPreviewMode) return;
-  duelPollTimer = setInterval(async () => {
-    if (document.hidden || !duelChallenge || duelBusy) return;
-    try {
-      if (duelFinishPending) {
-        const finished = await playerAccount.finishPvpRun(duelChallenge.challengeId, duelFinishPending);
-        if (finished.challenge) setDuelChallenge(finished.challenge);
-        duelFinishPending = null;
-      }
-      const payload = await playerAccount.getPvpChallenge(duelChallenge.challengeId);
-      if (!payload.challenge || !['waiting', 'matched'].includes(payload.challenge.status)) throw new Error('Lobby closed');
-      setDuelChallenge(payload.challenge);
-    } catch (error) {
-      if ([404, 410].includes(error?.status)) {
-        stopDuelSignals();
-        setDuelChallenge(null);
-        setDuelStatus('THIS DUEL SIGNAL HAS EXPIRED', true);
-        void refreshDuelChallenges(true);
-      } else setDuelStatus('LOBBY SIGNAL INTERRUPTED · RECONNECTING', true);
-    }
-  }, 3000);
-  duelHeartbeatTimer = setInterval(async () => {
-    if (document.hidden || !duelChallenge || duelBusy) return;
-    try {
-      const payload = await playerAccount.heartbeatPvpChallenge(duelChallenge.challengeId);
-      if (payload.challenge) setDuelChallenge(payload.challenge);
-    } catch {}
-  }, 9000);
+  duelPollLoop.start();
+  duelHeartbeatLoop.start({ immediate: true });
+  if (document.hidden) {
+    duelPollLoop.pause();
+    duelHeartbeatLoop.pause();
+  }
 };
 const requestDuelRematch = async () => {
   if (!duelChallenge?.match || duelBusy || duelChallenge.match.verification !== 'final') return;
@@ -2179,12 +2199,6 @@ const enterDuelRoom = challenge => {
   scheduleDuelSignals();
   ui.duelOverlay.scrollTop = 0;
   ui.duelReady.focus({ preventScroll: true });
-  if (!duelPreviewMode) {
-    const challengeId = challenge.challengeId;
-    void playerAccount.heartbeatPvpChallenge(challengeId).then(payload => {
-      if (duelChallenge?.challengeId === challengeId && payload.challenge) setDuelChallenge(payload.challenge);
-    }).catch(() => {});
-  }
 };
 const createDuelChallenge = async () => {
   if (duelBusy) return;
@@ -4165,7 +4179,17 @@ ui.settingButtons.forEach(button => button.addEventListener('click', () => {
   renderSettings();
 }));
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { input.clear(); pauseRun(true); }
+  if (document.hidden) {
+    duelPollLoop?.pause();
+    duelHeartbeatLoop?.pause();
+    duelProgressLoop?.pause();
+    input.clear();
+    pauseRun(true);
+  } else {
+    duelPollLoop?.resume({ immediate: true });
+    duelHeartbeatLoop?.resume({ immediate: true });
+    duelProgressLoop?.resume({ immediate: true });
+  }
 });
 addEventListener('blur', () => pauseRun(true));
 addEventListener('keydown', event => {
