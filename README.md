@@ -2,6 +2,8 @@
 
 Detta är en separat, moderniserad spelbar version. Originalet finns orört i `../legacy-import`.
 
+Build 115 introduces a shared, non-destructive production image pipeline for Crown Lizard and CrazyGames. Source artwork remains untouched while build outputs receive category-aware PNG resizing and compression, reducing the Crown package by more than 50 MB.
+
 ## Spelkänsla i version 2
 
 - Fast simulering på 60 Hz: samma svårighetsgrad oavsett skärmens uppdateringsfrekvens.

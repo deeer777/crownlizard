@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,4 +44,9 @@ const forbidden = publicFiles.filter(path => /(^|\/)(supabase|test|tools|node_mo
 assert.deepEqual(forbidden, [], `internal files leaked into dist: ${forbidden.join(', ')}`);
 assert.ok(publicFiles.includes('index.html') && publicFiles.includes('sw.js') && publicFiles.includes('build-meta.json'), 'dist must contain the complete public shell');
 
-console.log(`Release gate passed for Crown Lizard ${release.release} Build ${release.build} (${publicFiles.length} public files).`);
+const assetFiles = publicFiles.filter(path => path.startsWith('assets/'));
+const assetBytes = (await Promise.all(assetFiles.map(path => stat(resolve(publicRoot, path))))).reduce((sum, entry) => sum + entry.size, 0);
+const assetMiB = assetBytes / 1024 / 1024;
+assert.ok(assetMiB <= 20, `production assets exceed the 20 MiB release budget (${assetMiB.toFixed(2)} MiB)`);
+
+console.log(`Release gate passed for Crown Lizard ${release.release} Build ${release.build} (${publicFiles.length} public files, ${assetMiB.toFixed(2)} MiB assets).`);

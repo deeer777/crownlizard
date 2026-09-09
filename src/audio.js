@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260909-114-pilot-ranking';
+import { CONFIG } from './config.js?v=20260909-115-lean-pixels';
 
 export class Music {
   constructor() {

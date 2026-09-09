@@ -1,11 +1,11 @@
-import { CONFIG } from './config.js?v=20260909-114-pilot-ranking';
+import { CONFIG } from './config.js?v=20260909-115-lean-pixels';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
-import { Music, SoundFx } from './audio.js?v=20260909-114-pilot-ranking';
-import { Game } from './game.js?v=20260909-114-pilot-ranking';
+import { Music, SoundFx } from './audio.js?v=20260909-115-lean-pixels';
+import { Game } from './game.js?v=20260909-115-lean-pixels';
 import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260908-113-desktop-sweep';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-113-desktop-sweep';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260909-114-pilot-ranking';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260909-115-lean-pixels';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, createRewardedAdAdapter } from './rewarded-ad.js?v=20260907-crazygames-rewarded-adapter';

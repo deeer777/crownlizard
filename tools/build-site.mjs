@@ -51,9 +51,10 @@ if (requestedPlatform === 'crazygames') {
   const stylesPath = resolve(output, 'styles.css');
   const crazyGamesStyles = `${await readFile(stylesPath, 'utf8')}\n/* CrazyGames keeps the pre-SEO portal logo geometry. */\n.logo-tail { bottom: -10px; }\n@media (max-width: 760px) { .logo-tail { bottom: -9px; } }\n`;
   await writeFile(stylesPath, crazyGamesStyles);
-  const { optimizeCrazyGamesAssets } = await import('./optimize-crazygames-assets.mjs');
-  await optimizeCrazyGamesAssets(output);
 }
+
+const { optimizeBuildAssets } = await import('./optimize-build-assets.mjs');
+await optimizeBuildAssets(output, profile.label);
 
 const release = JSON.parse(await readFile(resolve(root, 'release.json'), 'utf8'));
 await writeFile(resolve(output, 'build-meta.json'), JSON.stringify({ build: release.build, release: release.release, platform: profile.id }, null, 2));

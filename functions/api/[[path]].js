@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
 export const ACTIVE_LEADERBOARD_SEASON = 'season-1';
-export const SUPPORTED_GAME_VERSIONS = new Set(['0.45.1-113', '0.46.0-114']);
+export const SUPPORTED_GAME_VERSIONS = new Set(['0.46.0-114', '0.46.1-115']);
 const ARMORY_UNLOCK_VERSIONS = SUPPORTED_GAME_VERSIONS;
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;

@@ -35,10 +35,10 @@ assert.match(styles, /\.redeem-form input[\s\S]*min-height: 58px/);
 assert.match(styles, /\.admin-campaign-actions button[\s\S]*min-height: 44px/);
 assert.match(styles, /@media \(max-width: 600px\)[\s\S]*\.admin-campaign-actions button \{ min-height: 48px/);
 
-assert.equal(release.release, '0.46.0');
-assert.equal(release.build, 114);
-assert.match(html, /id="gameVersion"[^>]*>VER 0\.46\.0 · BUILD 114<\/span>/);
-assert.match(main, /config\.js\?v=20260909-114-pilot-ranking/);
-assert.match(serviceWorker, /crown-lizard-shell-114-pilot-ranking/);
+assert.equal(release.release, '0.46.1');
+assert.equal(release.build, 115);
+assert.match(html, /id="gameVersion"[^>]*>VER 0\.46\.1 · BUILD 115<\/span>/);
+assert.match(main, /config\.js\?v=20260909-115-lean-pixels/);
+assert.match(serviceWorker, /crown-lizard-shell-115-lean-pixels/);
 
 console.log('Crown Control admin and reward-code UX security tests passed');
