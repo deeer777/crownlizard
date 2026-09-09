@@ -24,9 +24,9 @@ assert.match(desktop, /\.duel-panel\s*\{[^}]*width:\s*min\(1180px,100%\)/s, 'des
 assert.match(desktop, /\.weapon-hud b\s*\{\s*font-size:\s*15px;/, 'desktop active weapon is legible');
 assert.match(desktop, /\.score-block strong\s*\{\s*font-size:\s*36px;/, 'desktop score remains the HUD focal point');
 assert.doesNotMatch(desktop, /#game\s*\{[^}]*width/s, 'desktop UI must not alter competitive canvas geometry');
-assert.equal(release.release, '0.45.1');
-assert.equal(release.build, 113);
-assert.match(html, /styles\.css\?v=20260909-113-desktop-final/);
+assert.equal(release.release, '0.46.0');
+assert.equal(release.build, 114);
+assert.match(html, /styles\.css\?v=20260909-114-pilot-ranking/);
 assert.ok(html.indexOf('id="armoryGrid"') < html.indexOf('id="armorySelected"'), 'the selected Warden blueprint appears directly after its archive instead of far above it');
 
 console.log('Desktop command deck hierarchy and shared responsive layout passed');

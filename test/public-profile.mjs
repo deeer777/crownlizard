@@ -5,13 +5,14 @@ import { PlayerAccount } from '../src/player-account.js';
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
+const leaderboardMigration = readFileSync(new URL('../supabase/leaderboard-personal-best-build114.sql', import.meta.url), 'utf8');
 
 assert.match(schema, /player_profiles[\s\S]*public_id uuid default gen_random_uuid\(\)/, 'public profiles use an identifier separate from auth.users.id');
 assert.match(schema, /create or replace function public\.public_player_profile[\s\S]*economy_settled_at is not null/, 'qualified run totals are computed from server-settled runs');
 assert.match(schema, /public_player_profile[\s\S]*sum\(contribution\.effective_damage\)/, 'public boss totals use server-approved effective damage');
 assert.match(schema, /revoke all on function public\.public_player_profile[\s\S]*grant execute[\s\S]*to service_role/, 'profile aggregation is only callable by the trusted edge API');
-assert.match(worker, /publicProfileId:[\s\S]*currentProfile\?\.is_public/, 'leaderboard rows only advertise visible registered profiles');
-assert.doesNotMatch(worker.match(/const listScores[\s\S]*?const beginRun/)?.[0] || '', /userId:/, 'public score rows never serialize account ownership IDs');
+assert.match(leaderboardMigration, /'publicProfileId', case when profile\.is_public then profile\.public_id else null end/, 'leaderboard rows only advertise visible registered profiles');
+assert.doesNotMatch(leaderboardMigration.match(/jsonb_build_object\([\s\S]*?\) as entry/)?.[0] || '', /'userId'/, 'public score rows never serialize account ownership IDs');
 
 const publicId = '423e4567-e89b-42d3-a456-426614174000';
 const userId = '123e4567-e89b-42d3-a456-426614174000';

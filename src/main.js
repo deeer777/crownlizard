@@ -1,11 +1,11 @@
-import { CONFIG } from './config.js?v=20260908-113-desktop-sweep';
+import { CONFIG } from './config.js?v=20260909-114-pilot-ranking';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
-import { Music, SoundFx } from './audio.js?v=20260828-91-weapon-skins4';
-import { Game } from './game.js?v=20260908-113-desktop-sweep';
+import { Music, SoundFx } from './audio.js?v=20260909-114-pilot-ranking';
+import { Game } from './game.js?v=20260909-114-pilot-ranking';
 import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260908-113-desktop-sweep';
 import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-113-desktop-sweep';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260831-99-security';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260909-114-pilot-ranking';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, createRewardedAdAdapter } from './rewarded-ad.js?v=20260907-crazygames-rewarded-adapter';
@@ -69,7 +69,7 @@ const ui = {
   accountOverlay: $('accountOverlay'), openAccount: $('openAccount'), closeAccount: $('closeAccount'), accountBadge: $('accountBadge'), openOwnProfile: $('openOwnProfile'), profileVisibility: $('profileVisibility'), accountTitle: $('accountTitle'), accountStatePanel: document.querySelector('.account-state'), accountIdentity: $('accountIdentity'), accountDescription: $('accountDescription'), accountTabs: $('accountTabs'), accountSecureTab: $('accountSecureTab'), accountLoginTab: $('accountLoginTab'), accountForm: $('accountForm'), accountEmailField: $('accountEmailField'), accountEmail: $('accountEmail'), accountPasswordField: $('accountPasswordField'), accountPassword: $('accountPassword'), accountFormStatus: $('accountFormStatus'), accountSubmit: $('accountSubmit'), accountRecovery: $('accountRecovery'), accountWarning: $('accountWarning'), callsignForm: $('callsignForm'), callsignInput: $('callsignInput'), callsignPreview: $('callsignPreview'), callsignSubmit: $('callsignSubmit'), accountSignedInActions: $('accountSignedInActions'), accountLogout: $('accountLogout'), accountLogoutConfirm: $('accountLogoutConfirm'), confirmAccountLogout: $('confirmAccountLogout'), cancelAccountLogout: $('cancelAccountLogout'),
   redeemOverlay: $('redeemOverlay'), redeemForm: $('redeemForm'), redeemCode: $('redeemCode'), redeemSubmit: $('redeemSubmit'), redeemReward: $('redeemReward'), redeemRewardAmount: $('redeemRewardAmount'), redeemRewardCampaign: $('redeemRewardCampaign'), redeemStatus: $('redeemStatus'), closeRedeem: $('closeRedeem'),
   adminOverlay: $('adminOverlay'), adminCreateTab: $('adminCreateTab'), adminCampaignsTab: $('adminCampaignsTab'), adminCreatePanel: $('adminCreatePanel'), adminCampaignsPanel: $('adminCampaignsPanel'), adminCodeForm: $('adminCodeForm'), adminCampaignName: $('adminCampaignName'), adminRewardType: $('adminRewardType'), adminRewardAmount: $('adminRewardAmount'), adminMaxRedemptions: $('adminMaxRedemptions'), adminExpiresAt: $('adminExpiresAt'), adminNote: $('adminNote'), adminCreateCode: $('adminCreateCode'), adminCodeReveal: $('adminCodeReveal'), adminCreatedCode: $('adminCreatedCode'), adminCopyCode: $('adminCopyCode'), adminCampaignCount: $('adminCampaignCount'), adminCampaignList: $('adminCampaignList'), adminStatus: $('adminStatus'), closeAdmin: $('closeAdmin'),
-  leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
+  leaderboardOverlay: $('leaderboardOverlay'), leaderboardList: $('leaderboardList'), leaderboardPlayerResult: $('leaderboardPlayerResult'), leaderboardContext: $('leaderboardContext'), leaderboardMore: $('leaderboardMore'), leaderboardStatus: $('leaderboardStatus'), closeLeaderboard: $('closeLeaderboard'),
   leaderboardTabs: [...document.querySelectorAll('[data-board-difficulty]')],
   duelOverlay: $('duelOverlay'), duelBrowser: $('duelBrowser'), duelRoom: $('duelRoom'), duelCreate: $('duelCreate'), duelRefresh: $('duelRefresh'), duelChallengeList: $('duelChallengeList'), duelRoomState: $('duelRoomState'), duelRoomTimer: $('duelRoomTimer'), duelBlueprintPicker: $('duelBlueprintPicker'), duelBlueprintList: $('duelBlueprintList'), duelHostCard: $('duelHostCard'), duelHostShip: $('duelHostShip'), duelHostName: $('duelHostName'), duelHostState: $('duelHostState'), duelGuestCard: $('duelGuestCard'), duelGuestShip: $('duelGuestShip'), duelGuestName: $('duelGuestName'), duelGuestState: $('duelGuestState'), duelShare: $('duelShare'), duelRoomNote: $('duelRoomNote'), duelReady: $('duelReady'), duelLeave: $('duelLeave'), duelStatus: $('duelStatus'), closeDuel: $('closeDuel'),
   duelHud: $('duelHud'), duelLiveOwnScore: $('duelLiveOwnScore'), duelLiveRivalName: $('duelLiveRivalName'), duelLiveRivalScore: $('duelLiveRivalScore'), duelLiveTime: $('duelLiveTime'), duelLiveSignal: $('duelLiveSignal'), duelCountdown: $('duelCountdown'), duelCountdownValue: $('duelCountdownValue'), duelCountdownLoadout: $('duelCountdownLoadout'), duelResult: $('duelResult'), duelResultEyebrow: $('duelResultEyebrow'), duelResultTitle: $('duelResultTitle'), duelResultOwn: $('duelResultOwn'), duelResultRival: $('duelResultRival'), duelResultGap: $('duelResultGap'), duelResultMessage: $('duelResultMessage'), duelRematch: $('duelRematch'), duelResultBack: $('duelResultBack'),
@@ -161,6 +161,8 @@ let lastCreatedRewardCode = '';
 let redeemBusy = false;
 let leaderboardReturn = 'menu';
 let leaderboardDifficulty = selectedDifficulty;
+let leaderboardLimit = 25;
+let leaderboardTotal = 0;
 let pilotProfileOrigin = 'leaderboard';
 let pilotProfileTrigger = null;
 let pilotProfileTriggerLabel = '';
@@ -2372,56 +2374,92 @@ const previewLeaderboardScores = difficulty => {
   }));
 };
 
-const renderLeaderboard = (scores, highlightId = '', personal = null) => {
-  ui.leaderboardList.replaceChildren();
-  Array.from({ length: 10 }, (_, index) => scores[index] || null).forEach((entry, index) => {
-    const row = document.createElement('li');
-    if (!entry) row.classList.add('leaderboard-empty');
-    if (entry?.id === highlightId) {
-      row.classList.add('leaderboard-highlight');
-      row.setAttribute('aria-current', 'true');
+const createLeaderboardRow = (entry, fallbackRank, highlightId = '', context = false) => {
+  const row = document.createElement(context ? 'div' : 'li');
+  if (context) row.classList.add('leaderboard-context-row');
+  if (!entry) row.classList.add('leaderboard-empty');
+  if (entry?.id === highlightId) {
+    row.classList.add('leaderboard-highlight');
+    row.setAttribute('aria-current', 'true');
+  }
+  const entryRank = Number(entry?.rank) || fallbackRank;
+  const values = entry
+    ? [String(entryRank).padStart(2, '0'), entry.playerName || entry.initials, Number(entry.score).toLocaleString('en-US'), String(entry.zone)]
+    : ['--', 'NO VERIFIED SCORES', '------', '-'];
+  values.forEach((value, cellIndex) => {
+    const cell = document.createElement('span');
+    const profileLink = cellIndex === 1 && entry ? createPilotProfileLink(entry, 'leaderboard') : null;
+    if (profileLink) cell.append(profileLink);
+    else cell.textContent = value;
+    if (cellIndex === 1 && entry?.id === highlightId) {
+      const marker = document.createElement('small');
+      marker.textContent = 'YOU';
+      cell.append(marker);
     }
-    const values = entry
-      ? [String(index + 1).padStart(2, '0'), entry.playerName || entry.initials, Number(entry.score).toLocaleString('en-US'), String(entry.zone)]
-      : [String(index + 1).padStart(2, '0'), '---', '------', '-'];
-    values.forEach((value, cellIndex) => {
-      const cell = document.createElement('span');
-      const profileLink = cellIndex === 1 && entry ? createPilotProfileLink(entry, 'leaderboard') : null;
-      if (profileLink) cell.append(profileLink);
-      else cell.textContent = value;
-      if (cellIndex === 1 && entry?.id === highlightId) {
-        const marker = document.createElement('small');
-        marker.textContent = 'YOU';
-        cell.append(marker);
-      }
-      row.append(cell);
-    });
-    ui.leaderboardList.append(row);
+    row.append(cell);
   });
-  const personalOutsideTopTen = personal?.entry && !scores.some(entry => entry.id === personal.entry.id);
-  ui.leaderboardPlayerResult.classList.toggle('hidden', !personalOutsideTopTen);
+  return row;
+};
+
+const renderLeaderboard = (scores, highlightId = '', personal = null, total = scores.length, authenticated = false) => {
+  ui.leaderboardList.replaceChildren();
+  const personalId = personal?.entry?.id || '';
+  const activeHighlight = highlightId || personalId;
+  (scores.length ? scores : [null]).forEach((entry, index) => {
+    ui.leaderboardList.append(createLeaderboardRow(entry, index + 1, activeHighlight));
+  });
+
+  ui.leaderboardPlayerResult.classList.toggle('hidden', !authenticated && !personal?.entry);
   ui.leaderboardPlayerResult.replaceChildren();
-  if (personalOutsideTopTen) {
+  if (personal?.entry) {
     const rank = document.createElement('b');
     rank.textContent = `#${personal.rank || '—'}`;
     const label = document.createElement('span');
-    label.textContent = 'YOUR SCORE';
+    label.textContent = authenticated ? 'YOUR BEST' : 'YOUR SCORE';
     const initials = document.createElement('strong');
     const personalProfileLink = createPilotProfileLink(personal.entry, 'leaderboard');
     if (personalProfileLink) initials.append(personalProfileLink);
     else initials.textContent = personal.entry.playerName || personal.entry.initials;
     const score = document.createElement('em');
     score.textContent = Number(personal.entry.score).toLocaleString('en-US');
+    const chase = document.createElement('small');
+    const gap = personal.above ? Math.max(0, Number(personal.above.score) - Number(personal.entry.score) + 1) : 0;
+    chase.textContent = Number(personal.rank) === 1
+      ? 'CROWN HOLDER · DEFEND #1'
+      : gap > 0 ? `${gap.toLocaleString('en-US')} POINTS TO #${Number(personal.rank) - 1}` : 'CURRENT SEASON';
+    ui.leaderboardPlayerResult.append(rank, label, initials, score, chase);
+  } else if (authenticated) {
+    const rank = document.createElement('b');
+    rank.textContent = '#—';
+    const label = document.createElement('span');
+    label.textContent = 'YOUR BEST';
+    const initials = document.createElement('strong');
+    initials.textContent = playerProfile?.displayName || 'PILOT';
+    const score = document.createElement('em');
+    score.textContent = 'NO SCORE';
     ui.leaderboardPlayerResult.append(rank, label, initials, score);
   }
+
+  const personalOutsideLoadedBoard = personal?.entry && !scores.some(entry => entry.id === personal.entry.id);
+  ui.leaderboardContext.classList.toggle('hidden', !personalOutsideLoadedBoard);
+  ui.leaderboardContext.replaceChildren();
+  if (personalOutsideLoadedBoard) {
+    const heading = document.createElement('small');
+    heading.textContent = 'YOUR POSITION';
+    ui.leaderboardContext.append(heading);
+    [personal.above, personal.entry, personal.below].filter(Boolean).forEach(entry => {
+      ui.leaderboardContext.append(createLeaderboardRow(entry, Number(entry.rank) || 0, personal.entry.id, true));
+    });
+  }
+
+  leaderboardTotal = Math.max(Number(total) || 0, scores.length);
+  const canLoadMore = scores.length < leaderboardTotal && scores.length < 100;
+  ui.leaderboardMore.classList.toggle('hidden', !canLoadMore);
+  if (canLoadMore) ui.leaderboardMore.textContent = `SHOW TOP ${Math.min(100, leaderboardTotal, leaderboardLimit + 25)}`;
   const personalRank = Number(personal?.rank) || 0;
-  const nextEntry = personalRank > 1 && personalRank <= 11 ? scores[personalRank - 2] : null;
-  const gap = nextEntry && personal?.entry ? Math.max(0, Number(nextEntry.score) - Number(personal.entry.score) + 1) : 0;
   ui.leaderboardStatus.textContent = personalRank === 1
-    ? 'YOU HOLD THE CROWN · DEFEND #1'
-    : gap > 0
-      ? `${gap.toLocaleString('en-US')} POINTS TO RANK #${personalRank - 1}`
-      : scores.length ? 'TOP 10 · ALL-TIME' : 'NO SCORES YET · CLAIM THE CROWN';
+    ? 'YOU HOLD THE CROWN · CURRENT SEASON'
+    : scores.length ? `TOP ${Math.min(leaderboardTotal, scores.length)} · CURRENT SEASON` : 'CURRENT SEASON · CLAIM THE FIRST SCORE';
 };
 
 const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = false) => {
@@ -2435,8 +2473,9 @@ const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = fals
     ui.leaderboardStatus.textContent = 'CONNECTING...';
   }
   try {
-    const result = await leaderboard.list(difficulty);
-    if (difficulty === leaderboardDifficulty) renderLeaderboard(result.scores || []);
+    const accessToken = playerProfile && serverEconomyReady ? await playerAccount.getAccessToken().catch(() => '') : '';
+    const result = await leaderboard.list(difficulty, leaderboardLimit, accessToken);
+    if (difficulty === leaderboardDifficulty) renderLeaderboard(result.scores || [], '', result.personal, result.total, Boolean(result.authenticated));
     if (difficulty === selectedDifficulty && result.scores?.length) ui.menuBest.textContent = String(result.scores[0].score).padStart(6, '0');
     return result;
   } catch {
@@ -2456,10 +2495,11 @@ const loadLeaderboard = async (difficulty = leaderboardDifficulty, silent = fals
 
 const openLeaderboard = (origin = 'menu', difficulty = selectedDifficulty, result = null) => {
   leaderboardReturn = origin;
+  leaderboardLimit = 25;
   selectLeaderboardDifficulty(difficulty);
   ui.leaderboardOverlay.classList.remove('hidden');
   if (result?.scores) {
-    renderLeaderboard(result.scores, result.entry?.id || '', { entry: result.entry, rank: result.rank });
+    renderLeaderboard(result.scores, result.entry?.id || '', result.personal || { entry: result.entry, rank: result.rank }, result.total, Boolean(result.authenticated));
   } else {
     loadLeaderboard(difficulty);
   }
@@ -4085,7 +4125,14 @@ ui.openCrate.addEventListener('click', async () => {
     ui.vaultStatus.textContent = error?.code === 'NOT_ENOUGH_SHARDS' || error?.status === 409 ? 'NOT ENOUGH SHARDS' : 'VAULT LINK FAILED · TRY AGAIN';
   }
 });
-ui.leaderboardTabs.forEach(button => button.addEventListener('click', () => loadLeaderboard(button.dataset.boardDifficulty)));
+ui.leaderboardTabs.forEach(button => button.addEventListener('click', () => {
+  leaderboardLimit = 25;
+  loadLeaderboard(button.dataset.boardDifficulty);
+}));
+ui.leaderboardMore.addEventListener('click', () => {
+  leaderboardLimit = Math.min(100, leaderboardLimit + 25);
+  loadLeaderboard(leaderboardDifficulty, true);
+});
 ui.playerInitials.addEventListener('input', () => {
   ui.playerInitials.dataset.pristine = 'false';
   const normalized = normalizeInitials(ui.playerInitials.value);

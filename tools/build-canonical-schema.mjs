@@ -17,6 +17,7 @@ const inputs = [
   'supabase/cosmetic-effects-build112.sql',
   'supabase/leaderboard-seasons-p1b.sql',
   'supabase/anti-cheat-p1c.sql',
+  'supabase/leaderboard-personal-best-build114.sql',
 ];
 const sections = await Promise.all(inputs.map(async path => `\n-- SOURCE: ${path}\n${await readFile(resolve(root, path), 'utf8')}`));
 const header = `-- GENERATED FILE. Do not edit directly.\n-- Rebuild with: node tools/build-canonical-schema.mjs\n-- Safe bootstrap order for a new Crown Lizard Supabase project.\n`;

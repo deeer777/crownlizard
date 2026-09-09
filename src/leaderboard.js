@@ -36,9 +36,11 @@ export const leaderboard = {
     });
   },
 
-  async list(difficulty, limit = 10) {
+  async list(difficulty, limit = 25, accessToken = '') {
     const query = new URLSearchParams({ difficulty, limit: String(limit) });
-    return request(`/api/scores?${query}`);
+    return request(`/api/scores?${query}`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
   },
 
   async checkpoint(entry, accessToken = '') {

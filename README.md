@@ -172,6 +172,8 @@ For production, apply `supabase/security-hardening-build99.sql` before publishin
 
 ### Stabilized release gate
 
+Build 114 upgrades the active-season High Scores view to a server-ranked Top 25 with progressive loading to Top 100. Registered pilots occupy one position per difficulty and season using their best verified run, while guests remain individual arcade entries. Authenticated responses include the player's personal best, exact rank and adjacent positions without exposing account IDs or sharing private results through public caches. Apply `supabase/leaderboard-personal-best-build114.sql` before deploying the matching Pages build.
+
 After Build 99, apply `supabase/stability-build99.sql` to keep expired runs and old abandoned checkpoints bounded without deleting completed run or score history. New Supabase projects receive it through the generated canonical schema.
 
 Use `npm run release:verify` before every publish. It rebuilds the canonical schema, runs the complete offline suite, creates the allowlisted public build and checks that client, server, package and public release versions agree. It also rejects leaked SQL, tests, tools, environment files or package internals in `dist/`.

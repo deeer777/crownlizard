@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
 export const ACTIVE_LEADERBOARD_SEASON = 'season-1';
-export const SUPPORTED_GAME_VERSIONS = new Set(['0.45.0-112', '0.45.1-113']);
+export const SUPPORTED_GAME_VERSIONS = new Set(['0.45.1-113', '0.46.0-114']);
 const ARMORY_UNLOCK_VERSIONS = SUPPORTED_GAME_VERSIONS;
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
@@ -971,38 +971,19 @@ export const validateScorePayload = (body, run, now = Date.now(), profile = null
   return { value: { initials: accountRun ? null : initials, playerName: accountRun ? accountName : initials, userId: accountRun ? run.user_id : null, score, durationMs, zone, wardens, enemies, crates, bestCombo, difficulty, gameVersion } };
 };
 
-const listScores = async (config, difficulty, limit = 10) => {
-  const query = new URLSearchParams({
-    select: 'id,initials,player_name,user_id,score,difficulty,zone,wardens,created_at',
-    season_id: `eq.${ACTIVE_LEADERBOARD_SEASON}`,
-    difficulty: `eq.${difficulty}`,
-    is_hidden: 'eq.false',
-    order: 'score.desc,created_at.asc',
-    limit: String(limit),
+const leaderboardSnapshot = async (config, difficulty, limit = 25, userId = null, entryId = null) => {
+  const snapshot = await supabaseFetch(config, 'rpc/leaderboard_snapshot', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_season_id: ACTIVE_LEADERBOARD_SEASON,
+      p_difficulty: difficulty,
+      p_user_id: UUID_PATTERN.test(String(userId || '')) ? userId : null,
+      p_entry_id: UUID_PATTERN.test(String(entryId || '')) ? entryId : null,
+      p_limit: Math.min(100, Math.max(1, Number(limit) || 25)),
+    }),
   });
-  const rows = await supabaseFetch(config, `leaderboard_scores?${query}`);
-  const userIds = [...new Set(rows.map(row => row.user_id).filter(Boolean))];
-  let currentNames = new Map();
-  if (userIds.length) {
-    const profileQuery = new URLSearchParams({ select: 'user_id,display_name,public_id,is_public', user_id: `in.(${userIds.join(',')})` });
-    const profiles = await supabaseFetch(config, `player_profiles?${profileQuery}`);
-    currentNames = new Map(profiles.map(profile => [profile.user_id, profile]));
-  }
-  return rows.map(row => {
-    const currentProfile = currentNames.get(row.user_id);
-    const playerName = String(currentProfile?.display_name || row.player_name || row.initials || '---');
-    return {
-      id: row.id,
-      playerName,
-      initials: playerName,
-      publicProfileId: currentProfile?.is_public && UUID_PATTERN.test(String(currentProfile.public_id || '')) ? String(currentProfile.public_id) : null,
-      score: row.score,
-      difficulty: row.difficulty,
-      zone: row.zone,
-      wardens: row.wardens,
-      created_at: row.created_at,
-    };
-  });
+  if (!snapshot || !Array.isArray(snapshot.scores)) throw new Error('INVALID_LEADERBOARD_SNAPSHOT');
+  return snapshot;
 };
 
 const beginRun = async (request, config) => {
@@ -2102,10 +2083,10 @@ const submitScore = async (request, config) => {
   if (!UUID_PATTERN.test(String(inserted.id || ''))) {
     throw new Error('INVALID_SCORE_RESULT');
   }
-  const scores = await listScores(config, value.difficulty, 100);
-  const rank = scores.findIndex(entry => entry.id === inserted.id) + 1;
-  const entry = scores.find(score => score.id === inserted.id) || { ...inserted, playerName: value.playerName, initials: value.playerName };
-  return json({ season: ACTIVE_LEADERBOARD_SEASON, entry, rank: rank || null, scores: scores.slice(0, 10) }, 201);
+  const snapshot = await leaderboardSnapshot(config, value.difficulty, 25, user?.id || null, inserted.id);
+  const personal = snapshot.personal || null;
+  const entry = personal?.entry || { ...inserted, playerName: value.playerName, initials: value.playerName };
+  return json({ season: ACTIVE_LEADERBOARD_SEASON, difficulty: value.difficulty, authenticated: Boolean(user), ...snapshot, entry, rank: personal?.rank || null }, 201);
 };
 
 export const onRequest = async context => {
@@ -2209,9 +2190,17 @@ export const onRequest = async context => {
     if (path === 'scores' && request.method === 'GET') {
       const url = new URL(request.url);
       const difficulty = url.searchParams.get('difficulty') || 'arcade';
-      const limit = Math.min(10, Math.max(1, Number(url.searchParams.get('limit')) || 10));
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 25));
       if (!DIFFICULTIES.has(difficulty)) return json({ error: 'Invalid difficulty.' }, 400);
-      return json({ season: ACTIVE_LEADERBOARD_SEASON, difficulty, scores: await listScores(config, difficulty, limit) }, 200, 'public, max-age=10, s-maxage=10');
+      const suppliedToken = bearerToken(request);
+      const user = suppliedToken ? await authenticatePlayer(request, config) : null;
+      if (suppliedToken && !user) return json({ error: 'Player session expired.' }, 401);
+      const snapshot = await leaderboardSnapshot(config, difficulty, limit, user?.id || null);
+      return json(
+        { season: ACTIVE_LEADERBOARD_SEASON, difficulty, authenticated: Boolean(user), ...snapshot },
+        200,
+        user ? 'private, no-store' : 'public, max-age=10, s-maxage=10',
+      );
     }
     if (path === 'scores' && request.method === 'POST') return await submitScore(request, config);
     return json({ error: 'Not found.' }, 404);

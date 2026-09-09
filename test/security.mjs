@@ -15,9 +15,9 @@ const buildSite = readFileSync(new URL('../tools/build-site.mjs', import.meta.ur
 assert.match(main, /const debugMode = localPreview && debugParams\.has\('debug'\)/, 'debug controls require both localhost and the explicit debug flag');
 assert.doesNotMatch(main, /debugParams\.has\('debug'\) \|\| localPreview/, 'a public query parameter can never enable debug controls');
 assert.match(main, /const callsignPreviewMode = localPreview && debugParams\.has\('debug'\) && debugParams\.has\('callsign'\)/, 'the callsign UX simulator is strictly localhost-only');
-assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260908-113-desktop-sweep"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
+assert.match(index, /src="\.\/src\/bootstrap\.js\?v=20260909-114-pilot-ranking"/, 'the CSP-compliant bootstrap ships behind a fresh browser cache key');
 assert.doesNotMatch(index, /<script\s+type="module">/, 'production cannot rely on executable inline modules blocked by its CSP');
-assert.match(bootstrap, /main\.js\?v=20260908-113-desktop-sweep/, 'the current frontend ships behind the bootstrap cache boundary');
+assert.match(bootstrap, /main\.js\?v=20260909-114-pilot-ranking/, 'the current frontend ships behind the bootstrap cache boundary');
 assert.match(index, /<meta name="google-adsense-account" content="ca-pub-8438094910600730">/, 'the AdSense ownership tag remains present during publisher review');
 assert.match(index, /href="\/privacy\/"[\s\S]*PRIVACY &amp; COOKIES/, 'privacy information is directly reachable from the game settings');
 assert.match(index, /href="\/contact\/"[\s\S]*CONTACT &amp; SUPPORT/, 'player support is directly reachable from the game settings');
@@ -42,7 +42,7 @@ assert.match(main, /playerAccount\.logout\(\)[\s\S]*playerProfile = null[\s\S]*s
 assert.match(styles, /\.system-link \{[^}]*min-width: 245px[^}]*font: 400 11px\/1\.7 var\(--font-pixel-display\)/, 'secondary navigation uses the same full-size arcade typography as primary menu actions');
 assert.match(styles, /\.account-tabs button \{ min-height: 48px; font-size: 9px; \}/, 'mobile account tabs keep readable copy and full touch targets');
 assert.match(styles, /\.vault-categories \{ grid-template-columns: repeat\(2,1fr\); gap: 4px; \}/, 'mobile Vault categories remain scalable and readable');
-assert.match(serverApi, /SUPPORTED_GAME_VERSIONS = new Set\(\['0\.45\.0-112', '0\.45\.1-113'\]\)/, 'only the current and previous production build can register server-owned runs');
+assert.match(serverApi, /SUPPORTED_GAME_VERSIONS = new Set\(\['0\.45\.1-113', '0\.46\.0-114'\]\)/, 'only the current and previous production build can register server-owned runs');
 assert.doesNotMatch(serverApi, /'0\.44\.3-110'/, 'the compatibility window excludes older balance builds');
 assert.match(main, /render: \(\) => \{ if \(game\.active\) game\.render\(\); \}/, 'the full game canvas is not rendered behind the mobile title screen');
 assert.doesNotMatch(main, /if \(!serverEconomyReady\) throw serverEconomyError/, 'an unavailable Vault cannot block game start');

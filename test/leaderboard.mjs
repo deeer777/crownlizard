@@ -80,6 +80,16 @@ globalThis.fetch = async (url, options = {}) => {
     if (scoreRpcError) return Response.json({ error: scoreRpcError });
     return Response.json({ id: insertedId });
   }
+  if (href.endsWith('/rest/v1/rpc/leaderboard_snapshot')) return Response.json({
+    scores: [{ id: insertedId, rank: 1, playerName: 'PILOT_ONE', initials: 'PILOT_ONE', publicProfileId: null, ...valid }],
+    total: 1,
+    personal: {
+      rank: 1,
+      entry: { id: insertedId, rank: 1, playerName: 'PILOT_ONE', initials: 'PILOT_ONE', publicProfileId: null, ...valid },
+      above: null,
+      below: null,
+    },
+  });
   if (href.includes('/rest/v1/leaderboard_runs?') && options.method === 'PATCH') return Response.json([]);
   if (href.includes('/rest/v1/leaderboard_scores?')) return Response.json([{ id: insertedId, run_id: runId, user_id: accountUserId, player_name: 'PILOT_ONE', initials: null, ...valid, duration_ms: valid.durationMs, best_combo: valid.bestCombo, game_version: valid.gameVersion, created_at: new Date().toISOString() }]);
   throw new Error(`Unexpected leaderboard fetch: ${href}`);

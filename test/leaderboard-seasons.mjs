@@ -13,7 +13,7 @@ const env = {
 const runId = '123e4567-e89b-42d3-a456-426614174000';
 
 assert.equal(ACTIVE_LEADERBOARD_SEASON, 'season-1', 'the active competitive board has one explicit server-owned season');
-assert.deepEqual([...SUPPORTED_GAME_VERSIONS], ['0.45.0-112', '0.45.1-113'], 'only the current and immediately previous build may start verified runs');
+assert.deepEqual([...SUPPORTED_GAME_VERSIONS], ['0.45.1-113', '0.46.0-114'], 'only the current and immediately previous build may start verified runs');
 assert.match(migration, /add column if not exists season_id text not null default 'preseason'/, 'historical runs and scores are preserved in preseason');
 assert.match(migration, /p_season_id text default 'preseason'/, 'an older Worker falls back to the archived preseason during rolling deployment');
 assert.match(migration, /drop function if exists public\.start_verified_run\(uuid,text,text,text,text,text\)/, 'the season migration can safely replace its own six-argument run starter');
@@ -46,14 +46,14 @@ globalThis.fetch = async (url, options = {}) => {
   if (href.endsWith('/rest/v1/rpc/start_verified_run')) return Response.json({
     id: runId, season: ACTIVE_LEADERBOARD_SEASON, startedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
   });
-  if (href.includes('/rest/v1/leaderboard_scores?')) return Response.json([]);
+  if (href.endsWith('/rest/v1/rpc/leaderboard_snapshot')) return Response.json({ scores: [], total: 0, personal: null });
   throw new Error(`Unexpected season test request: ${href}`);
 };
 
 try {
   const started = await onRequest({
     request: new Request('https://crownlizard.com/api/runs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.8' }, body: JSON.stringify({ difficulty: 'arcade', gameVersion: '0.45.1-113' }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.8' }, body: JSON.stringify({ difficulty: 'arcade', gameVersion: '0.46.0-114' }),
     }),
     env,
     params: { path: ['runs'] },
@@ -67,8 +67,8 @@ try {
     request: new Request('https://crownlizard.com/api/scores?difficulty=arcade'), env, params: { path: ['scores'] },
   });
   assert.equal((await board.json()).season, ACTIVE_LEADERBOARD_SEASON, 'leaderboard responses identify the active season');
-  const boardQuery = calls.find(call => call.href.includes('/rest/v1/leaderboard_scores?'))?.href || '';
-  assert.match(decodeURIComponent(boardQuery), /season_id=eq\.season-1/, 'leaderboard reads cannot mix archived and active scores');
+  const boardCall = calls.find(call => call.href.endsWith('/rest/v1/rpc/leaderboard_snapshot'));
+  assert.equal(JSON.parse(boardCall.options.body).p_season_id, ACTIVE_LEADERBOARD_SEASON, 'leaderboard reads cannot mix archived and active scores');
 
   archivedScoreRequest = true;
   const archived = await onRequest({
