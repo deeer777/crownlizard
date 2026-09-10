@@ -103,6 +103,7 @@ globalThis.fetch = fetchBeforeRecoveryTest;
 
 const schema = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
 const hardeningSchema = readFileSync(new URL('../supabase/security-hardening-build99.sql', import.meta.url), 'utf8');
+const crateCadenceSchema = readFileSync(new URL('../supabase/crate-cadence-build117.sql', import.meta.url), 'utf8');
 const serverApi = readFileSync(new URL('../functions/api/[[path]].js', import.meta.url), 'utf8');
 assert.match(serverApi, /const AUTH_BOOTSTRAP_LIMIT = 60;/, 'anonymous account bootstrap remains rate-limited but tolerates shared mobile and home networks');
 for (const table of ['player_wallets', 'player_inventory', 'cosmetic_catalog', 'economy_transactions', 'auth_bootstrap_events']) {
@@ -119,9 +120,10 @@ assert.match(schema, /for update;[\s\S]*economy_settled_at/, 'run settlement loc
 assert.match(schema, /unique \(user_id, external_id\)/, 'the transaction ledger rejects duplicate run payouts');
 assert.match(schema, /revoke all on function public\.settle_run_reward[\s\S]*from public, anon, authenticated/, 'run settlement is service-role only');
 assert.match(schema, /create or replace function public\.open_crown_crate[\s\S]*for update;/, 'crate opening locks the authoritative wallet');
-assert.match(schema, /wallet\.balance < 150/, 'the database enforces the crate price');
+assert.match(crateCadenceSchema, /crate_cost := case when wallet\.opens = 0 then 75 else 150 end/, 'the server alone selects the first and standard crate prices');
+assert.match(crateCadenceSchema, /wallet\.balance < crate_cost/, 'the database enforces the current crate price under the wallet lock');
 assert.match(schema, /wallet\.since_sovereign >= 199/, 'the database enforces Sovereign pity under the wallet lock');
-assert.match(schema, /-150 \+ salvage/, 'duplicate salvage and crate cost settle in one transaction');
+assert.match(crateCadenceSchema, /resulting_balance := wallet\.balance - case when uses_free_credit then 0 else crate_cost end \+ salvage/, 'discount, free credit and duplicate salvage settle in one transaction');
 assert.match(schema, /revoke all on function public\.open_crown_crate[\s\S]*from public, anon, authenticated/, 'crate opening is service-role only');
 assert.match(schema, /create or replace function public\.claim_player_callsign[\s\S]*exception when unique_violation/, 'initial callsign ownership is claimed atomically');
 assert.match(schema, /revoke all on function public\.claim_player_callsign[\s\S]*from public, anon, authenticated/, 'callsign claiming is service-role only');

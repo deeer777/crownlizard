@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260909-115-lean-pixels';
+import { CONFIG } from './config.js?v=20260910-117-crown-cadence';
 import { ASSAULT_BOSS_HEALTH, ASSAULT_DURATION, ASSAULT_GLOBAL_HP_SNAPSHOT, assaultDamageMultiplier, assaultPhaseAt, assaultResult } from './boss-assault.js?v=20260828-91-weapon-skins4';
 import { buildDuelWavePlan, DUEL_BLUEPRINT_BY_ID, DUEL_DURATION_SECONDS } from './duel-match.js?v=20260901-102-duel-verified-final';
 import { FLIGHT_PROFILES, stepFlightMotion } from './flight-control.js?v=20260905-110-privacy-support';

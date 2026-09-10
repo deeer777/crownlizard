@@ -1,4 +1,8 @@
 export const CROWN_CRATE_COST = 150;
+export const FIRST_CROWN_CRATE_COST = 75;
+export const crownCrateCost = opens => Math.max(0, Math.floor(Number(opens) || 0)) === 0
+  ? FIRST_CROWN_CRATE_COST
+  : CROWN_CRATE_COST;
 export const SOVEREIGN_GUARANTEE = 200;
 
 export const STANDARD_TIER = Object.freeze({ key: 'standard', name: 'STANDARD', odds: 0, color: '#9dfbe0', salvage: 0 });

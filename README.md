@@ -4,6 +4,8 @@ Detta är en separat, moderniserad spelbar version. Originalet finns orört i `.
 
 Build 115 introduces a shared, non-destructive production image pipeline for Crown Lizard and CrazyGames. Source artwork remains untouched while build outputs receive category-aware PNG resizing and compression, reducing the Crown package by more than 50 MB.
 
+Build 117 closes the first-session loop and improves its cadence: the tutorial introduces shard progression, qualified run results show the current crate target and the Vault can be opened without abandoning the result screen. A player's first paid Crown Crate costs 75 shards and is guaranteed new; later crates retain the 150-shard price. Crown Power and weapon-mastery cards now support arrows, WASD, number keys and Enter/Space on desktop.
+
 ## Spelkänsla i version 2
 
 - Fast simulering på 60 Hz: samma svårighetsgrad oavsett skärmens uppdateringsfrekvens.

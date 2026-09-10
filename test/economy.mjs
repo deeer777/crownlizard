@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { calculateShardReward, ShardWallet, SPONSORED_RULES } from '../src/economy.js';
-import { COLLECTION_COSMETICS, CROWN_CRATE_COST, rollTier } from '../src/cosmetics.js';
+import { COLLECTION_COSMETICS, CROWN_CRATE_COST, FIRST_CROWN_CRATE_COST, crownCrateCost, rollTier } from '../src/cosmetics.js';
 import { REWARDED_AD_STATUS, SimulatedRewardedAdAdapter } from '../src/rewarded-ad.js';
 
 class MemoryStorage {
@@ -76,7 +76,9 @@ vaultWallet.write(funded);
 const firstOpen = vaultWallet.openCrate(() => 0);
 assert.equal(firstOpen.outcome.cosmeticId, 'ship_verdant_scout', 'a deterministic crate returns the expected chassis');
 assert.equal(firstOpen.outcome.duplicate, false, 'the first crate awards a new cosmetic');
-assert.equal(firstOpen.balance, 600 - CROWN_CRATE_COST, 'opening a crate deducts its published price');
+assert.equal(crownCrateCost(0), FIRST_CROWN_CRATE_COST, 'a new wallet receives the one-time first-crate price');
+assert.equal(crownCrateCost(1), CROWN_CRATE_COST, 'later crates retain the standard price');
+assert.equal(firstOpen.balance, 600 - FIRST_CROWN_CRATE_COST, 'the first crate deducts the onboarding price');
 assert.ok(firstOpen.inventory.cosmetics.ship_verdant_scout, 'new cosmetics are stored in the market-ready inventory');
 assert.equal(vaultWallet.equipCosmetic('ship_verdant_scout').inventory.equipped.ship, 'ship_verdant_scout', 'an owned ship cosmetic can be equipped');
 assert.throws(() => vaultWallet.equipCosmetic('ship_void_hunter'), error => error.code === 'COSMETIC_LOCKED', 'a locked cosmetic cannot be equipped');
@@ -99,7 +101,7 @@ assert.equal(duplicateOpen.outcome.duplicate, true, 'a repeated cosmetic becomes
 assert.equal(duplicateOpen.outcome.salvageValue, 15, 'duplicate salvage follows its rarity tier');
 assert.throws(() => vaultWallet.openCrate(() => 0), error => error.code === 'PENDING_REWARD', 'the next crate waits until the duplicate is resolved');
 const salvaged = vaultWallet.salvagePending();
-assert.equal(salvaged.balance, 600 - CROWN_CRATE_COST * 2 + 15, 'salvage returns the displayed shard amount');
+assert.equal(salvaged.balance, 600 - FIRST_CROWN_CRATE_COST - CROWN_CRATE_COST + 15, 'later crates use the standard price and salvage the displayed amount');
 assert.equal(salvaged.vault.pendingReward, null, 'salvage clears the durable pending reward');
 
 const guaranteeStorage = new MemoryStorage();
@@ -116,6 +118,10 @@ assert.equal(guaranteed.vault.sinceSovereign, 0, 'a sovereign resets its guarant
 
 const poorWallet = new ShardWallet(new MemoryStorage());
 assert.throws(() => poorWallet.openCrate(), error => error.code === 'NOT_ENOUGH_SHARDS', 'crates cannot create a negative shard balance');
+const almostFundedState = poorWallet.getState();
+almostFundedState.balance = FIRST_CROWN_CRATE_COST - 1;
+poorWallet.write(almostFundedState);
+assert.throws(() => poorWallet.openCrate(), error => error.code === 'NOT_ENOUGH_SHARDS', 'the first-crate discount cannot be opened one shard early');
 
 const sponsoredStorage = new MemoryStorage();
 const sponsoredWallet = new ShardWallet(sponsoredStorage);

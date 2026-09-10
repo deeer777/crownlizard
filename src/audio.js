@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=20260909-115-lean-pixels';
+import { CONFIG } from './config.js?v=20260910-117-crown-cadence';
 
 export class Music {
   constructor() {

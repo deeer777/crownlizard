@@ -1,14 +1,14 @@
 import {
   COSMETIC_BY_ID,
   COSMETICS,
-  CROWN_CRATE_COST,
+  crownCrateCost,
   STORE_PRODUCTS,
   SOVEREIGN_GUARANTEE,
   TIER_BY_KEY,
   chooseCosmetic,
   rollTier,
   secureRandom,
-} from './cosmetics.js?v=20260908-113-desktop-sweep';
+} from './cosmetics.js?v=20260910-117-crown-cadence';
 
 export const SHARD_RULES = Object.freeze({
   version: 1,
@@ -302,7 +302,8 @@ export class ShardWallet {
   }
 
   openCrate(random = secureRandom) {
-    return this.openCrateWith({ random, cost: CROWN_CRATE_COST, source: 'crate', transactionKind: 'crate_open' });
+    const cost = crownCrateCost(this.read().vault.opens);
+    return this.openCrateWith({ random, cost, source: 'crate', transactionKind: 'crate_open' });
   }
 
   openSponsoredCrate(runId, random = secureRandom, now = new Date()) {

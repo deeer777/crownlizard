@@ -1,6 +1,6 @@
 const DIFFICULTIES = new Set(['chill', 'arcade', 'crowned']);
 export const ACTIVE_LEADERBOARD_SEASON = 'season-1';
-export const SUPPORTED_GAME_VERSIONS = new Set(['0.46.0-114', '0.46.1-115']);
+export const SUPPORTED_GAME_VERSIONS = new Set(['0.47.0-116', '0.48.0-117']);
 const ARMORY_UNLOCK_VERSIONS = SUPPORTED_GAME_VERSIONS;
 const MAX_BODY_BYTES = 4096;
 const GAME_VERSION_PATTERN = /^\d+\.\d+\.\d+-\d+$/;
@@ -1320,7 +1320,7 @@ const openCrownCrate = async (request, config) => {
       p_cosmetic_roll: secureServerInt(1_000_000),
     }),
   });
-  if (result.error === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards or free opens.', code: result.error, balance: result.balance, freeCrateCredits: result.freeCrateCredits || 0 }, 409);
+  if (result.error === 'NOT_ENOUGH_SHARDS') return json({ error: 'Not enough shards or free opens.', code: result.error, balance: result.balance, cost: result.cost, freeCrateCredits: result.freeCrateCredits || 0 }, 409);
   return json(result, result.duplicateRequest ? 200 : 201);
 };
 

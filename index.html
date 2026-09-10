@@ -61,7 +61,7 @@
     }
   }
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260909-115-lean-pixels">
+  <link rel="stylesheet" href="./styles.css?v=20260910-117-crown-cadence">
 </head>
 <body>
   <canvas id="game" tabindex="-1" aria-label="Crown Lizard game arena"></canvas>
@@ -141,7 +141,7 @@
         <button id="menuSettings" class="primary menu-choice" data-menu-choice="settings"><span class="menu-label"><i>♛</i> SETTINGS</span></button>
       </div>
       <div class="menu-nav-hint">↑ ↓ SELECT · ← → CHANGE MODE · ENTER CONFIRM</div>
-      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.46.1 · BUILD 115</span><strong id="best">0</strong></div>
+      <div class="best"><span>CROWNLIZARD.COM</span><span id="gameVersion" class="game-version" aria-label="Game version">VER 0.48.0 · BUILD 117</span><strong id="best">0</strong></div>
       <nav class="arcade-site-links" aria-label="Crown Lizard game information">
         <a href="/about/">ABOUT THE GAME</a><a href="/how-to-play/">HOW TO PLAY</a><a href="/updates/">LATEST BUILDS</a>
       </nav>
@@ -172,6 +172,7 @@
         <span id="scoreSubmitStatus" role="status"></span>
       </form>
       <div class="result-choices" aria-label="Run over menu">
+        <button id="resultVault" class="primary result-choice hidden" data-result-choice="vault" type="button"><i>&#9819;</i> CROWN VAULT</button>
         <button id="submitScore" class="primary result-choice hidden" data-result-choice="submit" type="submit" form="scoreEntry"><i>♛</i> SUBMIT SCORE</button>
         <button id="watchAd" class="primary result-choice hidden" data-result-choice="sponsored" type="button"><i>♛</i> WATCH AD · OPEN CRATE</button>
         <button id="retry" class="primary result-choice result-selected" data-result-choice="retry"><i>♛</i> TRY AGAIN</button>
@@ -225,6 +226,7 @@
         <div><i>✥</i><b>MOVE</b><span>DRAG ANYWHERE<br>OR USE WASD</span></div>
         <div><i>»</i><b>DASH</b><span>TAP DASH<br>OR PRESS SPACE</span></div>
         <div><img src="./assets/runtime/sprites/weapon-crate-closed-v1.png" alt=""><b>POWER UP</b><span>COLLECT CRATES<br>AND CROWN POWERS</span></div>
+        <div><i>&#9670;</i><b>EARN SHARDS</b><span>SURVIVE 30 SEC<br>SPEND IN VAULT</span></div>
       </div>
       <button id="tutorialDone" class="system-action"><i>♛</i> BEGIN RUN</button>
     </div>
@@ -509,7 +511,7 @@
       <div id="vaultSyncStatus" class="vault-sync-status" data-state="guest">DEVICE VAULT · GUEST</div>
       <div class="vault-mode-tabs" role="tablist" aria-label="Crown Vault section">
         <button id="vaultCratesTab" class="selected" type="button" role="tab" aria-selected="true" aria-controls="vaultBody"><i>♛</i> CRATES &amp; COLLECTION</button>
-        <button id="vaultStoreTab" type="button" role="tab" aria-selected="false" aria-controls="vaultStore" data-platform-capability="store"><i>♛</i> CROWN STORE</button>
+        <button id="vaultStoreTab" type="button" role="tab" aria-selected="false" aria-controls="vaultStore" data-platform-capability="store"><i>♛</i> STORE</button>
         <button id="vaultMarketTab" type="button" role="tab" aria-selected="false" aria-controls="vaultMarket" data-platform-capability="market"><i>♛</i> MARKET <em id="marketSignalBadge" class="market-tab-signal hidden">NEW</em></button>
       </div>
       <div id="vaultBody" class="vault-body" role="tabpanel">
@@ -715,7 +717,7 @@
       <div id="perkEyebrow" class="eyebrow">WARDEN DEFEATED</div>
       <h2 id="perkTitle">CHOOSE A CROWN POWER</h2>
       <p id="perkSubtitle">Your choice lasts for the rest of the run.</p>
-      <div id="perkSwipeHint" class="perk-swipe-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</div>
+      <div id="perkSwipeHint" class="perk-swipe-hint"><span class="perk-key-hint">◀ A / D OR ARROWS · ENTER TO CHOOSE ▶</span><span class="perk-touch-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</span></div>
       <div id="perkCards" class="perk-cards"></div>
     </div>
   </section>
@@ -725,6 +727,6 @@
   <div id="joystick" class="joystick hidden" aria-hidden="true"><i></i><b></b></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./src/bootstrap.js?v=20260909-115-lean-pixels"></script>
+  <script type="module" src="./src/bootstrap.js?v=20260910-117-crown-cadence"></script>
 </body>
 </html>

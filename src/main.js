@@ -1,11 +1,11 @@
-import { CONFIG } from './config.js?v=20260909-115-lean-pixels';
+import { CONFIG } from './config.js?v=20260910-117-crown-cadence';
 import { Engine } from './engine.js?v=20260820-18';
 import { Input } from './input.js?v=20260905-110-privacy-support';
-import { Music, SoundFx } from './audio.js?v=20260909-115-lean-pixels';
-import { Game } from './game.js?v=20260909-115-lean-pixels';
-import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260908-113-desktop-sweep';
-import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, CROWN_CRATE_COST, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260908-113-desktop-sweep';
-import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260909-115-lean-pixels';
+import { Music, SoundFx } from './audio.js?v=20260910-117-crown-cadence';
+import { Game } from './game.js?v=20260910-117-crown-cadence';
+import { SHARD_STORAGE_KEY, ShardWallet } from './economy.js?v=20260910-117-crown-cadence';
+import { COLLECTION_COSMETICS, COSMETICS, COSMETIC_BY_ID, COSMETIC_TIERS, CRATE_COSMETICS, crownCrateCost, RARITY_BY_KEY, SOVEREIGN_GUARANTEE, STORE_PRODUCTS } from './cosmetics.js?v=20260910-117-crown-cadence';
+import { leaderboard, normalizeInitials } from './leaderboard.js?v=20260910-117-crown-cadence';
 import { PlayerAccount } from './player-account.js?v=20260901-102-duel-verified-final';
 import { buildAccountPresentation } from './account-presentation.js?v=20260826-73-cinematic-endings';
 import { REWARDED_AD_STATUS, createRewardedAdAdapter } from './rewarded-ad.js?v=20260907-crazygames-rewarded-adapter';
@@ -61,7 +61,7 @@ const duelPreviewMode = localPreview && debugParams.has('debug') && debugParams.
 const serverEconomy = PLATFORM.capabilities.crownServices && !localPreview;
 const localEconomy = localPreview || (PLATFORM.capabilities.localProgression && !serverEconomy);
 const ui = {
-  menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'),
+  menu: $('menu'), gameover: $('gameover'), assaultResult: $('assaultResult'), hud: $('hud'), play: $('play'), retry: $('retry'), home: $('home'), resultVault: $('resultVault'),
   perkOverlay: $('perkOverlay'), perkCards: $('perkCards'), perkEyebrow: $('perkEyebrow'), perkTitle: $('perkTitle'), perkSubtitle: $('perkSubtitle'), perkSwipeHint: $('perkSwipeHint'),
   tutorialOverlay: $('tutorialOverlay'), tutorialDone: $('tutorialDone'), pauseOverlay: $('pauseOverlay'), pauseReason: $('pauseReason'),
   settingsOverlay: $('settingsOverlay'), resume: $('resume'), quitRun: $('quitRun'), pauseSettings: $('pauseSettings'), installApp: $('installApp'), updateApp: $('updateApp'), openRedeem: $('openRedeem'), openAdmin: $('openAdmin'),
@@ -86,7 +86,7 @@ const ui = {
   crateOpeningCinematic: $('crateOpeningCinematic'), cinematicCrateSprite: $('cinematicCrateSprite'), crateCinematicText: $('crateCinematicText'),
   cosmeticDetail: $('cosmeticDetail'), cosmeticDetailTier: $('cosmeticDetailTier'), cosmeticDetailPreview: $('cosmeticDetailPreview'), cosmeticDetailImage: $('cosmeticDetailImage'), cosmeticDetailName: $('cosmeticDetailName'), cosmeticDetailStatus: $('cosmeticDetailStatus'), cosmeticDetailHint: $('cosmeticDetailHint'), favoriteCosmetic: $('favoriteCosmetic'), equipCosmetic: $('equipCosmetic'), closeCosmeticDetail: $('closeCosmeticDetail'), randomFavoriteToggle: $('randomFavoriteToggle'),
   menuChoices: [...document.querySelectorAll('[data-menu-choice]')],
-  resultChoices: [...document.querySelectorAll('[data-result-choice]')],
+  resultChoices: ['submitScore', 'watchAd', 'resultVault', 'retry', 'home'].map($),
   gameVersion: $('gameVersion'), menuShards: $('menuShards'), sponsoredReward: $('sponsoredReward'), watchAd: $('watchAd'),
   score: $('score'), finalScore: $('finalScore'), best: $('best'), menuBest: $('menuBest'), combo: $('combo'), hearts: $('hearts'),
   weaponHud: $('weaponHud'), weaponIcon: $('weaponIcon'), weaponName: $('weaponName'), weaponLevel: $('weaponLevel'), weaponUpgrade: $('weaponUpgrade'), weaponPips: $('weaponPips'),
@@ -97,6 +97,7 @@ const ui = {
   rewardedAdOverlay: $('rewardedAdOverlay'), rewardedAdEyebrow: $('rewardedAdEyebrow'), rewardedAdMessage: $('rewardedAdMessage'), rewardedAdFill: $('rewardedAdFill'), rewardedAdCountdown: $('rewardedAdCountdown'), cancelRewardedAd: $('cancelRewardedAd'),
   networkStatus: $('networkStatus'), pwaInstallOverlay: $('pwaInstallOverlay'), closePwaInstall: $('closePwaInstall'), pwaUpdateOverlay: $('pwaUpdateOverlay'), pwaUpdateVersion: $('pwaUpdateVersion'), pwaReleaseTitle: $('pwaReleaseTitle'), pwaReleaseNotes: $('pwaReleaseNotes'), applyPwaUpdate: $('applyPwaUpdate'), laterPwaUpdate: $('laterPwaUpdate'),
 };
+ui.watchAd.after(ui.resultVault);
 applyPlatformCapabilities();
 ui.menuChoices = ui.menuChoices.filter(button => !button.hidden && !button.classList.contains('hidden'));
 
@@ -178,6 +179,7 @@ let runCheckpointChain = Promise.resolve();
 let economyRunId = '';
 let selectedMenuChoice = 0;
 let selectedResultChoice = 0;
+let selectedPerkChoice = 0;
 ui.sound.classList.toggle('off', !music.enabled);
 const gameCanvas = $('game');
 const input = new Input(gameCanvas, ui.dashButton, ui.joystick);
@@ -362,6 +364,7 @@ let marketHideOwned = false;
 let selectedCosmeticDetailId = '';
 let selectedCosmeticOrigin = 'collection';
 let crateRevealReturn = 'vault';
+let vaultReturn = 'menu';
 let purchaseRevealReturn = 'store';
 let rewardedAdViewing = false;
 let currentSponsoredOffer = null;
@@ -1000,7 +1003,7 @@ const renderStore = () => {
     return card;
   });
   ui.storeCatalog.replaceChildren(...cards);
-  if (!storeBusySku) ui.storeStatus.textContent = storeMessage || 'SELECT AN ITEM TO INSPECT BEFORE PURCHASE';
+  if (!storeBusySku) ui.storeStatus.textContent = storeMessage;
 };
 
 const loadCrownStore = async () => {
@@ -1177,7 +1180,7 @@ const renderMarket = () => {
   ui.marketStatus.textContent = marketLoading ? 'MARKET SIGNAL CONNECTING...'
     : marketMode === 'activity' ? (activityCount ? `${activityCount} RECENT MARKET EVENTS · SERVER VERIFIED` : 'NO MARKET ACTIVITY YET')
       : !cards.length ? (marketMode === 'sell' ? 'NO UNEQUIPPED CRATE COSMETICS READY TO SELL' : marketMode === 'mine' ? 'YOU HAVE NO ACTIVE LISTINGS' : filtersActive ? 'NO LISTINGS MATCH THESE FILTERS' : 'NO ACTIVE LISTINGS · CHECK BACK SOON')
-        : marketMode === 'browse' ? `${cards.length} OF ${marketData.listings.length} LISTINGS · THE MARKET SETS THE PRICE`
+        : marketMode === 'browse' ? `${cards.length} OF ${marketData.listings.length} LISTINGS`
           : marketMode === 'sell' ? 'SELECT AN ITEM · LISTINGS EXPIRE AFTER 7 DAYS' : 'ACTIVE LISTINGS CAN BE CANCELLED AT ANY TIME';
 };
 
@@ -1280,19 +1283,24 @@ const renderVault = () => {
   ui.randomFavoriteToggle.disabled = !preferences.favorites.some(id => id === 'ship_default' || Boolean(state.inventory.cosmetics[id]));
   const freeCrateCredits = Math.max(0, Number(state.vault.freeCrateCredits) || 0);
   const hasFreeCrate = freeCrateCredits > 0;
-  const missing = Math.max(0, CROWN_CRATE_COST - state.balance);
+  const crateCost = crownCrateCost(state.vault.opens);
+  const missing = Math.max(0, crateCost - state.balance);
   ui.openCrate.disabled = crateOpening || (serverEconomy && !serverEconomyReady) || Boolean(state.vault.pendingReward) || (!hasFreeCrate && missing > 0);
   ui.openCrate.innerHTML = hasFreeCrate
     ? `<i>♛</i> OPEN FREE CRATE · ${freeCrateCredits} SAVED`
     : missing
       ? `<i>♛</i> NEED ◆ ${missing.toLocaleString('en-US')}`
-      : `<i>♛</i> OPEN WITH ◆ ${CROWN_CRATE_COST}`;
+      : state.vault.opens === 0
+        ? `<i>♛</i> FIRST CRATE · ◆ ${crateCost}`
+        : `<i>♛</i> OPEN WITH ◆ ${crateCost}`;
   ui.vaultStatus.textContent = serverEconomy && !serverEconomyReady
     ? 'PLAYER WALLET CONNECTING'
     : hasFreeCrate
     ? 'REWARD CREDIT READY · STANDARD ODDS AND PITY'
     : missing
-    ? 'EARN SHARDS BY COMPLETING QUALIFIED RUNS'
+    ? state.vault.opens === 0
+      ? `FIRST CRATE DISCOUNT · ◆ ${crateCost} · GUARANTEED NEW`
+      : 'EARN SHARDS BY COMPLETING QUALIFIED RUNS'
     : state.vault.opens === 0
       ? 'FIRST OPENING GUARANTEED NEW'
       : state.vault.sinceSovereign >= SOVEREIGN_GUARANTEE - 1
@@ -1499,6 +1507,7 @@ const closeCrateReveal = () => {
 };
 
 const openVault = () => {
+  vaultReturn = !ui.gameover.classList.contains('hidden') ? 'gameover' : 'menu';
   crateRevealReturn = 'vault';
   if (!crownCrateOpenPreload) {
     crownCrateOpenPreload = new Image();
@@ -1522,7 +1531,10 @@ const closeVault = () => {
   ui.cosmeticDetail.classList.add('hidden');
   ui.vaultOverlay.classList.add('hidden');
   renderShardBalance();
-  selectMenuChoice(ui.menuChoices.indexOf(ui.menuVault), true);
+  if (vaultReturn === 'gameover') {
+    const choices = ui.resultChoices.filter(button => !button.classList.contains('hidden') && !button.disabled);
+    selectResultChoice(Math.max(0, choices.indexOf(ui.resultVault)), true);
+  } else selectMenuChoice(ui.menuChoices.indexOf(ui.menuVault), true);
 };
 let toastTimer = 0;
 let toastPriority = -1;
@@ -1618,7 +1630,9 @@ ui.resultChoices.forEach(button => {
     const index = choices.indexOf(button);
     if (index >= 0) selectResultChoice(index);
   };
-  button.addEventListener('pointerenter', selectButton);
+  // A stationary pointer can land over a result action when an overlay closes.
+  // Only change the arcade selection after the player actually moves the pointer.
+  button.addEventListener('pointermove', selectButton);
   button.addEventListener('focus', selectButton);
 });
 
@@ -1862,6 +1876,29 @@ const stopDuelSignals = () => {
   clearInterval(duelClockTimer);
   clearInterval(duelCountdownTimer);
   duelClockTimer = duelCountdownTimer = 0;
+};
+
+const perkChoiceCards = () => [...ui.perkCards.querySelectorAll('.perk-card')];
+const selectPerkChoice = (index, focus = false) => {
+  const cards = perkChoiceCards();
+  if (!cards.length) return;
+  selectedPerkChoice = (index + cards.length) % cards.length;
+  cards.forEach((card, cardIndex) => {
+    const selected = cardIndex === selectedPerkChoice;
+    card.classList.toggle('perk-selected', selected);
+    card.setAttribute('aria-selected', String(selected));
+  });
+  if (focus) cards[selectedPerkChoice].focus({ preventScroll: true });
+};
+
+const activatePerkChoices = selectChoice => {
+  const cards = perkChoiceCards();
+  cards.forEach((card, index) => {
+    card.addEventListener('click', () => selectChoice(card), { once: true });
+    card.addEventListener('focus', () => selectPerkChoice(index));
+    card.addEventListener('pointermove', () => selectPerkChoice(index));
+  });
+  selectPerkChoice(0, true);
 };
 const renderDuelPilot = (card, image, name, state, pilot, waiting = false) => {
   const connected = Boolean(pilot?.connected ?? true);
@@ -2560,6 +2597,7 @@ const renderRunSummary = summary => {
 };
 
 const renderShardReward = result => {
+  ui.resultVault.classList.toggle('hidden', !PLATFORM.capabilities.vault || !result?.reward?.qualified);
   if (!result?.reward) { ui.shardReward.innerHTML = ''; return; }
   const { reward, balance } = result;
   if (!reward.qualified) {
@@ -2571,6 +2609,10 @@ const renderShardReward = result => {
     `;
     return;
   }
+  const crateCost = crownCrateCost(walletState().vault.opens);
+  ui.resultVault.innerHTML = balance >= crateCost
+    ? '<i>&#9819;</i> CROWN VAULT · CRATE READY'
+    : `<i>&#9819;</i> CROWN VAULT · ◆ ${balance.toLocaleString('en-US')} / ${crateCost}`;
   const rows = [
     ['SURVIVAL', reward.breakdown.survival],
     ['ENEMIES', reward.breakdown.enemies],
@@ -2822,6 +2864,7 @@ const game = new Game($('game'), input, {
     ui.recordMessage.textContent = `PERSONAL BEST · ${best.toLocaleString('en-US')}`;
     ui.runMeta.textContent = `ZONE ${game.stageIndex + 1} · ${CONFIG.difficulties[game.difficulty].name}`;
     renderRunSummary(summary);
+    ui.resultVault.classList.add('hidden');
     if (localEconomy) {
       const shardResult = shardWallet.awardRun(economyRunId, summary);
       renderShardReward(shardResult);
@@ -2872,7 +2915,7 @@ const game = new Game($('game'), input, {
     ui.perkEyebrow.textContent = 'WARDEN DEFEATED';
     ui.perkTitle.textContent = 'CHOOSE A CROWN POWER';
     ui.perkSubtitle.textContent = 'Your choice lasts for the rest of the run.';
-    ui.perkSwipeHint.textContent = '◀ SWIPE TO VIEW · TAP TO CHOOSE ▶';
+    ui.perkSwipeHint.innerHTML = '<span class="perk-key-hint">◀ A / D OR ARROWS · ENTER TO CHOOSE ▶</span><span class="perk-touch-hint">◀ SWIPE TO VIEW · TAP TO CHOOSE ▶</span>';
     ui.perkCards.innerHTML = choices.map(perk => `
       <button class="perk-card${perk.cursed ? ' cursed' : ''}" data-perk="${perk.key}" style="--perk-color:${perk.color}">
         <small>${perk.cursed ? 'CURSED' : `LEVEL ${perk.stack}/${perk.maxStacks}`}</small>
@@ -2881,8 +2924,8 @@ const game = new Game($('game'), input, {
         <p>${perk.description}</p>
       </button>
     `).join('');
-    ui.perkCards.querySelectorAll('[data-perk]').forEach(card => card.addEventListener('click', () => game.selectPerk(card.dataset.perk), { once: true }));
     ui.perkOverlay.classList.remove('hidden');
+    activatePerkChoices(card => game.selectPerk(card.dataset.perk));
     ui.dashButton.classList.add('hidden');
     ui.pauseButton.classList.add('hidden');
   },
@@ -2898,7 +2941,7 @@ const game = new Game($('game'), input, {
     ui.perkEyebrow.textContent = `${weapon.name} · MK 5`;
     ui.perkTitle.textContent = 'CHOOSE YOUR FINAL FORM';
     ui.perkSubtitle.textContent = 'The paths are permanent and mutually exclusive for this run.';
-    ui.perkSwipeHint.textContent = '◀ SWIPE · CHOOSE ONE PATH ▶';
+    ui.perkSwipeHint.innerHTML = '<span class="perk-key-hint">◀ A / D OR ARROWS · ENTER TO ASCEND ▶</span><span class="perk-touch-hint">◀ SWIPE · CHOOSE ONE PATH ▶</span>';
     const sprite = `./assets/weapons/${weapon.name.toLowerCase()}-mount-v1.png`;
     ui.perkCards.innerHTML = choices.map(mastery => `
       <button class="perk-card mastery-card weapon-${weapon.name.toLowerCase()}" data-mastery="${mastery.key}" style="--perk-color:${mastery.color}">
@@ -2909,8 +2952,8 @@ const game = new Game($('game'), input, {
         <p>${mastery.description}</p>
       </button>
     `).join('');
-    ui.perkCards.querySelectorAll('[data-mastery]').forEach(card => card.addEventListener('click', () => game.selectMastery(card.dataset.mastery), { once: true }));
     ui.perkOverlay.classList.remove('hidden');
+    activatePerkChoices(card => game.selectMastery(card.dataset.mastery));
     ui.dashButton.classList.add('hidden');
     ui.pauseButton.classList.add('hidden');
   },
@@ -3516,6 +3559,7 @@ ui.menuSettings.addEventListener('click', () => openSettings('menu'));
 ui.menuMode.addEventListener('click', () => { cycleDifficulty(1); sfx.play('confirm'); });
 ui.menuLeaderboard.addEventListener('click', () => openLeaderboard('menu', selectedDifficulty));
 ui.menuVault.addEventListener('click', openVault);
+ui.resultVault.addEventListener('click', openVault);
 ui.menuWarden.addEventListener('click', openWarden);
 ui.menuDuel.addEventListener('click', () => { void openDuel(); });
 ui.closeDuel.addEventListener('click', closeDuel);
@@ -4255,6 +4299,33 @@ document.addEventListener('visibilitychange', () => {
 });
 addEventListener('blur', () => pauseRun(true));
 addEventListener('keydown', event => {
+  if (ui.perkOverlay.classList.contains('hidden')) return;
+  const cards = perkChoiceCards();
+  if (!cards.length) return;
+  if (['ArrowLeft', 'ArrowUp', 'KeyA', 'KeyW'].includes(event.code)) {
+    event.preventDefault();
+    input.clear();
+    selectPerkChoice(selectedPerkChoice - 1, true);
+    sfx.play('confirm');
+  } else if (['ArrowRight', 'ArrowDown', 'KeyD', 'KeyS'].includes(event.code)) {
+    event.preventDefault();
+    input.clear();
+    selectPerkChoice(selectedPerkChoice + 1, true);
+    sfx.play('confirm');
+  } else if (event.code === 'Enter' || event.code === 'Space') {
+    event.preventDefault();
+    input.clear();
+    cards[selectedPerkChoice]?.click();
+  } else if (/^Digit[1-3]$/.test(event.code)) {
+    const index = Number(event.code.at(-1)) - 1;
+    if (cards[index]) {
+      event.preventDefault();
+      selectPerkChoice(index, true);
+      cards[index].click();
+    }
+  }
+});
+addEventListener('keydown', event => {
   if (event.code !== 'Escape') return;
   event.preventDefault();
   if (!ui.crateOpeningCinematic.classList.contains('hidden')) return;
@@ -4276,6 +4347,7 @@ addEventListener('keydown', event => {
   else if (!ui.accountOverlay.classList.contains('hidden')) closeAccount();
   else if (!ui.settingsOverlay.classList.contains('hidden')) closeSettings();
   else if (!ui.pauseOverlay.classList.contains('hidden')) resumeRun();
+  else if (!ui.perkOverlay.classList.contains('hidden')) return;
   else pauseRun(false);
 });
 addEventListener('keydown', event => {
